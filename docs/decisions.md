@@ -25,3 +25,7 @@ The platform geocoder sends coordinates to a network service on most phones. The
 ## 2026-11-14: rules after the model
 
 The model proposes; deterministic code decides what is sent (personal-data rules) and how a verdict is shown (no source means insufficient evidence).
+
+## 2026-11-14: the logo sets the palette
+
+Deep slate surfaces, cyan for work on the device, indigo to violet for the cloud, emerald for a verified claim. The app theme, the launcher icon, the site and the hero image use the same tokens; status colors always come with an icon and a label.

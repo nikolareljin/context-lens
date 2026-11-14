@@ -1,5 +1,7 @@
 # ContextLens
 
+<img src="docs/assets/hero.svg" alt="ContextLens: the sentence stays on the phone, Gemini Nano writes one clean question on the device, cloud Gemini with Google Search returns a sourced verdict" width="100%">
+
 **Private, grounded fact checks for real conversations.**
 
 ContextLens is an Android app that listens to a conversation and checks the factual claims in it, without sending the conversation anywhere. Gemini Nano on the phone decides which sentences are checkable claims, resolves words like "here", "they" and "last month" against a private session context, and rewrites each claim into one self-contained question with no personal data. Only that question goes to cloud Gemini, grounded with Google Search, which returns a short verdict with its sources.
