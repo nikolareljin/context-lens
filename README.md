@@ -56,9 +56,20 @@ Requirements: JDK 17, Android SDK (platform 35+), Git, Bash.
 
 Firebase configuration (`google-services.json`) is not part of the repository; see the [setup page](docs/setup.md).
 
+## Install on a phone
+
+<img src="docs/assets/apk-qr.svg" alt="QR code that downloads the newest ContextLens APK" width="150">
+
+Scan the code with the phone's camera, or open
+`https://github.com/nikolareljin/context-lens/releases/latest/download/context-lens.apk` on the phone,
+to download the newest release's APK. Allow installs from that source when Android asks.
+Over a USB cable with USB debugging on: `bash scripts/phone-install.sh` (Linux, macOS, WSL; no SDK needed).
+Details: [Download](https://nikolareljin.github.io/context-lens/download/).
+
 ## Releases
 
-Every release (`x.y.z`) builds a signed APK and attaches it to the GitHub release.
+Every release (`x.y.z`) builds a signed APK and attaches it to the GitHub release, once as
+`contextlens-x.y.z.apk` and once as `context-lens.apk`, the fixed name the QR code points to.
 
 ## License
 

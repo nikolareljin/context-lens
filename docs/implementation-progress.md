@@ -22,3 +22,9 @@ A dated record of the work done during the hackathon. Each entry lists what was 
 - New logo (lens with a local waveform, a privacy line and a verified check) as the site logo and favicon, an adaptive launcher icon with a themed monochrome variant, a hero image of the three stages, and a social preview card.
 - App theme (light and dark, including container colors), site palette and header follow the logo.
 - Verified: lint and debug build; the icon and both themes checked on an Android 11 emulator; strict docs build.
+
+## 2026-11-14: install from a QR code
+
+- Every release also carries `context-lens.apk`, so `releases/latest/download/context-lens.apk` always serves the newest APK; a QR code for that address on the home page, the download page and the README.
+- `scripts/phone-install.sh` (also `./dev phone-install`): installs a release APK over USB with nothing but curl and unzip on the computer, downloading platform-tools when adb is missing.
+- Verified: the QR code decodes to the fixed address; script tests with stand-ins for adb and curl; strict docs build.

@@ -93,5 +93,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           shopt -s nullglob
+          # context-lens.apk keeps one fixed address for the QR code and the install script:
+          # releases/latest/download/context-lens.apk always serves the newest release's APK
+          if [[ -f "dist/contextlens-${TAG}.apk" ]]; then cp "dist/contextlens-${TAG}.apk" dist/context-lens.apk; fi
           files=(dist/*.apk dist/*.aab)
           gh release create "$TAG" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag "${files[@]}"
