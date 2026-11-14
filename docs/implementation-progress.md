@@ -17,3 +17,8 @@ A dated record of the work done during the hackathon. Each entry lists what was 
 - Note: the newest AndroidX releases (Compose BOM 2026.09, core 1.19) need Android Gradle plugin 9.1 and compileSdk 37; the app uses Compose BOM 2026.01.01, core 1.17.0, lifecycle 2.10.0, navigation 2.9.8 and activity 1.12.4 until the build moves to plugin 9.
 - Open: on-device model status and download, the inference log.
 
+## 2026-11-14: logo, hero and palette
+
+- New logo (lens with a local waveform, a privacy line and a verified check) as the site logo and favicon, an adaptive launcher icon with a themed monochrome variant, a hero image of the three stages, and a social preview card.
+- App theme (light and dark, including container colors), site palette and header follow the logo.
+- Verified: lint and debug build; the icon and both themes checked on an Android 11 emulator; strict docs build.

@@ -4,6 +4,8 @@ title: ContextLens
 
 # ContextLens
 
+<img class="cl-hero-img" src="assets/hero.svg" alt="ContextLens: the sentence stays on the phone, Gemini Nano writes one clean question on the device, cloud Gemini with Google Search returns a sourced verdict">
+
 <p class="tl-hero"><strong>Private, grounded fact checks for real conversations.</strong> The phone decides which sentences are checkable claims and rewrites them without personal data; only that clean question goes to the cloud for a sourced verdict.</p>
 
 <div class="tl-badges"><span>Android</span><span>Firebase AI Logic</span><span>Gemini Nano on device</span><span>Grounding with Google Search</span><span>App Check</span></div>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Single-color mark for themed icons (Android 13+): ring, handle, waveform, check. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.155"
+        android:scaleY="0.155"
+        android:translateX="14.32"
+        android:translateY="14.32">
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="22"
+            android:pathData="M256,104a152,152 0,1 1,0 304a152,152 0,1 1,0 -304z" />
+        <path
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="26"
+            android:strokeLineCap="round"
+            android:pathData="M366,366L416,416" />
+        <path
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="14"
+            android:strokeLineCap="round"
+            android:pathData="M176,236L176,276M204,206L204,306M232,224L232,288" />
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="18"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M282,258L306,282L348,226" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M388,96C388,118 394,124 416,124C394,124 388,130 388,152C388,130 382,124 360,124C382,124 388,118 388,96Z" />
+    </group>
+</vector>
