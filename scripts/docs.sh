@@ -37,17 +37,17 @@ mkdocs_cmd() {
   local mode="$1"; shift
   local local_addr=()
   [[ "$mode" == serve ]] && local_addr=(--dev-addr "127.0.0.1:$port")
-  if [[ -n "${MKDOCS:-}" ]]; then "$MKDOCS" "$@" "${local_addr[@]}"; return; fi
+  if [[ -n "${MKDOCS:-}" ]]; then "$MKDOCS" "$@" ${local_addr[@]+"${local_addr[@]}"}; return; fi
   if venv_ready; then
-    .venv-docs/bin/mkdocs "$@" "${local_addr[@]}"
+    .venv-docs/bin/mkdocs "$@" ${local_addr[@]+"${local_addr[@]}"}
   elif command -v docker >/dev/null 2>&1; then
     local publish=()
     # inside the container the server must listen on all interfaces; the host side stays local
     [[ "$mode" == serve ]] && publish=(-p "127.0.0.1:$port:$port")
     local extra=()
     [[ "$mode" == serve ]] && extra=(--dev-addr "0.0.0.0:$port")
-    docker run --rm -u "$(id -u):$(id -g)" "${publish[@]}" -v "$TL_ROOT:/docs" \
-      "squidfunk/mkdocs-material:$pinned" "$@" "${extra[@]}"
+    docker run --rm --init -u "$(id -u):$(id -g)" ${publish[@]+"${publish[@]}"} -v "$TL_ROOT:/docs" \
+      "squidfunk/mkdocs-material:$pinned" "$@" ${extra[@]+"${extra[@]}"}
   else
     die "needs python3 with venv (python3-venv) or docker"
   fi

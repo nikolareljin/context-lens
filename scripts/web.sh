@@ -28,10 +28,15 @@ run_npm() {
   if [[ -n "${NPM:-}" ]]; then (cd "$web_dir" && "$NPM" "$@"); return; fi
   if node_ok; then (cd "$web_dir" && npm "$@"); return; fi
   need docker "https://docs.docker.com/engine/install/"
-  local publish=()
-  [[ "${1:-}" == run && "${2:-}" == dev ]] && publish=(-p 127.0.0.1:5173:5173)
-  docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp "${publish[@]}" \
-    -v "$TL_ROOT":/w -w /w/apps/web "${WEB_NODE_IMAGE:-node:22}" npm "$@"
+  local publish=() args=("$@")
+  if [[ "${1:-}" == run && "${2:-}" == dev ]]; then
+    # inside the container the server must listen on all its interfaces; the host publishes
+    # the port on 127.0.0.1 only, so the preview stays local
+    publish=(-p 127.0.0.1:5173:5173)
+    args=(run dev -- --host 0.0.0.0)
+  fi
+  docker run --rm --init -u "$(id -u):$(id -g)" -e HOME=/tmp ${publish[@]+"${publish[@]}"} \
+    -v "$TL_ROOT":/w -w /w/apps/web "${WEB_NODE_IMAGE:-node:22}" npm "${args[@]}"
 }
 
 cmd="${1:-}"; shift || true
