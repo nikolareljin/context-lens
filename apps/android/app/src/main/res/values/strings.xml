@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ContextLens</string>
+    <string name="nav_listen">Listen</string>
+    <string name="nav_ledger">Ledger</string>
+    <string name="nav_diagnostics">Diagnostics</string>
+    <string name="listen_empty">Listening, the privacy counters and the fact cards appear here.</string>
+    <string name="ledger_title">Egress ledger</string>
+    <string name="ledger_empty">No request has left this phone.</string>
+    <string name="diag_app_version">App version</string>
+    <string name="diag_device">Device</string>
+    <string name="diag_app_check">App Check</string>
+    <string name="diag_auth">Sign-in</string>
+    <string name="auth_signing_in">Signing in…</string>
+    <string name="auth_anonymous">Anonymous</string>
+    <string name="auth_signed_in">Signed in</string>
+    <string name="auth_failed">Failed: %1$s</string>
+    <string name="diag_model_pending">On-device model status and the inference log are added with the diagnostics milestone.</string>
+</resources>
