@@ -29,5 +29,11 @@ Each card shows the source Firebase AI Logic reported for that request (on devic
 
 ## Get it
 
-- Android APK: [Download](download.md)
+<div class="cl-qr" markdown>
+<img src="assets/apk-qr.svg" alt="QR code that downloads the newest ContextLens APK">
+<div markdown>
+Scan with an Android phone to download the newest APK, or see [Download](download.md) for installing over USB.
+</div>
+</div>
+
 - Source: [github.com/nikolareljin/context-lens](https://github.com/nikolareljin/context-lens)
