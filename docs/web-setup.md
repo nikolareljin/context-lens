@@ -4,6 +4,8 @@ The web companion is published at the root of this site; these docs live under `
 
 ## Firebase
 
+`./dev cloud` does all of this from a terminal, apart from two console clicks; see [Setup](setup.md). By hand:
+
 1. In the Firebase console, open the project and **Add app → Web**. Copy the config values.
 2. **Authentication → Settings → Authorized domains**: add the domain that serves the app (for this repository, `nikolareljin.github.io`; `localhost` is there by default).
 3. **App Check → Apps → the web app → reCAPTCHA Enterprise**: create a score-based key for the same domain and register it. For local development, run the app once, copy the App Check debug token from the browser console and add it under **Manage debug tokens**.

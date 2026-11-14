@@ -48,6 +48,8 @@ Requirements: JDK 17, Android SDK (platform 35+), Git, Bash.
 
 ```bash
 ./dev setup --check   # report what is missing
+./dev cloud           # sign in and set up the Firebase backend (asks, opens the browser)
+./dev phone           # pair a phone by QR code and register its App Check token
 ./dev build           # debug APK
 ./dev test            # unit tests and script tests
 ./dev lint            # Android lint, shellcheck

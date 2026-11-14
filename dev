@@ -3,6 +3,8 @@
 #
 # Usage: ./dev <command> [args]
 #   setup [--check]        report the local toolchain (JDK, Android SDK, Node, scanners)
+#   cloud [step]           sign in and set up the Firebase backend (scripts/cloud-setup.sh --help)
+#   phone [step]           pair a phone by QR code, check it, register its App Check token
 #   build                  debug APK
 #   test                   Android unit tests (when present), functions tests (when present), script tests
 #   lint                   Android lint (when present), shellcheck
@@ -36,6 +38,8 @@ shell_files() {
 cmd="${1:-}"; shift || true
 case "$cmd" in
   setup) bash "$S/setup.sh" "$@" ;;
+  cloud) bash "$S/cloud-setup.sh" "$@" ;;
+  phone) bash "$S/phone-setup.sh" "$@" ;;
   build) bash "$S/android.sh" build ;;
   test)
     if android_present; then bash "$S/android.sh" test; else log "apps/android not present: skipped"; fi
