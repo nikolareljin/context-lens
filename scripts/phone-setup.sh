@@ -43,7 +43,7 @@ done
 done_msg() { printf '  done     %s\n' "$*" >&2; }
 ready_count() { "$ADB_CMD" devices | tail -n +2 | grep -c $'\tdevice$' || true; }
 
-mdns_addr() { "$ADB_CMD" mdns services 2>/dev/null | mdns_pick "$@"; }
+mdns_addr() { { "$ADB_CMD" mdns services 2>/dev/null || true; } | mdns_pick "$@"; }
 
 step_pair() {
   if [[ "$(ready_count)" -gt 0 ]]; then done_msg "a phone is already connected"; return; fi
@@ -70,7 +70,7 @@ EOF
   for ((i = 0; i < 30; i += 2)); do
     [[ "$(ready_count)" -gt 0 ]] && { done_msg "connected over Wi-Fi"; return; }
     # the paired phone's connect service: same address, another port
-    addr="$("$ADB_CMD" mdns services 2>/dev/null \
+    addr="$({ "$ADB_CMD" mdns services 2>/dev/null || true; } \
       | awk -v ip="$ip" 'index($2, "_adb-tls-connect") == 1 && index($3, ip ":") == 1 { print $3; exit }')"
     if [[ -n "$addr" ]]; then "$ADB_CMD" connect "$addr" >/dev/null 2>&1 || true; fi
     sleep 2
@@ -91,7 +91,7 @@ EOF
   die "no phone after ${WAIT}s (run: adb devices)"
 }
 
-sh_() { "$ADB_CMD" -s "$DEVICE" shell "$@" 2>/dev/null | tr -d '\r'; }
+sh_() { { "$ADB_CMD" -s "$DEVICE" shell "$@" 2>/dev/null || true; } | tr -d '\r'; }
 google_accounts() { sh_ dumpsys account | grep -c 'type=com.google}' || true; }
 aicore_version() { sh_ dumpsys package "$AICORE" | awk -F= '/versionName=/ {print $2; exit}'; }
 

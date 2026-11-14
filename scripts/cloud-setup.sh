@@ -174,7 +174,7 @@ debug_sha() {
   local ks="$HOME/.android/debug.keystore"
   [[ -f "$ks" ]] || return 0
   keytool -list -v -keystore "$ks" -alias androiddebugkey -storepass android 2>/dev/null \
-    | awk '/SHA256:/ {print $2; exit}'
+    | awk '/SHA256:/ {print $2; exit}' || true
 }
 
 step_android() {
@@ -208,6 +208,7 @@ step_android() {
 }
 
 write_google_services() {
+  project_id >/dev/null
   local id; id="$(env_get "$TL_ENV_FILE" FIREBASE_ANDROID_APP_ID)"
   [[ -n "$id" ]] || die "no Android app yet: run ./dev cloud android"
   mkdir -p "$(dirname "$GSJ")"
@@ -259,6 +260,7 @@ google_enabled() {
 }
 step_auth() {
   local p; p="$(project_id)"
+  gcloud_signed_in || die "gcloud is not signed in: run ./dev cloud login"
   if ! api GET "$IT/projects/$p/config" >/dev/null 2>&1 || ! google_enabled; then
     log "Authentication: click 'Get started' if asked, then Sign-in method → Google → Enable → Save."
     log "(Google creates the OAuth client for this provider; there is no API for that step.)"
