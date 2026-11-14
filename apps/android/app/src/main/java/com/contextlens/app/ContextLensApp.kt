@@ -1,0 +1,29 @@
+package com.contextlens.app
+
+import android.app.Application
+import com.contextlens.app.firebase.AppCheckProviders
+import com.contextlens.app.firebase.FirebaseSession
+import com.google.firebase.Firebase
+import com.google.firebase.appcheck.appCheck
+import com.google.firebase.crashlytics.crashlytics
+import com.google.firebase.initialize
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
+class ContextLensApp : Application() {
+    /** Process-wide objects; small enough that a container class is all the wiring needed. */
+    val session = FirebaseSession()
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    override fun onCreate() {
+        super.onCreate()
+        Firebase.initialize(this)
+        // App Check before any Firebase AI Logic call, so every cloud request carries a token.
+        Firebase.appCheck.installAppCheckProviderFactory(AppCheckProviders.factory())
+        // Crash reports from release builds only.
+        Firebase.crashlytics.isCrashlyticsCollectionEnabled = !BuildConfig.DEBUG
+        appScope.launch { session.ensureSignedIn() }
+    }
+}

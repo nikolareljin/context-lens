@@ -64,8 +64,9 @@ case "$cmd" in
     serial="$("$adb" devices | awk '/^emulator-/ {print $1; exit}')"
     [[ -n "$serial" ]] || die "emulator did not come up"
     "$adb" -s "$serial" install -r "$TL_ANDROID_DIR/$DEBUG_APK"
-    "$adb" -s "$serial" shell monkey -p "$APP_ID" -c android.intent.category.LAUNCHER 1 >/dev/null
-    sleep 5
+    # -W returns once the first frame is drawn; a fixed sleep caught a blank window on slow emulators
+    "$adb" -s "$serial" shell am start -W -n "$APP_ID/.MainActivity" >/dev/null
+    sleep 3
     "$adb" -s "$serial" shell pidof "$APP_ID" >/dev/null || die "app is not running after launch"
     mkdir -p "$TL_ANDROID_DIR/app/build/smoke"
     "$adb" -s "$serial" exec-out screencap -p > "$TL_ANDROID_DIR/app/build/smoke/launch.png"
