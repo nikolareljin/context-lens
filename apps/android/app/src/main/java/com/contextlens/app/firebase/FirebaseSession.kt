@@ -2,6 +2,7 @@ package com.contextlens.app.firebase
 
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +33,8 @@ class FirebaseSession {
         _auth.value = try {
             val user = Firebase.auth.signInAnonymously().await().user
             if (user != null) AuthState.SignedIn(user.isAnonymous) else AuthState.Failed("no user returned")
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             AuthState.Failed(e.message ?: e.javaClass.simpleName)
         }
