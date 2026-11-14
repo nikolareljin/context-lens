@@ -1,10 +1,11 @@
 name: pages
 
-# Builds the documentation site and publishes it to GitHub Pages.
+# Publishes https://nikolareljin.github.io/context-lens/: the web companion at the root and the
+# documentation site under /docs/, built into one artifact.
 on:
   push:
     branches: [main]
-    paths: ["docs/**", "mkdocs.yml", ".github/workflows/pages.yml"]
+    paths: ["apps/web/**", "docs/**", "mkdocs.yml", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 concurrency:
@@ -17,16 +18,40 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      # Public web configuration from repository variables; without them the app builds in its
+      # "not configured" state (download and docs only).
+      - name: web companion
+        working-directory: apps/web
+        env:
+          VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_RECAPTCHA_SITE_KEY: ${{ vars.VITE_RECAPTCHA_SITE_KEY }}
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: docs/requirements.txt
       - run: pip install -r docs/requirements.txt
-      - run: mkdocs build --strict --site-dir site
+      - name: assemble
+        run: |
+          mkdir -p site
+          cp -R apps/web/dist/. site/
+          mkdocs build --strict --site-dir site/docs
+          test -f site/index.html && test -f site/docs/index.html && test -f site/googlefb1695ee9a07673e.html
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:

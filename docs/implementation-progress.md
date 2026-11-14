@@ -28,3 +28,13 @@ A dated record of the work done during the hackathon. Each entry lists what was 
 - Every release also carries `context-lens.apk`, so `releases/latest/download/context-lens.apk` always serves the newest APK; a QR code for that address on the home page, the download page and the README.
 - `scripts/phone-install.sh` (also `./dev phone-install`): installs a release APK over USB with nothing but curl and unzip on the computer, downloading platform-tools when adb is missing.
 - Verified: the QR code decodes to the fixed address; script tests with stand-ins for adb and curl; strict docs build.
+
+## 2026-11-14: web companion scaffold
+
+- `apps/web`: React 19, TypeScript, Vite, Tailwind, served at `https://nikolareljin.github.io/context-lens/`; the docs moved to `/context-lens/docs/`. One Pages workflow builds both into one artifact.
+- The page explains the three stages, offers the signed APK (button and QR code) and says when the build has no Firebase configuration; the live demo is the next step.
+- Firebase web configuration comes from repository variables at build time, never from the repository; `docs/web-setup.md` lists them with the console and Chrome steps.
+- `./dev web` (install, lint, test, build, dev, check) uses the local npm on Node 20+ or a `node:22` container.
+- The Search Console ownership file is served from the site root.
+- Verified: type check, 6 unit tests and the production build in `node:22`; the assembled site (app plus docs) built locally.
+
