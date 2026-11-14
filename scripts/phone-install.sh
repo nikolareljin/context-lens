@@ -80,7 +80,9 @@ fi
 say "waiting for a phone with USB debugging on (accept the prompt on the phone)"
 serial=""
 for _ in $(seq 1 "$WAIT_SECONDS"); do
-  mapfile -t ready < <("$adb" devices | awk 'NR > 1 && $2 == "device" { print $1 }')
+  # a read loop, not mapfile: macOS ships bash 3.2
+  ready=()
+  while IFS= read -r line; do ready+=("$line"); done < <("$adb" devices | awk 'NR > 1 && $2 == "device" { print $1 }')
   if [[ ${#ready[@]} -gt 1 && -z "${ANDROID_SERIAL:-}" ]]; then
     fail "more than one device connected; set ANDROID_SERIAL to one of: ${ready[*]}"
   fi
