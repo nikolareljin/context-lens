@@ -23,6 +23,7 @@
 # Values are written to git-ignored files (.env, apps/web/.env.local,
 # apps/android/app/google-services.json) and to GitHub; none is printed.
 set -euo pipefail
+shopt -s inherit_errexit
 TL_TAG=cloud
 # shellcheck source=lib/common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
@@ -38,6 +39,7 @@ IT="https://identitytoolkit.googleapis.com/admin/v2"
 CONSOLE="https://console.firebase.google.com/project"
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
 GCLOUD_HOME="${GCLOUD_HOME:-$HOME/google-cloud-sdk}"
+export PATH="$BIN_DIR:$PATH"   # tools installed by this run are usable right away
 GSJ="${TL_ANDROID_DIR:-$TL_ROOT/apps/android}/app/google-services.json"
 APIS=(firebasevertexai.googleapis.com generativelanguage.googleapis.com
   firebaseappcheck.googleapis.com recaptchaenterprise.googleapis.com
@@ -57,7 +59,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 has() { command -v "$1" >/dev/null 2>&1; }
-fb() { "$FB" "$@" --project "$(project_id)"; }
+# fb <args>: firebase on the configured project. The explicit exit also holds
+# where errexit is off (inside `cmd || ...`), so firebase never runs on no project.
+fb() { local p; p="$(project_id)" || exit 1; "$FB" "$@" --project "$p"; }
 done_msg() { printf '  done     %s\n' "$*" >&2; }
 
 # ---- tools ---------------------------------------------------------------
@@ -119,7 +123,11 @@ step_project() {
   [[ "${ASSUME_YES:-0}" == 1 ]] || read -r -p "Project ID to use or create [$suggested]: " answer < /dev/tty
   id="${answer:-$suggested}"
   [[ "$id" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]] || die "not a valid project ID: $id"
-  if ! printf '%s\n' "$ids" | grep -qx -- "$id"; then
+  if printf '%s\n' "$ids" | grep -qx -- "$id"; then :
+  elif "$GC" projects describe "$id" >/dev/null 2>&1; then
+    log "adding Firebase to the existing Google Cloud project $id"
+    "$FB" projects:addfirebase "$id"
+  else
     log "creating Firebase project $id"
     "$FB" projects:create "$id" --display-name "ContextLens"
   fi
@@ -141,6 +149,10 @@ step_apis() {
   if [[ "$(env_get "$TL_ENV_FILE" AI_LOGIC_READY)" != yes ]]; then
     log "AI Logic: click 'Get started' and choose the Gemini Developer API (no billing needed)."
     open_url "$CONSOLE/$p/ailogic"
+    if [[ "${ASSUME_YES:-0}" == 1 ]]; then
+      warn "AI Logic not confirmed (--yes); run ./dev cloud apis again after the console step"
+      return 0
+    fi
     pause "AI Logic set up?"
     env_set "$TL_ENV_FILE" AI_LOGIC_READY yes
   fi
@@ -150,8 +162,11 @@ step_apis() {
 # ---- apps ----------------------------------------------------------------
 # app_id <ANDROID|WEB> <displayName>: the app's ID, or nothing.
 app_id() {
-  fb apps:list "$1" --json 2>/dev/null \
-    | jq -r --arg n "$2" --arg pkg "$TL_PACKAGE" \
+  local out
+  project_id >/dev/null
+  out="$(fb apps:list "$1" --json 2>/dev/null)" \
+    || die "firebase apps:list failed (signed in? run ./dev cloud login)"
+  printf '%s' "$out" | jq -r --arg n "$2" --arg pkg "$TL_PACKAGE" \
       '[.result[] | select(.displayName == $n or .packageName == $pkg)][0].appId // empty'
 }
 
@@ -163,6 +178,7 @@ debug_sha() {
 }
 
 step_android() {
+  need keytool "part of the JDK"
   local id; id="$(app_id ANDROID ContextLens)"
   if [[ -z "$id" ]]; then
     log "registering the Android app $TL_PACKAGE"
@@ -195,6 +211,7 @@ write_google_services() {
   local id; id="$(env_get "$TL_ENV_FILE" FIREBASE_ANDROID_APP_ID)"
   [[ -n "$id" ]] || die "no Android app yet: run ./dev cloud android"
   mkdir -p "$(dirname "$GSJ")"
+  rm -f "$GSJ.tmp"
   fb apps:sdkconfig ANDROID "$id" --out "$GSJ.tmp" >/dev/null 2>&1 \
     || fb apps:sdkconfig ANDROID "$id" > "$GSJ.tmp"
   jq -e '.project_info' "$GSJ.tmp" >/dev/null || { rm -f "$GSJ.tmp"; die "unexpected google-services.json"; }
@@ -267,7 +284,7 @@ step_recaptcha() {
   local p; p="$(project_id)"
   local key; key="$(env_get "$TL_WEB_ENV" VITE_RECAPTCHA_SITE_KEY)"
   if [[ -z "$key" ]]; then
-    key="$("$GC" recaptcha keys list --project "$p" --format=json 2>/dev/null \
+    key="$({ "$GC" recaptcha keys list --project "$p" --format=json 2>/dev/null || echo '[]'; } \
       | jq -r '[.[] | select(.displayName == "ContextLens web")][0].name // empty' | sed 's#.*/##')"
   fi
   if [[ -z "$key" ]]; then

@@ -34,7 +34,7 @@ env_set() {
 # env_get <file> <KEY>: the value, or nothing.
 env_get() {
   [[ -f "$1" ]] || return 0
-  grep "^$2=" "$1" | tail -n 1 | cut -d= -f2-
+  { grep "^$2=" "$1" || true; } | tail -n 1 | cut -d= -f2-
 }
 
 # confirm <question>: yes when ASSUME_YES=1 or the user answers y.
@@ -82,9 +82,11 @@ api() {
   [[ -n "$token" ]] || die "gcloud returned no access token: run ./dev cloud login"
   local args=(-sS --fail-with-body -X "$method"
     -H "x-goog-user-project: $project" -H "Content-Type: application/json")
-  [[ -n "$body" ]] && args+=(--data "$body")
-  # the header file lives only for this command, so the token stays out of argv
-  "$(curl_bin)" "${args[@]}" -H @<(printf 'Authorization: Bearer %s\n' "$token") "$url"
+  [[ -z "$body" ]] || args+=(--data-binary @-)
+  # the header file lives only for this command and the body comes from stdin,
+  # so neither the access token nor a secret in the body appears in argv
+  printf '%s' "$body" \
+    | "$(curl_bin)" "${args[@]}" -H @<(printf 'Authorization: Bearer %s\n' "$token") "$url"
 }
 
 # github_repo: owner/name of the origin remote.

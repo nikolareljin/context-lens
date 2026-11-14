@@ -14,6 +14,7 @@
 #
 # Stand-ins for tests: ADB (see scripts/lib/android.sh), WAIT_SECONDS.
 set -euo pipefail
+shopt -s inherit_errexit
 TL_TAG=phone
 # shellcheck source=lib/common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
@@ -65,9 +66,12 @@ EOF
   [[ -n "$addr" ]] || die "the phone did not answer; same Wi-Fi? (or use: ./dev phone usb)"
   "$ADB_CMD" pair "$addr" "$pass" >/dev/null || die "pairing failed"
   done_msg "paired"
+  local ip="${addr%:*}"
   for ((i = 0; i < 30; i += 2)); do
     [[ "$(ready_count)" -gt 0 ]] && { done_msg "connected over Wi-Fi"; return; }
-    addr="$(mdns_addr _adb-tls-connect)"
+    # the paired phone's connect service: same address, another port
+    addr="$("$ADB_CMD" mdns services 2>/dev/null \
+      | awk -v ip="$ip" 'index($2, "_adb-tls-connect") == 1 && index($3, ip ":") == 1 { print $3; exit }')"
     if [[ -n "$addr" ]]; then "$ADB_CMD" connect "$addr" >/dev/null 2>&1 || true; fi
     sleep 2
   done
@@ -138,8 +142,9 @@ step_token() {
     done_msg "a debug token named '$label' is registered already (delete it in the console to replace it)"
     return
   fi
+  # the token reaches jq and curl through the environment and stdin, never argv
   api POST "$AC/projects/$p/apps/$app/debugTokens" \
-    "$(jq -nc --arg n "$label" --arg t "$token" '{displayName: $n, token: $t}')" >/dev/null
+    "$(CL_NAME="$label" CL_TOKEN="$token" jq -nc '{displayName: env.CL_NAME, token: env.CL_TOKEN}')" >/dev/null
   done_msg "App Check debug token registered as '$label'"
 }
 

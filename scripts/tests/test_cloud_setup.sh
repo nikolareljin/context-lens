@@ -24,6 +24,24 @@ test_env_set_adds_replaces_and_keeps_the_file_private() {
   assert_eq "$(stat -c %a e)" 600
   assert_eq "$(lib env_get "$PWD/e" A)" 3
 }
+test_env_get_of_a_missing_key_is_empty_and_succeeds() {
+  echo A=1 > e
+  out="$(set -o pipefail; lib env_get "$PWD/e" B)" || fail "env_get failed for a missing key"
+  assert_eq "$out" ""
+}
+test_project_less_steps_stop_with_a_hint() {
+  sandbox; fake_gcloud; stub firebase 'echo "firebase $*" >> '"$PWD"'/fb-calls'
+  export FIREBASE="$PWD/firebase"
+  out="$(bash "$cloud" web 2>&1 || true)"
+  assert_contains "$out" "no Firebase project yet"
+  [[ ! -f fb-calls ]] || fail "firebase ran without a project: $(cat fb-calls)"
+}
+test_yes_does_not_mark_ai_logic_ready() {
+  sandbox; echo FIREBASE_PROJECT_ID=demo-proj > dot.env
+  stub gcloud 'echo firebasevertexai.googleapis.com'; export GCLOUD="$PWD/gcloud"
+  bash "$cloud" apis >/dev/null 2>&1 || true
+  [[ "$(cat dot.env)" != *AI_LOGIC_READY* ]] || fail "AI Logic marked ready without confirmation"
+}
 test_env_set_refuses_bad_names() {
   assert_status 1 lib env_set "$PWD/e" "1A" x
 }
@@ -88,14 +106,14 @@ test_phone_token_is_registered_but_never_printed() {
   *"getprop ro.product.model"*) echo "Galaxy Test" ;;
   *"logcat -d"*) echo "I DebugAppCheckProvider: Enter this debug secret into the allow list in the Firebase Console for your project: '"$DEBUG_ID"'" ;;
 esac'
-  stub curl 'body=""; prev=""; for a in "$@"; do [[ "$prev" == --data ]] && body="$a"; prev="$a"; done
-echo "$body" >> '"$PWD"'/bodies; echo "{}"'
+  stub curl 'echo "$*" >> '"$PWD"'/argv; cat >> '"$PWD"'/bodies; echo >> '"$PWD"'/bodies; echo "{}"'
   export ADB="$PWD/adb" CURL="$PWD/curl"
   out="$(bash "$phone" token 2>&1)" || fail "token step failed: $out"
   assert_contains "$(cat bodies)" "\"token\":\"$DEBUG_ID\""
   assert_contains "$(cat bodies)" "\"displayName\":\"Galaxy Test debug\""
   assert_contains "$out" "registered as 'Galaxy Test debug'"
   [[ "$out" != *"$DEBUG_ID"* ]] || fail "the token was printed: $out"
+  [[ "$(cat argv)" != *"$DEBUG_ID"* ]] || fail "the token was in curl's argv"
 }
 test_phone_pair_skips_when_a_phone_is_connected() {
   sandbox
