@@ -29,6 +29,8 @@ Each card shows the source Firebase AI Logic reported for that request (on devic
 
 ## Get it
 
+In Chrome: the [web companion](../) runs the same three stages in the browser.
+
 <div class="cl-qr" markdown>
 <img src="assets/apk-qr.svg" alt="QR code that downloads the newest ContextLens APK">
 <div markdown>

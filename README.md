@@ -8,7 +8,7 @@ ContextLens is an Android app that listens to a conversation and checks the fact
 
 It is built for the [Firebase Hybrid AI Hackathon 2026](https://firebasehybridaihackathon.devpost.com/) on **Firebase AI Logic** hybrid inference: **Gemini Nano on the device** for the private part, **cloud Gemini with Grounding with Google Search** for verification. Every result shows where it ran, as reported by the SDK, and an egress ledger lists every request that left the phone.
 
-Documentation: **https://nikolareljin.github.io/context-lens/**
+Web companion: **https://nikolareljin.github.io/context-lens/** · Documentation: **https://nikolareljin.github.io/context-lens/docs/**
 
 > Status: in development. The record of what is built, and when, is in [docs/implementation-progress.md](docs/implementation-progress.md).
 
@@ -64,7 +64,7 @@ Scan the code with the phone's camera, or open
 `https://github.com/nikolareljin/context-lens/releases/latest/download/context-lens.apk` on the phone,
 to download the newest release's APK. Allow installs from that source when Android asks.
 Over a USB cable with USB debugging on: `bash scripts/phone-install.sh` (Linux, macOS, WSL; no SDK needed).
-Details: [Download](https://nikolareljin.github.io/context-lens/download/).
+Details: [Download](https://nikolareljin.github.io/context-lens/docs/download/).
 
 ## Releases
 

@@ -10,6 +10,7 @@
 #   apk [debug|release]    build an APK
 #   install                install the debug APK on a connected device and launch it
 #   phone-install [opts]   install a release APK over USB (scripts/phone-install.sh --help)
+#   web <cmd>              web companion: install | lint | test | build | dev | check
 #   smoke                  emulator smoke test (ANDROID_AVD, default Pixel_3a_API_30_x86)
 #   docs <build|serve>     documentation site (published to GitHub Pages from main)
 #   eval                   deterministic evaluation suites (valuation, matching) when present
@@ -52,6 +53,7 @@ case "$cmd" in
   apk) bash "$S/android.sh" apk "$@" ;;
   install) bash "$S/android.sh" install ;;
   phone-install) bash "$S/phone-install.sh" "$@" ;;
+  web) bash "$S/web.sh" "$@" ;;
   smoke) bash "$S/android.sh" smoke ;;
   docs) bash "$S/docs.sh" "$@" ;;
   eval)
