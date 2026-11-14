@@ -1,0 +1,50 @@
+/* Material Design with a warm palette: amber/orange accents, blue links, navy surfaces.
+   Status colors pair with text and icons, never color alone. */
+:root {
+  --tl-navy: #1b2a41;
+  --tl-navy-deep: #111b2b;
+  --tl-amber: #ffa000;
+  --tl-yellow: #ffca28;
+  --tl-orange: #f57c00;
+  --tl-blue: #1a73e8;
+  --tl-blue-light: #8ab4f8;
+  --tl-green: #188038;
+  --tl-red: #d93025;
+  --tl-surface: #fafafa;
+}
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: var(--tl-navy);
+  --md-primary-fg-color--light: #2c3e5c;
+  --md-primary-fg-color--dark: var(--tl-navy-deep);
+  --md-accent-fg-color: var(--tl-orange);
+  --md-default-bg-color: var(--tl-surface);
+  --md-typeset-a-color: var(--tl-blue);
+}
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: var(--tl-navy-deep);
+  --md-accent-fg-color: var(--tl-yellow);
+  --md-typeset-a-color: var(--tl-blue-light);
+  --md-default-bg-color: #0f1724;
+}
+.md-header { box-shadow: inset 0 -3px 0 var(--tl-amber); }
+.md-typeset h1, .md-typeset h2 { font-weight: 500; letter-spacing: -0.01em; }
+.md-typeset .md-button { border-radius: 2rem; text-transform: none; font-weight: 500; }
+.md-typeset .md-button--primary {
+  background: var(--tl-amber); border-color: var(--tl-amber); color: var(--tl-navy-deep);
+}
+.md-typeset .md-button--primary:hover {
+  background: var(--tl-orange); border-color: var(--tl-orange); color: #fff;
+}
+.tl-hero { font-size: 1.25rem; line-height: 1.5; }
+.tl-badges span {
+  display: inline-block; margin: 0 .4rem .4rem 0; padding: .2rem .75rem;
+  border-radius: 1rem; background: rgba(255, 160, 0, .12); color: inherit;
+  border: 1px solid rgba(255, 160, 0, .45); font-size: .75rem; font-weight: 500;
+}
+.md-typeset table:not([class]) { border-radius: .5rem; overflow: hidden; }
+.md-typeset .admonition.info, .md-typeset details.info { border-color: var(--tl-blue); }
+.md-typeset .info > .admonition-title, .md-typeset .info > summary { background-color: rgba(26, 115, 232, .1); }
+.md-typeset .info > .admonition-title::before, .md-typeset .info > summary::before { background-color: var(--tl-blue); }
+.md-typeset .admonition.note, .md-typeset details.note { border-color: var(--tl-amber); }
+.md-typeset .note > .admonition-title, .md-typeset .note > summary { background-color: rgba(255, 160, 0, .12); }
+.md-typeset .note > .admonition-title::before, .md-typeset .note > summary::before { background-color: var(--tl-orange); }

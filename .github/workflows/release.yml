@@ -1,0 +1,97 @@
+name: release
+
+# A release tag builds the signed APK and AAB and publishes a GitHub release
+# with the APK attached. Tags come from merged release/X.Y.Z pull requests
+# (tag-release calls this workflow) or from the admin (./dev release).
+on:
+  push:
+    tags: ["[0-9]+.[0-9]+.[0-9]+"]
+  workflow_call:
+    inputs:
+      tag:
+        description: release tag to build
+        required: true
+        type: string
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ env.TAG }}
+          fetch-depth: 0
+      - name: version matches the tag
+        run: |
+          [[ "$(tr -d '[:space:]' < VERSION)" == "$TAG" ]] || { echo "VERSION differs from tag $TAG" >&2; exit 1; }
+      - id: app
+        run: |
+          if [[ -x apps/android/gradlew ]]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/setup-java@v6
+        if: steps.app.outputs.present == 'true'
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v6
+        if: steps.app.outputs.present == 'true'
+      - name: signed build
+        if: steps.app.outputs.present == 'true'
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          [[ -n "$GOOGLE_SERVICES_JSON_B64" && -n "$ANDROID_KEYSTORE_B64" ]] || { echo "release secrets are not configured" >&2; exit 1; }
+          export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/release.jks"
+          printf '%s' "$ANDROID_KEYSTORE_B64" | base64 -d > "$ANDROID_KEYSTORE_PATH"
+          bash scripts/firebase-config.sh
+          bash scripts/android.sh apk release
+          mkdir -p dist
+          cp apps/android/app/build/outputs/apk/release/app-release.apk "dist/contextlens-${TAG}.apk"
+          cp apps/android/app/build/outputs/bundle/release/app-release.aab "dist/contextlens-${TAG}.aab"
+          rm -f "$ANDROID_KEYSTORE_PATH"
+      - uses: actions/upload-artifact@v7
+        if: steps.app.outputs.present == 'true'
+        with:
+          name: release-${{ env.TAG }}
+          path: dist/
+          retention-days: 90
+
+  publish:
+    needs: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ env.TAG }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: release-${{ env.TAG }}
+          path: dist/
+      - name: release notes
+        run: bash scripts/release-notes.sh "$TAG" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" > "$RUNNER_TEMP/notes.md"
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          files=(dist/*.apk dist/*.aab)
+          gh release create "$TAG" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag "${files[@]}"

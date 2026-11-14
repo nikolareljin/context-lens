@@ -1,0 +1,70 @@
+site_name: ContextLens
+site_description: "Private, grounded fact checks on Android: Gemini Nano on the device decides what is checked, cloud Gemini with Google Search verifies it, through Firebase AI Logic."
+site_url: https://nikolareljin.github.io/context-lens/
+repo_url: https://github.com/nikolareljin/context-lens
+repo_name: nikolareljin/context-lens
+edit_uri: ""
+copyright: Copyright &copy; 2026 Nik Reljin. Apache License 2.0.
+strict: true
+
+theme:
+  name: material
+  logo: assets/logo.svg
+  favicon: assets/logo.svg
+  font:
+    text: Roboto
+    code: Roboto Mono
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Dark theme
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Light theme
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.highlight
+
+plugins:
+  - search
+  # fonts and other external assets are downloaded at build time and served from the site
+  - privacy
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.details
+
+exclude_docs: |
+  /requirements.txt
+
+nav:
+  - Home: index.md
+  - Download: download.md
+  - Setup: setup.md
+  - Privacy firewall: privacy.md
+  - How it works: hybrid.md
+  - Evaluation: evaluation.md
+  - Demo: demo-script.md
+  - Project:
+      - Releases: releases.md
+      - Progress: implementation-progress.md
+      - Decisions: decisions.md

@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# ContextLens developer command. CI runs the same scripts.
+#
+# Usage: ./dev <command> [args]
+#   setup [--check]        report the local toolchain (JDK, Android SDK, Node, scanners)
+#   build                  debug APK
+#   test                   Android unit tests (when present), functions tests (when present), script tests
+#   lint                   Android lint (when present), shellcheck
+#   scan                   secret scan of the tree (gitleaks)
+#   apk [debug|release]    build an APK
+#   install                install the debug APK on a connected device and launch it
+#   smoke                  emulator smoke test (ANDROID_AVD, default Pixel_3a_API_30_x86)
+#   docs <build|serve>     documentation site (published to GitHub Pages from main)
+#   eval                   deterministic evaluation suites (valuation, matching) when present
+#   firebase-config        write google-services.json (secret or placeholder)
+#   deploy <target>        rules | functions | hosting | all | apk <file>  (see scripts/deploy.sh)
+#   keystore [path]        create the release keystore outside the repository
+#   version [auto|patch|minor|major|X.Y.Z] [--pr] [--dry-run]
+#                          prepare release/X.Y.Z; merging its pull request tags and publishes
+#   release [--dry-run]    manual fallback: tag VERSION on main and push the tag
+#   notes <version>        print release notes
+set -euo pipefail
+TL_TAG=dev
+# shellcheck source=scripts/lib/common.sh
+source "$(dirname "${BASH_SOURCE[0]}")/scripts/lib/common.sh"
+# shellcheck source=scripts/lib/android.sh
+source "$TL_ROOT/scripts/lib/android.sh"
+S="$TL_ROOT/scripts"
+
+shell_files() {
+  { echo "$TL_ROOT/dev"; find "$S" -name '*.sh' -type f; } | sort
+}
+
+cmd="${1:-}"; shift || true
+case "$cmd" in
+  setup) bash "$S/setup.sh" "$@" ;;
+  build) bash "$S/android.sh" build ;;
+  test)
+    if android_present; then bash "$S/android.sh" test; else log "apps/android not present: skipped"; fi
+    if [[ -f "$TL_ROOT/functions/package.json" ]]; then (cd "$TL_ROOT/functions" && npm test); fi
+    bash "$S/tests/run.sh" ;;
+  lint)
+    if android_present; then bash "$S/android.sh" lint; fi
+    need shellcheck "apt install shellcheck"
+    mapfile -t files < <(shell_files)
+    shellcheck -x -P SCRIPTDIR "${files[@]}"
+    log "shellcheck clean (${#files[@]} files)" ;;
+  scan)
+    need gitleaks "https://github.com/gitleaks/gitleaks"
+    gitleaks dir --no-banner --redact "$TL_ROOT" ;;
+  apk) bash "$S/android.sh" apk "$@" ;;
+  install) bash "$S/android.sh" install ;;
+  smoke) bash "$S/android.sh" smoke ;;
+  docs) bash "$S/docs.sh" "$@" ;;
+  eval)
+    if android_present; then gradle :app:testDebugUnitTest --tests '*Eval*'
+    else log "nothing to evaluate yet"; fi ;;
+  firebase-config) bash "$S/firebase-config.sh" "$@" ;;
+  deploy) bash "$S/deploy.sh" "$@" ;;
+  keystore) bash "$S/keystore.sh" "$@" ;;
+  version) bash "$S/version.sh" "$@" ;;
+  release) bash "$S/release.sh" "$@" ;;
+  notes) bash "$S/release-notes.sh" "$@" ;;
+  ""|-h|--help|help) usage_from "${BASH_SOURCE[0]}" ;;
+  *) die "unknown command: $cmd (try ./dev --help)" ;;
+esac

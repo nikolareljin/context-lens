@@ -1,0 +1,37 @@
+# secrets and per-machine config: never committed
+.env
+.env.*
+!.env.example
+google-services.json
+!scripts/ci/google-services.placeholder.json
+*.jks
+*.keystore
+keystore.properties
+local.properties
+*service-account*.json
+*-sa-key*.json
+
+# build output
+site/
+.cache/
+.venv-docs/
+build/
+.gradle/
+.kotlin/
+captures/
+*.apk
+*.aab
+out/
+dist/
+node_modules/
+functions/lib/
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# editors and OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
