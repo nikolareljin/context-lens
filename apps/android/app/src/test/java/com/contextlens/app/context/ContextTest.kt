@@ -104,6 +104,17 @@ class ContextTest {
     }
 
     @Test
+    fun nextAndThisLookAtTheRightWeek() {
+        // today is Saturday Nov 14; this week runs Nov 9-15
+        assertEquals(LocalDate.of(2026, 11, 16).let { it to it }, range("next Monday the vote"))
+        assertEquals(LocalDate.of(2026, 11, 20).let { it to it }, range("this coming Friday"))
+        assertEquals(LocalDate.of(2026, 11, 13).let { it to it }, range("this Friday"))
+        assertEquals(LocalDate.of(2026, 11, 15).let { it to it }, range("this Sunday"))
+        assertEquals(LocalDate.of(2026, 11, 9).let { it to it }, range("last  Monday"))
+        assertEquals(null, range("on Mondays it is closed"))
+    }
+
+    @Test
     fun noDateMeansNull() {
         assertNull(DateResolver.resolve("the bridge is closed", today))
     }

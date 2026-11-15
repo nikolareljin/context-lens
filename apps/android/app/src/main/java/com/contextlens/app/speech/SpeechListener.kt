@@ -29,9 +29,15 @@ sealed interface Restart {
  */
 object RestartPolicy {
     const val MAX_FAILURES = 5
+    const val BENIGN_DELAY_MS = 100L
+
+    /** Errors after which the recognizer instance is rebuilt rather than reused. */
+    fun needsNewRecognizer(error: Int): Boolean =
+        error != SpeechRecognizer.ERROR_NO_MATCH && error != SpeechRecognizer.ERROR_SPEECH_TIMEOUT
 
     fun after(error: Int, consecutiveFailures: Int): Restart = when (error) {
-        SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> Restart.After(0)
+        // A short pause, so a recognizer that returns "no match" at once cannot spin.
+        SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> Restart.After(BENIGN_DELAY_MS)
         SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> Restart.Stop("microphone permission missing")
         SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED, SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE ->
             Restart.Stop("on-device speech for this language is not installed")
@@ -119,10 +125,16 @@ class SpeechListener(private val context: Context) {
         }
 
         override fun onError(error: Int) {
+            // An error that arrives after stop() must not change the state.
+            if (!active) return
             _partial.value = ""
+            if (RestartPolicy.needsNewRecognizer(error)) {
+                recognizer?.destroy()
+                recognizer = null
+            }
             when (val next = RestartPolicy.after(error, failures)) {
                 is Restart.After -> {
-                    if (next.delayMs > 0) failures++
+                    if (RestartPolicy.needsNewRecognizer(error)) failures++
                     restartAfter(next.delayMs)
                 }
                 is Restart.Stop -> {

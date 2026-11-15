@@ -28,7 +28,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,6 +36,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import com.contextlens.app.R
 import com.contextlens.app.context.DateResolver
 import com.contextlens.app.context.RegionLocator
@@ -54,7 +55,9 @@ fun ListenScreen(session: SessionContextManager) {
     val locator = remember { RegionLocator(context.applicationContext) }
     val listen by speech.state.collectAsState()
     val partial by speech.partial.collectAsState()
-    var typed by rememberSaveable { mutableStateOf("") }
+    // Not saveable: typed speech must not reach saved instance state on disk.
+    var typed by remember { mutableStateOf("") }
+    var micDenied by remember { mutableStateOf(false) }
     var locating by remember { mutableStateOf(false) }
     var regionMessage by remember { mutableStateOf<String?>(null) }
     val onDeviceSpeech = remember { SpeechListener.isOnDeviceAvailable(context) }
@@ -62,18 +65,24 @@ fun ListenScreen(session: SessionContextManager) {
 
     LaunchedEffect(speech) { speech.utterances.collect { session.addUtterance(it) } }
     DisposableEffect(speech) { onDispose { speech.stop() } }
+    // Leaving the app stops the microphone; Android blocks it in the background anyway.
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { speech.stop() }
 
     fun findArea() {
         locating = true
         scope.launch {
-            val region = locator.locate()
-            if (region != null) session.setRegion(region)
-            regionMessage = if (region == null) noArea else null
-            locating = false
+            try {
+                val region = runCatching { locator.locate() }.getOrNull()
+                if (region != null) session.setRegion(region)
+                regionMessage = if (region == null) noArea else null
+            } finally {
+                locating = false
+            }
         }
     }
 
     val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        micDenied = !granted
         if (granted) speech.start()
     }
     val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -128,6 +137,9 @@ fun ListenScreen(session: SessionContextManager) {
                             PackageManager.PERMISSION_GRANTED
                         if (granted) speech.start() else micPermission.launch(Manifest.permission.RECORD_AUDIO)
                     }) { Text(stringResource(R.string.listen_start)) }
+                    if (micDenied) {
+                        Text(stringResource(R.string.listen_mic_denied), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                    }
                     (listen as? ListenState.Stopped)?.let {
                         Text(it.reason, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                     }

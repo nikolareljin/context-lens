@@ -13,6 +13,7 @@
     <string name="listen_no_on_device_speech">On-device speech recognition is not available on this phone, so the microphone stays off. Type sentences instead.</string>
     <string name="listen_start">Start listening</string>
     <string name="listen_stop">Stop</string>
+    <string name="listen_mic_denied">Microphone permission is off. Allow it in Settings → Apps → ContextLens → Permissions, or type sentences instead.</string>
     <string name="listen_listening">Listening… (speech stays on this phone)</string>
     <string name="listen_type_hint">Type a sentence</string>
     <string name="listen_add">Add</string>

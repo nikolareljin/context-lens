@@ -10,6 +10,8 @@ data class DateMention(val phrase: String, val start: LocalDate, val end: LocalD
 /**
  * Resolves relative date phrases ("yesterday", "last week", "on Monday") against
  * today, so a verifier can search for the right period. Weeks start on Monday.
+ * "next Friday" looks ahead, "this Friday" means the one in the current week, and
+ * any other weekday mention means the most recent one before today.
  * Only the first mention is returned; phrases that need more context are ignored.
  */
 object DateResolver {
@@ -17,7 +19,8 @@ object DateResolver {
 
     private val pattern = Regex(
         "\\b(today|tonight|yesterday|tomorrow|this week|last week|next week|this month|last month|" +
-            "this year|last year|(?:last |on |this past )?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday))\\b",
+            "this year|last year|" +
+            "(?:(?:last|this past|next|this coming|this|on)\\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday))\\b",
         RegexOption.IGNORE_CASE,
     )
 
@@ -40,9 +43,14 @@ object DateResolver {
             "last year" -> today.minusYears(1).withDayOfYear(1) to
                 today.minusYears(1).with(TemporalAdjusters.lastDayOfYear())
             else -> {
-                // A weekday said in passing refers to the most recent one, today excluded.
-                val day = weekdays.getValue(p.substringAfterLast(' '))
-                val date = today.with(TemporalAdjusters.previous(day))
+                val words = p.split(Regex("\\s+"))
+                val day = weekdays.getValue(words.last())
+                val date = when (words.dropLast(1).joinToString(" ")) {
+                    "next", "this coming" -> today.with(TemporalAdjusters.next(day))
+                    "this" -> weekStart.with(TemporalAdjusters.nextOrSame(day))
+                    // "last", "this past", "on" or a bare weekday: the most recent one, today excluded.
+                    else -> today.with(TemporalAdjusters.previous(day))
+                }
                 date to date
             }
         }

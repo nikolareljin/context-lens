@@ -8,8 +8,8 @@ import org.junit.Test
 class RestartPolicyTest {
     @Test
     fun silenceRestartsAtOnce() {
-        assertEquals(Restart.After(0), RestartPolicy.after(SpeechRecognizer.ERROR_NO_MATCH, 0))
-        assertEquals(Restart.After(0), RestartPolicy.after(SpeechRecognizer.ERROR_SPEECH_TIMEOUT, 4))
+        assertEquals(Restart.After(100), RestartPolicy.after(SpeechRecognizer.ERROR_NO_MATCH, 0))
+        assertEquals(Restart.After(100), RestartPolicy.after(SpeechRecognizer.ERROR_SPEECH_TIMEOUT, 4))
     }
 
     @Test
@@ -22,6 +22,13 @@ class RestartPolicyTest {
     @Test
     fun repeatedFailuresStop() {
         assertTrue(RestartPolicy.after(SpeechRecognizer.ERROR_AUDIO, RestartPolicy.MAX_FAILURES) is Restart.Stop)
+    }
+
+    @Test
+    fun onlySilenceKeepsTheRecognizer() {
+        assertTrue(!RestartPolicy.needsNewRecognizer(SpeechRecognizer.ERROR_NO_MATCH))
+        assertTrue(RestartPolicy.needsNewRecognizer(SpeechRecognizer.ERROR_SERVER_DISCONNECTED))
+        assertTrue(RestartPolicy.needsNewRecognizer(SpeechRecognizer.ERROR_CLIENT))
     }
 
     @Test
