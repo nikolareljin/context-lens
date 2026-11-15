@@ -45,15 +45,22 @@ class RegionLocator(private val context: Context) {
             add(LocationManager.NETWORK_PROVIDER)
             add(LocationManager.GPS_PROVIDER)
         }
-        val provider = candidates.firstOrNull { runCatching { manager.isProviderEnabled(it) }.getOrDefault(false) }
-            ?: return manager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER)
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-            return manager.getLastKnownLocation(provider) ?: manager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER)
-        }
-        return suspendCancellableCoroutine { cont ->
+        val enabled = candidates.filter { runCatching { manager.isProviderEnabled(it) }.getOrDefault(false) }
+        // A fresh fix first. Coarse requests are throttled (on a Galaxy S26 one fix per
+        // 10 minutes), so the request can expire empty; then the newest cached fix is used.
+        val first = enabled.firstOrNull()
+        val fresh = if (first != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) currentLocation(manager, first) else null
+        return fresh ?: (enabled + LocationManager.PASSIVE_PROVIDER)
+            .mapNotNull { runCatching { manager.getLastKnownLocation(it) }.getOrNull() }
+            .maxByOrNull { it.time }
+    }
+
+    @Suppress("MissingPermission") // checked in locate()
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.R)
+    private suspend fun currentLocation(manager: LocationManager, provider: String): Location? =
+        suspendCancellableCoroutine { cont ->
             val signal = android.os.CancellationSignal()
             cont.invokeOnCancellation { signal.cancel() }
             manager.getCurrentLocation(provider, signal, ContextCompat.getMainExecutor(context)) { cont.resume(it) }
         }
-    }
 }
