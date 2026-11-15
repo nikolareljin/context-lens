@@ -40,13 +40,13 @@ object PiiPostScrubber {
     /** A street-name word: not an article or preposition ("40 people block the street"). */
     private const val STREET_WORD = "(?!(?i:the|a|an|on|in|at|of|to|and|or|for|from|by|with|into|down|up|along|across)\\b)"
 
-    /** Capitalized street names with any street type, or one lower-case word before an unambiguous type ("12 elm street"). */
+    /** Capitalized street names with any street type, or one word before a lower-case or unambiguous type ("12 elm street", "42 Maple street"). */
     private val addresses = listOf(
         Regex(
             "$HOUSE(?:$STREET_WORD[A-Z][a-z]+\\s+){1,3}" +
                 "(?:Street|St|Lane|Ln|Avenue|Ave|Road|Rd|Court|Ct|Drive|Dr|Boulevard|Blvd|Way|Place|Pl|Terrace|Circle)\\b",
         ),
-        Regex("$HOUSE$STREET_WORD[a-z]+\\s+(?i:street|avenue|boulevard)\\b"),
+        Regex("$HOUSE$STREET_WORD[A-Za-z][a-z]+\\s+(?i:street|avenue|boulevard)\\b"),
     )
 
     /** Public addresses that fact checks name ("10 Downing Street"). */
@@ -156,14 +156,20 @@ object PiiPostScrubber {
             .toSet()
 
     /**
-     * The longest 13-19 digit start of [m] that passes Luhn, so digits right after a
-     * card number (an expiry date, a CVV) don't hide it.
+     * The first 13-19 digit window of [m] that passes Luhn, starting at any digit group,
+     * so digits right before or after a card number (an expiry date, a CVV, a room
+     * number) don't hide it.
      */
     private fun cardPrefix(m: MatchResult): Pair<IntRange, String>? {
-        val digitAt = m.value.indices.filter { m.value[it].isDigit() }
-        for (count in minOf(digitAt.size, 19) downTo 13) {
-            val value = m.value.substring(0, digitAt[count - 1] + 1)
-            if (luhn(value)) return (m.range.first until m.range.first + value.length) to value
+        val v = m.value
+        val digitAt = v.indices.filter { v[it].isDigit() }
+        val groupStarts = digitAt.indices.filter { i -> i == 0 || digitAt[i] != digitAt[i - 1] + 1 }
+        for (first in groupStarts) {
+            for (count in minOf(digitAt.size - first, 19) downTo 13) {
+                val from = digitAt[first]
+                val value = v.substring(from, digitAt[first + count - 1] + 1)
+                if (luhn(value)) return (m.range.first + from until m.range.first + from + value.length) to value
+            }
         }
         return null
     }

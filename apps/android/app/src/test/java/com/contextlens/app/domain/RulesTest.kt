@@ -80,6 +80,8 @@ class RulesTest {
         assertEquals(emptySet<PiiKind>(), hits("Is crime up, as Fox News reported?", "Fox News told us crime is up."))
         // A card followed by its expiry date is still a card.
         assertEquals(setOf(PiiKind.CARD), hits("Did card fees rise for 4111?", "My card is 4111 1111 1111 1111 05 27."))
+        assertEquals(setOf(PiiKind.CARD), hits("Did card fees rise for 4111?", "Expiry 05 27 4111 1111 1111 1111 is on my card."))
+        assertEquals(setOf(PiiKind.ADDRESS), hits("Did rent at 42 Maple street rise?", "Rent at 42 Maple street rose."))
         // A friend's name inside the region's name is still a name.
         assertEquals(setOf(PiiKind.NAME), PiiPostScrubber.findIn("Did Ann get the refund?", "My friend Ann got the refund.", listOf("Annapolis, Maryland")))
     }
