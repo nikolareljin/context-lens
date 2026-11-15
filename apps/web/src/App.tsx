@@ -19,6 +19,7 @@ export default function App() {
         </a>
         <nav className="flex gap-4 text-sm text-slate-300">
           <a className="hover:text-device" href={DOCS}>Docs</a>
+          <a className="hover:text-device" href={`${DOCS}setup/`}>Setup</a>
           <a className="hover:text-device" href={`${DOCS}privacy/`}>Privacy</a>
           <a className="hover:text-device" href={REPOSITORY}>Source</a>
         </nav>

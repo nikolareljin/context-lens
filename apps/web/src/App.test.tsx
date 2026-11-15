@@ -10,6 +10,8 @@ describe("App", () => {
       "https://github.com/nikolareljin/context-lens/releases/latest/download/context-lens.apk",
     );
     expect(screen.getByRole("link", { name: "Docs" }).getAttribute("href")).toBe("/context-lens/docs/");
+    expect(screen.getByRole("link", { name: "Setup" }).getAttribute("href")).toBe("/context-lens/docs/setup/");
+    expect(screen.getByRole("link", { name: "Privacy" }).getAttribute("href")).toBe("/context-lens/docs/privacy/");
   });
 
   it("says the demo is not configured when the build has no Firebase values", () => {
