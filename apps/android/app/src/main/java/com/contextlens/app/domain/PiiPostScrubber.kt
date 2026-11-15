@@ -181,14 +181,23 @@ object PiiPostScrubber {
                 if (last > digitAt.lastIndex || (aligned && last !in ends)) return@mapNotNull null
                 val from = digitAt[first]
                 val value = v.substring(from, digitAt[last] + 1)
-                if (luhn(value) && !yearList(value)) (m.range.first + from until m.range.first + from + value.length) to value else null
+                if (luhn(value) && cardShaped(value)) (m.range.first + from until m.range.first + from + value.length) to value else null
             }
         }
         return windows(aligned = digitAt.size != v.length)
     }
 
-    /** "2017 2018 2019 2020" is a list of years, not a card. */
-    private fun yearList(value: String) = value.split(' ', '-').all { Regex("(?:1[89]|20)\\d\\d").matches(it) }
+    /**
+     * Card numbers start with 2-6 (Mastercard, Amex, Visa, Discover and the like). A list
+     * of years ("2017 2018 2019 2020") or a written-out round number ("100000000000000",
+     * whose zero windows pass Luhn) is not a card.
+     */
+    private fun cardShaped(value: String): Boolean {
+        val digits = value.filter(Char::isDigit)
+        return digits.first() in '2'..'6' &&
+            !digits.endsWith("00000") &&
+            !value.split(' ', '-').all { Regex("(?:1[89]|20)\\d\\d").matches(it) }
+    }
 
     internal fun luhn(candidate: String): Boolean {
         val digits = candidate.filter(Char::isDigit)
