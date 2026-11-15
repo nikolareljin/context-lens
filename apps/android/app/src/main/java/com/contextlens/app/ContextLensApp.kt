@@ -1,6 +1,7 @@
 package com.contextlens.app
 
 import android.app.Application
+import com.contextlens.app.ai.ModelGateway
 import com.contextlens.app.firebase.AppCheckProviders
 import com.contextlens.app.firebase.FirebaseSession
 import com.google.firebase.Firebase
@@ -16,6 +17,8 @@ class ContextLensApp : Application() {
     /** Process-wide objects; small enough that a container class is all the wiring needed. */
     val session = FirebaseSession()
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    /** Created on first use, after Firebase and App Check are initialized in onCreate. */
+    val models: ModelGateway by lazy { ModelGateway(appScope) }
 
     override fun onCreate() {
         super.onCreate()
