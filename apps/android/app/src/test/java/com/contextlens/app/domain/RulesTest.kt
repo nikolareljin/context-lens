@@ -65,6 +65,14 @@ class RulesTest {
         // Organizations and capitalized sentence starts are not names.
         assertEquals(emptySet<PiiKind>(), hits("Did the Fed raise rates in 2026?", "The Fed said rates rose."))
         assertEquals(emptySet<PiiKind>(), hits("Is the US population about 340 million?", "The US has about 340 million people."))
+        assertEquals(emptySet<PiiKind>(), hits("Did the Federal Reserve raise rates in 2026?", "Rates went up.", listOf("The World Bank said growth slowed.", "Prime Minister Carney said so too.")))
+        assertEquals(emptySet<PiiKind>(), hits("Did flights to New York from Boston double?", "Flights to New York from Boston doubled."))
+        // Quantities, years and streets in a question are not addresses or phone numbers.
+        assertEquals(emptySet<PiiKind>(), hits("Did 40 people block the street?", "Forty people blocked the street."))
+        assertEquals(emptySet<PiiKind>(), hits("Did the 2008 Wall Street crash erase 10 trillion dollars?", "The crash erased trillions."))
+        assertEquals(emptySet<PiiKind>(), hits("Did Houston reach 2300000 people?", "Houston has 2300000 people."))
+        assertEquals(emptySet<PiiKind>(), hits("Did 500-1000 people attend?", "Hundreds attended."))
+        assertEquals(emptySet<PiiKind>(), hits("Did Springfield raise fares in 2026?", "Fares rose this year.", listOf("They called from 555-2026.")))
     }
 
     @Test

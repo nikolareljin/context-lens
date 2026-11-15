@@ -101,7 +101,8 @@ fun CheckCard(check: Check, today: LocalDate) {
 
 /**
  * Google's Search Suggestions chip, shown as Google renders it with every grounded
- * result. JavaScript stays off; a tap opens the search in the user's browser.
+ * result. JavaScript and network loads stay off; a tap opens the search in the
+ * user's browser.
  */
 @Composable
 private fun SearchSuggestions(html: String, uri: UriHandler) {
@@ -111,6 +112,9 @@ private fun SearchSuggestions(html: String, uri: UriHandler) {
             WebView(context).apply {
                 setBackgroundColor(Color.TRANSPARENT)
                 settings.javaScriptEnabled = false
+                // The chip is inline HTML; nothing loads from the network unrecorded.
+                settings.blockNetworkLoads = true
+                settings.allowFileAccess = false
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                         runCatching { uri.openUri(request.url.toString()) }
@@ -119,6 +123,7 @@ private fun SearchSuggestions(html: String, uri: UriHandler) {
                 }
             }
         },
+        onRelease = { it.destroy() },
         update = { view ->
             if (view.tag != html) {
                 view.tag = html

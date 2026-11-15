@@ -14,12 +14,15 @@ import java.util.Locale
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -102,13 +105,15 @@ class HybridContextPipeline(
 
     private val queue = Channel<Work>(Channel.UNLIMITED)
     private val ids = AtomicLong(0)
-    private var current: Job? = null
+    @Volatile private var current: Job? = null
 
     init {
         scope.launch {
             for (work in queue) {
-                val job = scope.launch { process(work) }
+                // Started only once it is [current], so clear() always reaches the running sentence.
+                val job = scope.launch(start = CoroutineStart.LAZY) { process(work) }
                 current = job
+                job.start()
                 job.join()
             }
         }
@@ -268,7 +273,11 @@ class HybridContextPipeline(
 
     private class Outcome(val reply: ModelReply?, val label: String)
 
-    /** [onCancel] runs when the pipeline is stopped mid-call (Clear), before the cancellation goes on. */
+    /**
+     * [onCancel] runs when the pipeline is stopped mid-call (Clear), before the
+     * cancellation goes on. A cancellation from inside the call (the SDK's own timeout)
+     * is an ordinary failure, so the sentence still ends in a final state.
+     */
     private suspend fun call(timeoutMs: Long, onCancel: () -> Unit, block: suspend () -> ModelReply): Outcome = try {
         val reply = withTimeoutOrNull(timeoutMs) { block() }
         when {
@@ -277,8 +286,12 @@ class HybridContextPipeline(
             else -> Outcome(reply, "ok")
         }
     } catch (e: CancellationException) {
-        onCancel()
-        throw e
+        if (currentCoroutineContext().isActive) {
+            Outcome(null, e.describe())
+        } else {
+            onCancel()
+            throw e
+        }
     } catch (e: Exception) {
         Outcome(null, e.describe())
     }
