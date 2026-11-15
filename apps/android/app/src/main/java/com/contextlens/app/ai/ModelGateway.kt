@@ -25,8 +25,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
-/** Cloud model IDs to try, in order, until Remote Config provides the name. */
-val CLOUD_MODEL_CANDIDATES = listOf("gemini-3-flash", "gemini-2.5-flash", "gemini-3.1-flash-lite")
+/**
+ * Cloud model IDs to try, in order, until Remote Config provides the name.
+ * Checked on Nov 14: the API names gemini-3.8-flash as the current Flash model;
+ * gemini-3.1-flash-lite answers; gemini-2.5-flash is closed to new projects.
+ */
+val CLOUD_MODEL_CANDIDATES = listOf("gemini-3.8-flash", "gemini-3.1-flash-lite")
 
 /** A fixed, neutral prompt: nothing personal ever goes into a diagnostics call. */
 const val PROBE_PROMPT = "Reply with the single word: ready"
@@ -112,6 +116,8 @@ class ModelGateway(
 
     fun download() = launchExclusive {
         var total: Long? = null
+        // Shown at once: the first progress event can take minutes while the system schedules the download.
+        _state.value = ModelState.Downloading(0, null)
         try {
             extension().download().collect { status ->
                 when (status) {
