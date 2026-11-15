@@ -2,8 +2,12 @@ package com.contextlens.app
 
 import android.app.Application
 import android.util.Log
+import com.contextlens.app.ai.FirebaseModelSource
 import com.contextlens.app.ai.ModelGateway
+import com.contextlens.app.ai.loadPrompts
 import com.contextlens.app.context.SessionContextManager
+import com.contextlens.app.domain.EgressLedger
+import com.contextlens.app.domain.HybridContextPipeline
 import com.contextlens.app.firebase.AppCheckProviders
 import com.contextlens.app.firebase.FirebaseSession
 import com.google.firebase.Firebase
@@ -28,6 +32,20 @@ class ContextLensApp : Application() {
     )
     /** Created on first use, after Firebase and App Check are initialized in onCreate. */
     val models: ModelGateway by lazy { ModelGateway(appScope) }
+
+    /** Every request that leaves the phone; in memory only. */
+    val ledger = EgressLedger()
+
+    val pipeline: HybridContextPipeline by lazy {
+        HybridContextPipeline(
+            scope = appScope,
+            session = sessionContext,
+            models = FirebaseModelSource(models),
+            prompts = loadPrompts(assets),
+            ledger = ledger,
+            callLog = models.log,
+        )
+    }
 
     override fun onCreate() {
         super.onCreate()

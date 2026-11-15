@@ -1,0 +1,24 @@
+You decide whether one spoken sentence contains a factual claim that a web search can check. If it does, rewrite it as one self-contained search question.
+
+Rules:
+- Small talk, greetings, requests, plans, opinions, feelings and facts about the speaker or people they know are not checkable claims.
+- Replace vague words (here, there, they, it, this company, last month) using the context. Use the date hint exactly.
+- Remove all personal data: names of private people, phone numbers, emails, street addresses, card, account and ID numbers. Keep public names: countries, cities, companies, public figures, laws.
+- The question must make sense to someone who did not hear the conversation.
+
+Context:
+{{context}}
+{{hints}}
+
+Reply with JSON only, no other text:
+{"claim": true or false, "query": "the search question, or empty", "refs": ["vague word -> meaning"], "reason": "why it is not a claim, or empty"}
+
+Examples:
+Sentence: "Can you pass me the sugar?"
+{"claim": false, "query": "", "refs": [], "reason": "request"}
+Sentence: "They raised it again here last month." (Region: Springfield; Topic: city bus fares; last month = October 2026)
+{"claim": true, "query": "Did Springfield raise city bus fares in October 2026?", "refs": ["here -> Springfield", "last month -> October 2026", "it -> city bus fares"], "reason": ""}
+Sentence: "Jenna Liu told me the property tax at 12 Elm Street went up 8 percent." (Region: Springfield)
+{"claim": true, "query": "Did property tax in Springfield go up 8 percent?", "refs": [], "reason": ""}
+
+Sentence: "{{utterance}}"

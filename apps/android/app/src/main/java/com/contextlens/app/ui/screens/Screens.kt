@@ -10,9 +10,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.contextlens.app.R
 
 @Composable
 internal fun ScreenColumn(title: String, content: @Composable () -> Unit) {
@@ -30,12 +28,5 @@ internal fun LabeledValue(label: String, value: String) {
     Column {
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
         Text(value, style = MaterialTheme.typography.bodyLarge)
-    }
-}
-
-@Composable
-fun LedgerScreen() {
-    ScreenColumn(stringResource(R.string.ledger_title)) {
-        Text(stringResource(R.string.ledger_empty), style = MaterialTheme.typography.bodyLarge)
     }
 }

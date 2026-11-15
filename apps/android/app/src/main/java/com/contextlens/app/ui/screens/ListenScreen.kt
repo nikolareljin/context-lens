@@ -19,6 +19,7 @@ import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -39,15 +40,16 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.contextlens.app.R
-import com.contextlens.app.context.DateResolver
 import com.contextlens.app.context.RegionLocator
 import com.contextlens.app.context.SessionContextManager
+import com.contextlens.app.domain.HybridContextPipeline
+import com.contextlens.app.domain.PrivacyMode
 import com.contextlens.app.speech.ListenState
 import com.contextlens.app.speech.SpeechListener
 import kotlinx.coroutines.launch
 
 @Composable
-fun ListenScreen(session: SessionContextManager) {
+fun ListenScreen(session: SessionContextManager, pipeline: HybridContextPipeline) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val ctx by session.state.collectAsState()
@@ -55,6 +57,8 @@ fun ListenScreen(session: SessionContextManager) {
     val locator = remember { RegionLocator(context.applicationContext) }
     val listen by speech.state.collectAsState()
     val partial by speech.partial.collectAsState()
+    val checks by pipeline.checks.collectAsState()
+    val mode by pipeline.mode.collectAsState()
     // Not saveable: typed speech must not reach saved instance state on disk.
     var typed by remember { mutableStateOf("") }
     var micDenied by remember { mutableStateOf(false) }
@@ -63,7 +67,7 @@ fun ListenScreen(session: SessionContextManager) {
     val onDeviceSpeech = remember { SpeechListener.isOnDeviceAvailable(context) }
     val noArea = stringResource(R.string.listen_area_not_found)
 
-    LaunchedEffect(speech) { speech.utterances.collect { session.addUtterance(it) } }
+    LaunchedEffect(speech) { speech.utterances.collect { pipeline.submit(it) } }
     DisposableEffect(speech) { onDispose { speech.stop() } }
     // Leaving the app stops the microphone; Android blocks it in the background anyway.
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { speech.stop() }
@@ -156,35 +160,37 @@ fun ListenScreen(session: SessionContextManager) {
                 label = { Text(stringResource(R.string.listen_type_hint)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = { session.addUtterance(typed); typed = "" }),
+                keyboardActions = KeyboardActions(onSend = { pipeline.submit(typed); typed = "" }),
             )
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { session.addUtterance(typed); typed = "" }, enabled = typed.isNotBlank()) {
+            Button(onClick = { pipeline.submit(typed); typed = "" }, enabled = typed.isNotBlank()) {
                 Text(stringResource(R.string.listen_add))
             }
             OutlinedButton(onClick = { session.pin(typed); typed = "" }, enabled = typed.isNotBlank()) {
                 Text(stringResource(R.string.listen_pin))
             }
-            OutlinedButton(onClick = { speech.stop(); session.clear() }) {
+            OutlinedButton(onClick = { speech.stop(); pipeline.clear(); session.clear() }) {
                 Text(stringResource(R.string.listen_clear))
             }
         }
 
-        // The latest sentences, with the date each one refers to.
-        if (ctx.recent.isEmpty()) {
+        // Privacy mode: Strict keeps raw speech on the phone; Balanced may fall back to the cloud.
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Switch(
+                checked = mode == PrivacyMode.STRICT,
+                onCheckedChange = { pipeline.setMode(if (it) PrivacyMode.STRICT else PrivacyMode.BALANCED) },
+            )
+            Text(
+                stringResource(if (mode == PrivacyMode.STRICT) R.string.mode_strict else R.string.mode_balanced),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+
+        // Each sentence and what happened to it.
+        if (checks.isEmpty()) {
             Text(stringResource(R.string.listen_empty), style = MaterialTheme.typography.bodyLarge)
         }
-        ctx.recent.asReversed().forEach { sentence ->
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(sentence, style = MaterialTheme.typography.bodyLarge)
-                    DateResolver.resolve(sentence, ctx.today)?.let { m ->
-                        val range = if (m.start == m.end) "${m.start}" else "${m.start} – ${m.end}"
-                        Text(stringResource(R.string.listen_date_mention, m.phrase, range), style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-            }
-        }
+        checks.forEach { check -> CheckCard(check, ctx.today) }
     }
 }

@@ -6,6 +6,7 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ### Added
 
+- Hybrid pipeline: Tier 0 rules drop obvious small talk; Gemini Nano on the phone writes one self-contained question with the place, date and topic resolved (Strict: on device only; Balanced: may fall back to cloud Gemini, recorded as raw text sent); a personal-data check withholds any question that still carries a name, phone, email, card, IBAN, SSN or street address; cloud Gemini with Google Search grounding returns the verdict, and no web source means "not enough evidence". Versioned prompts; every request that leaves the phone is in the egress ledger with its exact text, and the counters come from it.
 - Listening session: on-device speech recognition with a restart loop (the microphone stays off where on-device recognition is missing), typed sentences, a pinned topic, the last three sentences in memory, relative dates resolved to ranges, and "Set my area" with a bundled GeoNames city table (no geocoder).
 - Diagnostics: on-device model status, download with progress and warm-up; test calls on the device and in the cloud that show where the answer was computed and find the working cloud model; a call log and a copyable report without account IDs or speech.
 - Scripted setup: `./dev cloud` signs in once and sets up the Firebase project, apps, APIs, Firestore, authentication, reCAPTCHA Enterprise, App Check and the repository variables; `./dev phone` pairs a phone by QR code over Wi-Fi, checks it and registers its App Check debug token.
