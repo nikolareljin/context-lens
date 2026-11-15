@@ -93,7 +93,8 @@ EOF
 
 sh_() { { "$ADB_CMD" -s "$DEVICE" shell "$@" 2>/dev/null || true; } | tr -d '\r'; }
 google_accounts() { sh_ dumpsys account | grep -c 'type=com.google}' || true; }
-aicore_version() { sh_ dumpsys package "$AICORE" | awk -F= '/versionName=/ {print $2; exit}'; }
+# awk reads to the end (no early exit), so the producer never gets SIGPIPE under pipefail
+aicore_version() { sh_ dumpsys package "$AICORE" | awk -F= '/versionName=/ && !v {v = $2} END {print v}'; }
 
 step_prep() {
   DEVICE="$(pick_device)"
@@ -130,7 +131,7 @@ step_token() {
   local token="" i
   for ((i = 0; i < 30; i += 2)); do
     token="$("$ADB_CMD" -s "$DEVICE" logcat -d 2>/dev/null \
-      | grep -i 'debug secret' | grep -oE '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}' \
+      | grep -iE 'debug secret|debug token' | grep -oE '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}' \
       | tail -n 1 || true)"
     [[ -n "$token" ]] && break
     sleep 2
