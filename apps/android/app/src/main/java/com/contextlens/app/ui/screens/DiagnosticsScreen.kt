@@ -21,6 +21,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.remember
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.contextlens.app.BuildConfig
@@ -34,6 +36,7 @@ import com.contextlens.app.diagnostics.label
 import com.contextlens.app.firebase.AppCheckProviders
 import com.contextlens.app.firebase.AuthState
 import com.contextlens.app.firebase.FirebaseSession
+import com.contextlens.app.speech.SpeechListener
 import kotlinx.coroutines.launch
 
 @Composable
@@ -53,6 +56,8 @@ fun DiagnosticsScreen(session: FirebaseSession, models: ModelGateway) {
     val calls by models.log.entries.collectAsState()
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val onDeviceSpeech = remember { SpeechListener.isOnDeviceAvailable(context) }
 
     // First visit: ask the phone once; later visits keep the last answer.
     LaunchedEffect(Unit) { if (model == ModelState.Unknown) models.checkStatus() }
@@ -70,6 +75,10 @@ fun DiagnosticsScreen(session: FirebaseSession, models: ModelGateway) {
             LabeledValue(stringResource(R.string.diag_device), device)
             LabeledValue(stringResource(R.string.diag_app_check), AppCheckProviders.choice.label)
             LabeledValue(stringResource(R.string.diag_auth), signIn)
+            LabeledValue(
+                stringResource(R.string.diag_speech),
+                stringResource(if (onDeviceSpeech) R.string.diag_speech_yes else R.string.diag_speech_no),
+            )
         }
 
         Section {

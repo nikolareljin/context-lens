@@ -3,6 +3,7 @@ package com.contextlens.app
 import android.app.Application
 import android.util.Log
 import com.contextlens.app.ai.ModelGateway
+import com.contextlens.app.context.SessionContextManager
 import com.contextlens.app.firebase.AppCheckProviders
 import com.contextlens.app.firebase.FirebaseSession
 import com.google.firebase.Firebase
@@ -18,6 +19,8 @@ import kotlinx.coroutines.launch
 class ContextLensApp : Application() {
     /** Process-wide objects; small enough that a container class is all the wiring needed. */
     val session = FirebaseSession()
+    /** The listening session's context: in memory only, gone with the process. */
+    val sessionContext = SessionContextManager()
     // Last line of defense: an unexpected error in a background task is logged, not a crash.
     private val appScope = CoroutineScope(
         SupervisorJob() + Dispatchers.Main.immediate +
