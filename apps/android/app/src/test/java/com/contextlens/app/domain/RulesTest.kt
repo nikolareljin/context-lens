@@ -82,6 +82,9 @@ class RulesTest {
         assertEquals(setOf(PiiKind.CARD), hits("Did card fees rise for 4111?", "My card is 4111 1111 1111 1111 05 27."))
         assertEquals(setOf(PiiKind.CARD), hits("Was the charge on my card ending 4444 refunded?", "Expiry 05 27 5555 5555 5555 4444 is on my card."))
         assertEquals(setOf(PiiKind.CARD), hits("Was the charge on card 4444 refunded?", "Order 123456 5555-5555-5555-4444 was charged twice."))
+        assertEquals(setOf(PiiKind.CARD), hits("Was the charge on my card ending 4444 refunded?", "My card is 5555 5555 5555 4444 123 05 2027."))
+        assertEquals(setOf(PiiKind.CARD), hits("Was the charge on card 4444 refunded?", "Card 5555555555554444 was charged twice."))
+        assertEquals(emptySet<PiiKind>(), hits("Did prices rise in 2016 2017 2018 2019 2020?", "Prices rose for five years."))
         assertEquals(setOf(PiiKind.ADDRESS), hits("Did rent at 42 Maple street rise?", "Rent at 42 Maple street rose."))
         // A friend's name inside the region's name is still a name.
         assertEquals(setOf(PiiKind.NAME), PiiPostScrubber.findIn("Did Ann get the refund?", "My friend Ann got the refund.", listOf("Annapolis, Maryland")))

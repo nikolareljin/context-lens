@@ -100,7 +100,7 @@ object PiiPostScrubber {
         val hits = mutableSetOf<PiiKind>()
         patternHits(query).forEach { hits += it.first }
         // Personal data from the sentences that survived into the query, even partly
-        // (a card's first four digits, the end of a phone number). From earlier sentences
+        // (a card's first or last four digits, the end of a phone number). From earlier sentences
         // a part must be 5+ digits, so a phone ending "2026" does not block every question
         // about 2026.
         val sentences = earlier + utterance
@@ -110,7 +110,8 @@ object PiiPostScrubber {
             patternHits(sentence, bare = true).forEach { hit ->
                 found += hit
                 val (kind, text) = hit
-                val partial = kind in numeric && Regex("\\d{$minPart,}").findAll(text).any { query.contains(it.value) }
+                val partial = kind in numeric && Regex("\\d{$minPart,}").findAll(text).any { query.contains(it.value) } ||
+                    kind == PiiKind.CARD && Regex("(?<!\\d)${text.filter(Char::isDigit).takeLast(4)}(?!\\d)").containsMatchIn(query)
                 if (query.contains(text) || partial) hits += kind
             }
         }
@@ -138,12 +139,12 @@ object PiiPostScrubber {
         take(PiiKind.EMAIL, email.findAll(text))
         take(PiiKind.IBAN, iban.findAll(text))
         take(PiiKind.SSN, ssn.findAll(text))
-        // Every card window counts; the whole digit run is then taken so no other kind reads it.
+        // Every card window that no earlier kind took counts (a CVV and expiry read as an SSN don't hide the card).
         card.findAll(text).forEach { m ->
-            val windows = cardWindows(m)
-            if (windows.isNotEmpty() && taken.none { it.first <= m.range.last && m.range.first <= it.last }) {
-                taken += m.range
-                windows.forEach { out += PiiKind.CARD to it }
+            val free = cardWindows(m).filter { (range, _) -> taken.none { it.first <= range.last && range.first <= it.last } }
+            free.forEach { (range, value) ->
+                taken += range
+                out += PiiKind.CARD to value
             }
         }
         addresses.forEach { r -> take(PiiKind.ADDRESS, r.findAll(text).filterNot { publicAddresses.containsMatchIn(it.value) }) }
@@ -164,11 +165,11 @@ object PiiPostScrubber {
 
     /**
      * Every 13-19 digit window of [m] that passes Luhn, so digits before or after a card
-     * number (an expiry date, a CVV, an order number) don't hide it. Windows that start
-     * and end on digit groups ("05 27 | 5555 5555 5555 4444") are tried first; a run
-     * without separators falls back to every window.
+     * number (an expiry date, a CVV, an order number) don't hide it. In a run with
+     * separators only windows that start and end on digit groups count
+     * ("05 27 | 5555 5555 5555 4444"); a run without separators tries every window.
      */
-    private fun cardWindows(m: MatchResult): List<String> {
+    private fun cardWindows(m: MatchResult): List<Pair<IntRange, String>> {
         val v = m.value
         val digitAt = v.indices.filter { v[it].isDigit() }
         val starts = digitAt.indices.filter { i -> i == 0 || digitAt[i] != digitAt[i - 1] + 1 }.toSet()
@@ -180,11 +181,14 @@ object PiiPostScrubber {
                 if (last > digitAt.lastIndex || (aligned && last !in ends)) return@mapNotNull null
                 val from = digitAt[first]
                 val value = v.substring(from, digitAt[last] + 1)
-                value.takeIf(::luhn)
+                if (luhn(value) && !yearList(value)) (m.range.first + from until m.range.first + from + value.length) to value else null
             }
         }
-        return windows(aligned = true).ifEmpty { windows(aligned = false) }
+        return windows(aligned = digitAt.size != v.length)
     }
+
+    /** "2017 2018 2019 2020" is a list of years, not a card. */
+    private fun yearList(value: String) = value.split(' ', '-').all { Regex("(?:1[89]|20)\\d\\d").matches(it) }
 
     internal fun luhn(candidate: String): Boolean {
         val digits = candidate.filter(Char::isDigit)
