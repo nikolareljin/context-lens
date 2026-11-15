@@ -66,7 +66,7 @@ class PipelineTest {
         return Harness(p, session, log, scope)
     }
 
-    private val terminal = setOf(Stage.FILTERED, Stage.NO_CLAIM, Stage.NEEDS_MODEL, Stage.WITHHELD, Stage.DONE, Stage.FAILED)
+    private val terminal = setOf(Stage.CLOUD_UNAVAILABLE, Stage.FILTERED, Stage.NO_CLAIM, Stage.NEEDS_MODEL, Stage.WITHHELD, Stage.DONE, Stage.FAILED)
 
     private fun Harness.settle(id: Long): Check = runBlocking {
         withTimeout(5_000) { pipeline.checks.first { list -> list.any { it.id == id && it.stage in terminal } } }
@@ -184,14 +184,14 @@ class PipelineTest {
     @Test
     fun verifierFallsBackAndEveryAttemptIsInTheLedger() {
         val slow = FakeModel("slow") { delay(10_000); ModelReply("never", "IN_CLOUD") }
-        val failing = FakeModel("failing") { throw IllegalStateException("quota") }
+        val failing = FakeModel("failing") { throw IllegalStateException("network unreachable") }
         val models = FakeSource(gate(claimJson), gate(claimJson), listOf(slow, failing, verifier("good")))
         val h = harness(models, verifyTimeoutMs = 100)
         val check = h.settle(h.pipeline.submit("Python was first released in 1991.")!!)
         assertEquals(Stage.DONE, check.stage)
         assertEquals("good", check.card!!.model)
         val outcomes = h.pipeline.ledger.entries.value.reversed().map { it.model to it.outcome }
-        assertEquals(listOf("slow" to "timed out", "failing" to "IllegalStateException: quota", "good" to "ok"), outcomes)
+        assertEquals(listOf("slow" to "timed out", "failing" to "IllegalStateException: network unreachable", "good" to "ok"), outcomes)
         assertEquals(1, h.pipeline.ledger.entries.value.totals().cloudChecks)
         assertEquals(listOf("good"), models.answered)
         assertTrue(h.log.entries.value.any { it.model == "gatekeeper gate" })
@@ -208,6 +208,24 @@ class PipelineTest {
         assertEquals(PipelineCounts(), h.pipeline.counts.value)
         assertEquals(1, h.pipeline.ledger.entries.value.size)
         assertEquals(null, h.pipeline.submit("   "))
+        h.scope.cancel()
+    }
+
+    @Test
+    fun quotaRefusalStopsAndOffersASearch() {
+        val refused = FakeModel("lite") { throw IllegalStateException("QuotaExceededException: You exceeded your current quota") }
+        val second = verifier("flash")
+        val models = FakeSource(gate(claimJson), gate(claimJson), listOf(refused, second))
+        val h = harness(models)
+        val check = h.settle(h.pipeline.submit("Python was first released in 1991.")!!)
+        assertEquals(Stage.CLOUD_UNAVAILABLE, check.stage)
+        assertTrue(second.prompts.isEmpty())
+        assertEquals(1, h.pipeline.ledger.entries.value.size)
+        assertEquals(
+            "https://www.google.com/search?q=Did+Springfield+raise+bus+fares+in+October+2026%3F",
+            searchUrl(check.gate!!.result.sanitizedResolvedQuery),
+        )
+        assertTrue(isCloudLimit("HTTP 402 Payment Required") && isCloudLimit("RESOURCE_EXHAUSTED") && !isCloudLimit("timed out"))
         h.scope.cancel()
     }
 }

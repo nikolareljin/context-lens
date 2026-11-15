@@ -20,6 +20,7 @@ import com.contextlens.app.context.DateResolver
 import com.contextlens.app.domain.Check
 import com.contextlens.app.domain.Stage
 import com.contextlens.app.domain.Verdict
+import com.contextlens.app.domain.searchUrl
 import java.time.LocalDate
 
 /**
@@ -45,6 +46,18 @@ fun CheckCard(check: Check, today: LocalDate) {
                     Text(gate.result.resolvedReferences.joinToString(" · "), style = MaterialTheme.typography.bodySmall)
                 }
                 Text(pill(gate.source, gate.latencyMs, gate.model), style = MaterialTheme.typography.labelSmall)
+            }
+
+            if (check.stage == Stage.CLOUD_UNAVAILABLE) {
+                val query = check.gate?.result?.sanitizedResolvedQuery.orEmpty()
+                val uri = LocalUriHandler.current
+                Text(
+                    stringResource(R.string.check_search_this),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    textDecoration = TextDecoration.Underline,
+                    modifier = Modifier.clickable { runCatching { uri.openUri(searchUrl(query)) } },
+                )
             }
 
             check.card?.let { card ->
@@ -86,6 +99,7 @@ private fun stageText(check: Check): String = when (check.stage) {
     Stage.NEEDS_MODEL -> stringResource(R.string.check_needs_model)
     Stage.WITHHELD -> stringResource(R.string.check_withheld, check.withheld.joinToString { it.name.lowercase() })
     Stage.VERIFYING -> stringResource(R.string.check_verifying)
+    Stage.CLOUD_UNAVAILABLE -> stringResource(R.string.check_cloud_unavailable)
     Stage.DONE -> stringResource(R.string.check_done)
     Stage.FAILED -> stringResource(R.string.check_failed, check.note.orEmpty())
 }

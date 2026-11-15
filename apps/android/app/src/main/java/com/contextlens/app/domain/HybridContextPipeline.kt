@@ -7,6 +7,7 @@ import com.contextlens.app.diagnostics.CallLog
 import com.contextlens.app.diagnostics.CallRecord
 import com.contextlens.app.diagnostics.Tier
 import com.contextlens.app.diagnostics.redact
+import java.net.URLEncoder
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
@@ -33,6 +34,8 @@ enum class Stage {
     /** The query still carried personal data, so it was not sent. */
     WITHHELD,
     VERIFYING,
+    /** The cloud refused for quota or billing; the clean question can still be searched by the user. */
+    CLOUD_UNAVAILABLE,
     DONE,
     FAILED,
 }
@@ -240,6 +243,11 @@ class HybridContextPipeline(
                 return
             }
             lastLabel = outcome.label
+            // Quota and billing are per project: the next model would be refused the same way.
+            if (isCloudLimit(outcome.label)) {
+                update(id) { it.copy(stage = Stage.CLOUD_UNAVAILABLE, note = outcome.label) }
+                return
+            }
         }
         update(id) { it.copy(stage = Stage.FAILED, note = "verifier: $lastLabel") }
     }
@@ -266,6 +274,14 @@ class HybridContextPipeline(
         const val ON_DEVICE = "ON_DEVICE"
     }
 }
+
+private val cloudLimit = Regex("(?i)quota|billing|prepay|RESOURCE_EXHAUSTED|\\b402\\b|\\b429\\b")
+
+/** True when a cloud failure means quota, rate limit or billing rather than a broken request. */
+fun isCloudLimit(outcome: String): Boolean = cloudLimit.containsMatchIn(outcome)
+
+/** A Google search for the clean question, opened in the user's own browser; nothing is sent by the app. */
+fun searchUrl(query: String): String = "https://www.google.com/search?q=" + URLEncoder.encode(query, Charsets.UTF_8.name())
 
 /** A line for the gatekeeper prompt with the date a phrase like "last month" means. */
 fun dateHint(text: String, today: LocalDate): String {

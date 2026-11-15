@@ -74,7 +74,7 @@ class FirebaseModelSource(private val gateway: ModelGateway) : ModelSource {
             gateway.build(
                 name = name,
                 onDeviceConfig = OnDeviceConfig(mode = InferenceMode.ONLY_IN_CLOUD),
-                generationConfig = if (name.contains("lite")) null else lowThinking(),
+                generationConfig = verifierConfig(lowThinking = !name.contains("lite")),
                 tools = listOf(Tool.googleSearch()),
             )
         }
@@ -90,9 +90,12 @@ class FirebaseModelSource(private val gateway: ModelGateway) : ModelSource {
         )
     }
 
-    private fun lowThinking(): GenerationConfig = GenerationConfig.builder()
-        .setThinkingConfig(ThinkingConfig.Builder().setThinkingLevel(ThinkingLevel.LOW).build())
-        .build()
+    /** Short answers only: two sentences and a verdict. Thinking tokens count toward the limit, hence the margin. */
+    private fun verifierConfig(lowThinking: Boolean): GenerationConfig {
+        val builder = GenerationConfig.builder().setMaxOutputTokens(1024)
+        if (lowThinking) builder.setThinkingConfig(ThinkingConfig.Builder().setThinkingLevel(ThinkingLevel.LOW).build())
+        return builder.build()
+    }
 
     override fun gatekeeper(mode: PrivacyMode): TextModel = gatekeepers.getValue(mode)
 

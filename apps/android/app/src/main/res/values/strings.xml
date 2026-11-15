@@ -29,6 +29,8 @@
     <string name="check_needs_model">Not checked: the on-device model isn\'t ready (Diagnostics → Download). Nothing was sent.</string>
     <string name="check_withheld">Question withheld: it still contained personal data (%1$s). Nothing was sent.</string>
     <string name="check_verifying">Checking with Google Search…</string>
+    <string name="check_cloud_unavailable">Cloud check unavailable right now (quota or billing limit). The question was written on this phone; you can search it yourself.</string>
+    <string name="check_search_this">Search this in your browser</string>
     <string name="check_done">Checked</string>
     <string name="check_failed">Not checked: %1$s</string>
     <string name="check_no_sources_rule">No web source came back, so the verdict is shown as not enough evidence.</string>
