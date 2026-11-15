@@ -6,9 +6,9 @@ This page describes the design and is updated as features land.
 
 | Data | Where it lives |
 |---|---|
-| Audio | never stored; the platform's on-device speech recognizer turns it into text |
+| Audio | never stored; the platform's on-device speech recognizer (Android 12+) turns it into text. Without it the microphone stays off, because the regular recognizer may send audio to a server |
 | Spoken and typed sentences | memory only, the last three, for resolving "it", "they", "here" |
-| Location | the coordinates are turned into a city and state with a lookup table bundled in the app, then discarded; the platform geocoder is not used because it sends coordinates to a network service |
+| Location | only on request ("Set my area") and with the coarse permission only, so Android blurs the position. The coordinates are turned into the nearest city of 50,000 or more with a GeoNames table bundled in the app, then discarded; the platform geocoder is not used because it sends coordinates to a network service |
 | Pinned topic, date | memory only |
 
 ## What leaves the phone

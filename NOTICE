@@ -2,3 +2,7 @@ ContextLens
 Copyright 2026 Nik Reljin
 
 Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes data from GeoNames (https://www.geonames.org/),
+licensed under the Creative Commons Attribution 4.0 License. The Android
+build downloads the city table and keeps cities of 50,000 or more people.

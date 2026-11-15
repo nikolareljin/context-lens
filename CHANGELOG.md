@@ -6,6 +6,7 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ### Added
 
+- Listening session: on-device speech recognition with a restart loop (the microphone stays off where on-device recognition is missing), typed sentences, a pinned topic, the last three sentences in memory, relative dates resolved to ranges, and "Set my area" with a bundled GeoNames city table (no geocoder).
 - Diagnostics: on-device model status, download with progress and warm-up; test calls on the device and in the cloud that show where the answer was computed and find the working cloud model; a call log and a copyable report without account IDs or speech.
 - Scripted setup: `./dev cloud` signs in once and sets up the Firebase project, apps, APIs, Firestore, authentication, reCAPTCHA Enterprise, App Check and the repository variables; `./dev phone` pairs a phone by QR code over Wi-Fi, checks it and registers its App Check debug token.
 - Web companion scaffold (React, TypeScript, Vite, Tailwind) at the site root with the Android download and QR code; the docs move to `/docs/`; `./dev web`; Search Console ownership file.

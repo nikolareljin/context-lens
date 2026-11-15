@@ -34,13 +34,6 @@ internal fun LabeledValue(label: String, value: String) {
 }
 
 @Composable
-fun ListenScreen() {
-    ScreenColumn(stringResource(R.string.nav_listen)) {
-        Text(stringResource(R.string.listen_empty), style = MaterialTheme.typography.bodyLarge)
-    }
-}
-
-@Composable
 fun LedgerScreen() {
     ScreenColumn(stringResource(R.string.ledger_title)) {
         Text(stringResource(R.string.ledger_empty), style = MaterialTheme.typography.bodyLarge)
