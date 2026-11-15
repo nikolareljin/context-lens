@@ -4,6 +4,7 @@ import com.contextlens.app.diagnostics.CallLog
 import com.contextlens.app.diagnostics.CallRecord
 import com.contextlens.app.diagnostics.ModelState
 import com.contextlens.app.diagnostics.Tier
+import com.contextlens.app.diagnostics.redact
 import com.google.firebase.Firebase
 import com.google.firebase.ai.DownloadStatus
 import com.google.firebase.ai.GenerativeModel
@@ -16,11 +17,13 @@ import com.google.firebase.ai.type.GenerativeBackend
 import com.google.firebase.ai.type.PublicPreviewAPI
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** Cloud model IDs to try, in order, until Remote Config provides the name. */
 val CLOUD_MODEL_CANDIDATES = listOf("gemini-3-flash", "gemini-2.5-flash", "gemini-3.1-flash-lite")
@@ -67,7 +70,8 @@ class ModelGateway(
     private fun launchExclusive(block: suspend () -> Unit): Job? {
         if (_busy.value) return null
         _busy.value = true
-        return scope.launch {
+        // ATOMIC: the body always starts, so the finally below always clears the flag.
+        return scope.launch(start = CoroutineStart.ATOMIC) {
             try {
                 block()
             } finally {
@@ -93,9 +97,16 @@ class ModelGateway(
         } catch (e: Exception) {
             ModelState.Failed(e.describe())
         }
-        if (_state.value == ModelState.Available) {
-            _onDeviceName.value = runCatching { extension().getModelName() }
-                .getOrNull()
+        _onDeviceName.value = if (_state.value == ModelState.Available) {
+            try {
+                extension().getModelName()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
+        } else {
+            null
         }
     }
 
@@ -138,28 +149,38 @@ class ModelGateway(
     }
 
     fun probeOnDevice() = launchExclusive {
-        probe(Tier.ON_DEVICE, onDevice, CLOUD_MODEL_CANDIDATES.first())
+        probe(Tier.ON_DEVICE, CLOUD_MODEL_CANDIDATES.first()) { onDevice }
     }
 
     /** Tries each cloud candidate until one answers. */
     fun probeCloud() = launchExclusive {
         val names = listOfNotNull(_cloudModel.value) + CLOUD_MODEL_CANDIDATES.filter { it != _cloudModel.value }
         for (name in names) {
-            if (probe(Tier.CLOUD, model(InferenceMode.ONLY_IN_CLOUD, name), name)) {
+            if (probe(Tier.CLOUD, name) { model(InferenceMode.ONLY_IN_CLOUD, name) }) {
                 _cloudModel.value = name
                 return@launchExclusive
             }
         }
+        _cloudModel.value = null
     }
 
-    /** One probe call; true when the model answered. */
-    private suspend fun probe(tier: Tier, model: GenerativeModel, name: String): Boolean {
+    /**
+     * One probe call; true when the model answered. The model is built inside the
+     * try, so a construction error is logged instead of crashing the app scope.
+     * Only metadata is logged, not the reply.
+     */
+    private suspend fun probe(tier: Tier, name: String, build: () -> GenerativeModel): Boolean {
         val start = clock()
         return try {
-            val response = model.generateContent(PROBE_PROMPT)
-            val reply = response.text?.trim()?.take(40).orEmpty()
-            log.add(CallRecord(start, tier, name, response.inferenceSource.toString(), clock() - start, "ok \"$reply\""))
-            true
+            val response = withTimeoutOrNull(PROBE_TIMEOUT_MS) { build().generateContent(PROBE_PROMPT) }
+            if (response == null) {
+                log.add(CallRecord(start, tier, name, null, clock() - start, "timed out"))
+                false
+            } else {
+                val outcome = if (response.text.isNullOrBlank()) "ok, empty reply" else "ok"
+                log.add(CallRecord(start, tier, name, response.inferenceSource.toString(), clock() - start, outcome))
+                true
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -169,5 +190,8 @@ class ModelGateway(
     }
 }
 
+/** Per probe; three cloud candidates in a row stay under a minute. */
+private const val PROBE_TIMEOUT_MS = 20_000L
+
 private fun Throwable.describe(): String =
-    "${javaClass.simpleName}: ${message?.lineSequence()?.firstOrNull()?.take(160) ?: "no message"}"
+    "${javaClass.simpleName}: ${redact(message?.lineSequence()?.firstOrNull()?.take(160) ?: "no message")}"

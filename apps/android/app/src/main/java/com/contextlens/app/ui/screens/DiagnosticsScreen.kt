@@ -92,7 +92,11 @@ fun DiagnosticsScreen(session: FirebaseSession, models: ModelGateway) {
                 OutlinedButton(onClick = { models.checkStatus() }, enabled = !busy) {
                     Text(stringResource(R.string.diag_check))
                 }
-                Button(onClick = { models.download() }, enabled = !busy && model == ModelState.Downloadable) {
+                // A download already running (e.g. started before the app restarted) can be followed again.
+                Button(
+                    onClick = { models.download() },
+                    enabled = !busy && (model == ModelState.Downloadable || model is ModelState.Downloading),
+                ) {
                     Text(stringResource(R.string.diag_download))
                 }
                 OutlinedButton(onClick = { models.warmUp() }, enabled = !busy && model == ModelState.Available) {

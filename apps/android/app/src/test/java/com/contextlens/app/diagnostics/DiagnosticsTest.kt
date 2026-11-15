@@ -64,6 +64,25 @@ class DiagnosticsTest {
     }
 
     @Test
+    fun redactRemovesUrlsAppIdsAndProjectNumbers() {
+        val msg = "API not used in project 555000111222, see https://console.example.com/x?a=1 for 1:555000111222:android:66ac"
+        val out = redact(msg)
+        assertEquals("API not used in project <number>, see <url> for <app>", out)
+        assertEquals("HTTP 403 in 20 ms", redact("HTTP 403 in 20 ms"))
+    }
+
+    @Test
+    fun reportRedactsErrorsAndSignInFailures() {
+        val failed = CallRecord(1, Tier.CLOUD, "m", null, 5, "ServerException: project 123456789 denied")
+        val report = buildReport(
+            ReportInfo("0.1.0", "Phone X", "debug", "Failed: see https://x.example/y", ModelState.Unknown, null, null, listOf(failed)),
+        )
+        assertTrue(report.contains("sign-in: Failed: see <url>"))
+        assertTrue(report.contains("project <number> denied"))
+        assertFalse(report.contains("123456789"))
+    }
+
+    @Test
     fun reportWithoutCallsSaysSo() {
         val report = buildReport(
             ReportInfo("0.1.0", "Phone X", "debug", "Anonymous", ModelState.Unknown, null, null, emptyList()),

@@ -40,6 +40,7 @@ enum class Tier { ON_DEVICE, CLOUD }
 /**
  * One model call made from the diagnostics screen. Only metadata is kept: the
  * test prompt is fixed and contains nothing personal, and replies are not stored.
+ * Error text is passed through [redact].
  */
 data class CallRecord(
     val atMillis: Long,
@@ -65,6 +66,15 @@ class CallLog(private val capacity: Int = 50) {
     }
 }
 
+/**
+ * Removes what an SDK error message may carry about the project: URLs (console
+ * links) and long numbers (project numbers, app IDs).
+ */
+fun redact(text: String): String =
+    text.replace(Regex("""https?://\S+"""), "<url>")
+        .replace(Regex("""\d+(:\d+)*:(android|web|ios):[0-9a-f]+"""), "<app>")
+        .replace(Regex("""\d{6,}"""), "<number>")
+
 /** Facts for the copyable report. No account IDs, tokens or speech. */
 data class ReportInfo(
     val appVersion: String,
@@ -82,7 +92,7 @@ fun buildReport(info: ReportInfo): String = buildString {
     appendLine("app: ${info.appVersion}")
     appendLine("device: ${info.device}")
     appendLine("app check: ${info.appCheck}")
-    appendLine("sign-in: ${info.signIn}")
+    appendLine("sign-in: ${redact(info.signIn)}")
     appendLine("on-device model: ${info.model.label()}${info.onDeviceModelName?.let { " ($it)" } ?: ""}")
     appendLine("cloud model: ${info.cloudModel ?: "not tested"}")
     if (info.calls.isEmpty()) {
@@ -90,7 +100,7 @@ fun buildReport(info: ReportInfo): String = buildString {
     } else {
         appendLine("calls (newest first):")
         info.calls.forEachIndexed { i, c ->
-            append("  ${c.tier} ${c.model} -> ${c.source ?: "-"}, ${c.latencyMs} ms, ${c.outcome}")
+            append("  ${c.tier} ${c.model} -> ${c.source ?: "-"}, ${c.latencyMs} ms, ${redact(c.outcome)}")
             if (i < info.calls.lastIndex) appendLine()
         }
     }
