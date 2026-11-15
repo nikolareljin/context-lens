@@ -3,7 +3,8 @@ package com.contextlens.app.domain
 /**
  * The deterministic first pass. It drops only sentences that are clearly not
  * claims (very short lines, greetings, thanks, apologies, simple requests), so
- * the on-device model is not woken for them. Anything in doubt passes on: a
+ * the on-device model is not woken for them. Words that also begin claims
+ * ("Please note the tax went up", "Morning traffic doubled") are not openers. Anything in doubt passes on: a
  * missed claim costs more than one extra on-device call.
  */
 object Tier0Filter {
@@ -21,10 +22,13 @@ object Tier0Filter {
     private val digit = Regex("\\d")
 
     private val openers = listOf(
-        "hi", "hello", "hey", "morning", "good morning", "good afternoon", "good evening", "good night",
+        "hi", "hello", "hey", "good morning", "good afternoon", "good evening", "good night",
         "thanks", "thank you", "sorry", "bye", "goodbye", "see you",
-        "can you hear", "can you pass", "could you pass", "let's", "lets", "please",
+        "can you hear", "can you pass", "could you pass", "let's", "lets",
     )
+
+    /** "Morning!" greets; "Morning traffic doubled" is a claim. */
+    private val morningGreeting = Regex("^(?i)morning\\s*[!,.]")
 
     fun check(text: String): Decision {
         val words = word.findAll(text.lowercase()).map { it.value }.toList()
@@ -32,6 +36,6 @@ object Tier0Filter {
         if (digit.containsMatchIn(text) || words.size > SMALL_TALK_MAX_WORDS) return Decision.Pass
         val joined = words.joinToString(" ")
         val opener = openers.firstOrNull { joined == it || joined.startsWith("$it ") }
-        return if (opener != null) Decision.Drop("small talk") else Decision.Pass
+        return if (opener != null || morningGreeting.containsMatchIn(text.trim())) Decision.Drop("small talk") else Decision.Pass
     }
 }

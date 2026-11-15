@@ -1,9 +1,14 @@
 package com.contextlens.app.ui.screens
 
+import android.graphics.Color
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
@@ -12,6 +17,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -77,7 +84,10 @@ fun CheckCard(check: Check, today: LocalDate) {
                         modifier = Modifier.clickable { runCatching { uri.openUri(c.uri) } },
                     )
                 }
-                if (card.grounding.searchQueries.isNotEmpty()) {
+                val chip = card.grounding.searchEntryPointHtml
+                if (chip != null) {
+                    SearchSuggestions(chip, uri)
+                } else if (card.grounding.searchQueries.isNotEmpty()) {
                     Text(
                         stringResource(R.string.check_searched, card.grounding.searchQueries.joinToString(" · ")),
                         style = MaterialTheme.typography.bodySmall,
@@ -87,6 +97,35 @@ fun CheckCard(check: Check, today: LocalDate) {
             }
         }
     }
+}
+
+/**
+ * Google's Search Suggestions chip, shown as Google renders it with every grounded
+ * result. JavaScript stays off; a tap opens the search in the user's browser.
+ */
+@Composable
+private fun SearchSuggestions(html: String, uri: UriHandler) {
+    AndroidView(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+        factory = { context ->
+            WebView(context).apply {
+                setBackgroundColor(Color.TRANSPARENT)
+                settings.javaScriptEnabled = false
+                webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                        runCatching { uri.openUri(request.url.toString()) }
+                        return true
+                    }
+                }
+            }
+        },
+        update = { view ->
+            if (view.tag != html) {
+                view.tag = html
+                view.loadDataWithBaseURL(null, html, "text/html", "utf-8", null)
+            }
+        },
+    )
 }
 
 private fun pill(source: String?, latencyMs: Long, model: String): String = "${source ?: "?"} · $latencyMs ms · $model"

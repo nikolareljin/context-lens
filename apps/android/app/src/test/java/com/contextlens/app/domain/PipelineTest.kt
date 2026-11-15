@@ -212,6 +212,53 @@ class PipelineTest {
     }
 
     @Test
+    fun clearDuringABalancedCloudCallStillRecordsIt() {
+        val started = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val slowCloud = FakeModel("gate") { started.complete(Unit); delay(10_000); ModelReply(claimJson, "IN_CLOUD") }
+        val models = FakeSource(gate(claimJson), slowCloud, listOf(verifier()), ready = false)
+        val h = harness(models)
+        h.pipeline.setMode(PrivacyMode.BALANCED)
+        h.pipeline.submit("The Eiffel Tower is about 330 meters tall.")
+        runBlocking { withTimeout(5_000) { started.await() } }
+        h.pipeline.clear()
+        val entries = runBlocking { withTimeout(5_000) { h.pipeline.ledger.entries.first { it.isNotEmpty() } } }
+        assertEquals(EgressKind.RAW_TEXT, entries[0].kind)
+        assertEquals(HybridContextPipeline.MAYBE_SENT, entries[0].outcome)
+        h.scope.cancel()
+    }
+
+    @Test
+    fun switchingToStrictCoversSentencesAlreadyQueued() {
+        val gateOpen = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val balanced = FakeModel("cloud-gate") { gateOpen.await(); ModelReply(claimJson, "IN_CLOUD") }
+        val models = FakeSource(gate(claimJson), balanced, listOf(verifier()))
+        val h = harness(models)
+        h.pipeline.setMode(PrivacyMode.BALANCED)
+        val first = h.pipeline.submit("The Eiffel Tower is about 330 meters tall.")!!
+        val second = h.pipeline.submit("Python was first released in 1991.")!!
+        runBlocking { withTimeout(5_000) { while (balanced.prompts.isEmpty()) delay(10) } }
+        h.pipeline.setMode(PrivacyMode.STRICT)
+        gateOpen.complete(Unit)
+        h.settle(first)
+        assertEquals(Stage.DONE, h.settle(second).stage)
+        assertEquals(1, balanced.prompts.size)
+        assertEquals(1, models.strict.prompts.size)
+        h.scope.cancel()
+    }
+
+    @Test
+    fun strictReplyFromTheCloudIsRecordedAndNotUsed() {
+        val models = FakeSource(gate(claimJson, source = "IN_CLOUD"), gate(claimJson), listOf(verifier()))
+        val h = harness(models)
+        val check = h.settle(h.pipeline.submit("The Eiffel Tower is about 330 meters tall.")!!)
+        assertEquals(Stage.FAILED, check.stage)
+        val sent = h.pipeline.ledger.entries.value
+        assertEquals(listOf(EgressKind.RAW_TEXT), sent.map { it.kind })
+        assertTrue(models.verifiers[0].prompts.isEmpty())
+        h.scope.cancel()
+    }
+
+    @Test
     fun quotaRefusalStopsAndOffersASearch() {
         val refused = FakeModel("lite") { throw IllegalStateException("QuotaExceededException: You exceeded your current quota") }
         val second = verifier("flash")

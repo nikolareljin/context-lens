@@ -157,14 +157,16 @@ class HybridContextPipeline(
 
     private suspend fun process(work: Work) {
         try {
-            val gate = gatekeep(work) ?: return
+            // Switching to Strict also covers sentences queued before the switch.
+            val mode = if (_mode.value == PrivacyMode.STRICT) PrivacyMode.STRICT else work.mode
+            val gate = gatekeep(work, mode) ?: return
             if (!gate.result.hasVerifiableClaim) {
                 update(work.id) { it.copy(stage = Stage.NO_CLAIM, gate = gate) }
-                _counts.update { it.copy(filtered = it.filtered + 1) }
+                if (gate.source == ON_DEVICE) _counts.update { it.copy(filtered = it.filtered + 1) }
                 return
             }
             val publicNames = listOfNotNull(work.context.pinnedTopic, work.context.region?.label())
-            val hits = PiiPostScrubber.findIn(gate.result.sanitizedResolvedQuery, work.text, publicNames)
+            val hits = PiiPostScrubber.findIn(gate.result.sanitizedResolvedQuery, work.text, publicNames, work.context.recent)
             if (hits.isNotEmpty()) {
                 update(work.id) { it.copy(stage = Stage.WITHHELD, gate = gate, withheld = hits) }
                 _counts.update { it.copy(withheld = it.withheld + 1) }
@@ -179,12 +181,12 @@ class HybridContextPipeline(
         }
     }
 
-    private suspend fun gatekeep(work: Work): GateInfo? {
-        if (work.mode == PrivacyMode.STRICT && !models.onDeviceReady()) {
+    private suspend fun gatekeep(work: Work, mode: PrivacyMode): GateInfo? {
+        if (mode == PrivacyMode.STRICT && !models.onDeviceReady()) {
             update(work.id) { it.copy(stage = Stage.NEEDS_MODEL) }
             return null
         }
-        val model = models.gatekeeper(work.mode)
+        val model = models.gatekeeper(mode)
         val prompt = prompts.gatekeeper.fill(
             mapOf(
                 "context" to work.context.preamble(),
@@ -193,20 +195,29 @@ class HybridContextPipeline(
             ),
         )
         val start = clock()
-        val outcome = call(gateTimeoutMs) { model.generate(prompt) }
+        fun rawText(source: String?, label: String) = ledger.add(
+            EgressEntry(
+                start, EgressKind.RAW_TEXT, "gatekeeper", model.name, prompt, EgressLedger.bytesOf(prompt),
+                source, clock() - start, prompts.gatekeeper.version, label,
+            ),
+        )
+        // Balanced can fall back to the cloud, so a call stopped midway may already have been sent.
+        val outcome = call(gateTimeoutMs, onCancel = { if (mode == PrivacyMode.BALANCED) rawText(null, MAYBE_SENT) }) {
+            model.generate(prompt)
+        }
         val latency = clock() - start
         val reply = outcome.reply
-        val tier = if (work.mode == PrivacyMode.STRICT || reply?.source == ON_DEVICE) Tier.ON_DEVICE else Tier.CLOUD
+        val tier = if (reply?.source == ON_DEVICE || (mode == PrivacyMode.STRICT && reply == null)) Tier.ON_DEVICE else Tier.CLOUD
         callLog?.add(CallRecord(start, tier, "gatekeeper ${model.name}", reply?.source, latency, outcome.label))
-        // Balanced can fall back to the cloud; unless the reply says it ran on the phone, count it as sent.
-        if (work.mode == PrivacyMode.BALANCED && reply?.source != ON_DEVICE) {
-            ledger.add(
-                EgressEntry(
-                    start, EgressKind.RAW_TEXT, "gatekeeper", model.name, prompt, EgressLedger.bytesOf(prompt),
-                    reply?.source, latency, prompts.gatekeeper.version,
-                    if (reply == null) "${outcome.label}; may have been sent" else outcome.label,
-                ),
-            )
+        if (mode == PrivacyMode.STRICT && reply != null && reply.source != ON_DEVICE) {
+            // Strict asked for the phone only; a reply from anywhere else is recorded and not used.
+            rawText(reply.source, "${outcome.label}; not on the device in Strict mode")
+            update(work.id) { it.copy(stage = Stage.FAILED, note = "gatekeeper did not run on the device") }
+            return null
+        }
+        // Unless the reply says it ran on the phone, count a Balanced call as sent.
+        if (mode == PrivacyMode.BALANCED && reply?.source != ON_DEVICE) {
+            rawText(reply?.source, if (reply == null) "${outcome.label}; may have been sent" else outcome.label)
         }
         if (reply == null) {
             update(work.id) { it.copy(stage = Stage.FAILED, note = "gatekeeper: ${outcome.label}") }
@@ -226,15 +237,18 @@ class HybridContextPipeline(
         var lastLabel = "no cloud model configured"
         for (model in models.verifiers()) {
             val start = clock()
-            val outcome = call(verifyTimeoutMs) { model.generate(prompt) }
+            val sent = { label: String, reply: ModelReply? ->
+                ledger.add(
+                    EgressEntry(
+                        start, EgressKind.CLEAN_QUERY, "verifier", model.name, prompt, bytes,
+                        reply?.source, clock() - start, prompts.verifier.version, label,
+                    ),
+                )
+            }
+            val outcome = call(verifyTimeoutMs, onCancel = { sent(MAYBE_SENT, null) }) { model.generate(prompt) }
             val latency = clock() - start
             val reply = outcome.reply
-            ledger.add(
-                EgressEntry(
-                    start, EgressKind.CLEAN_QUERY, "verifier", model.name, prompt, bytes,
-                    reply?.source, latency, prompts.verifier.version, outcome.label,
-                ),
-            )
+            sent(outcome.label, reply)
             callLog?.add(CallRecord(start, Tier.CLOUD, "verifier ${model.name}", reply?.source, latency, outcome.label))
             if (reply != null && !reply.text.isNullOrBlank()) {
                 models.verifierAnswered(model.name)
@@ -254,7 +268,8 @@ class HybridContextPipeline(
 
     private class Outcome(val reply: ModelReply?, val label: String)
 
-    private suspend fun call(timeoutMs: Long, block: suspend () -> ModelReply): Outcome = try {
+    /** [onCancel] runs when the pipeline is stopped mid-call (Clear), before the cancellation goes on. */
+    private suspend fun call(timeoutMs: Long, onCancel: () -> Unit, block: suspend () -> ModelReply): Outcome = try {
         val reply = withTimeoutOrNull(timeoutMs) { block() }
         when {
             reply == null -> Outcome(null, "timed out")
@@ -262,6 +277,7 @@ class HybridContextPipeline(
             else -> Outcome(reply, "ok")
         }
     } catch (e: CancellationException) {
+        onCancel()
         throw e
     } catch (e: Exception) {
         Outcome(null, e.describe())
@@ -272,6 +288,7 @@ class HybridContextPipeline(
         const val GATE_TIMEOUT_MS = 15_000L
         const val VERIFY_TIMEOUT_MS = 30_000L
         const val ON_DEVICE = "ON_DEVICE"
+        const val MAYBE_SENT = "cancelled; may have been sent"
     }
 }
 

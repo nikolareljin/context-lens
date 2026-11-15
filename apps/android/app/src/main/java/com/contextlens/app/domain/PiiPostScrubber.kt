@@ -10,44 +10,75 @@ enum class PiiKind { EMAIL, PHONE, CARD, IBAN, SSN, ADDRESS, NAME }
  */
 object PiiPostScrubber {
     private val email = Regex("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}")
-    private val ssn = Regex("\\b\\d{3}-\\d{2}-\\d{4}\\b")
+    private val ssn = Regex("\\b\\d{3}([ -])\\d{2}\\1\\d{4}\\b")
     private val card = Regex("\\b(?:\\d[ -]?){12,18}\\d\\b")
     private val iban = Regex("\\b[A-Z]{2}\\d{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,4})?\\b")
+    /**
+     * North American numbers with or without separators (speech recognizers often drop
+     * them), and any "+" number of 7 to 15 digits.
+     */
     private val phone = Regex(
-        "(?:\\+\\d{1,3}[ .-]?)?(?:\\(\\d{3}\\)|\\b\\d{3})[ .-]?\\d{3}[ .-]\\d{4}\\b|\\b\\d{3}[ .-]\\d{4}\\b",
+        "\\+\\d(?:[ .-]?\\d){6,14}\\b" +
+            "|(?:\\(\\d{3}\\)|\\b\\d{3})[ .-]?\\d{3}[ .-]?\\d{4}\\b" +
+            "|\\b\\d{3}[ .-]?\\d{4}\\b",
     )
-    private val address = Regex(
-        "\\b\\d{1,5}\\s+(?:[A-Z][a-z]+\\s+){1,3}" +
-            "(?:Street|St|Lane|Ln|Avenue|Ave|Road|Rd|Court|Ct|Drive|Dr|Boulevard|Blvd|Way|Place|Pl|Terrace|Circle)\\b",
+
+    /** Capitalized street names with any street type, or any words before an unambiguous one ("12 elm street"). */
+    private val addresses = listOf(
+        Regex(
+            "\\b\\d{1,5}\\s+(?:[A-Z][a-z]+\\s+){1,3}" +
+                "(?:Street|St|Lane|Ln|Avenue|Ave|Road|Rd|Court|Ct|Drive|Dr|Boulevard|Blvd|Way|Place|Pl|Terrace|Circle)\\b",
+        ),
+        Regex("\\b\\d{1,5}\\s+(?:[A-Za-z][a-z]+\\s+){1,3}(?i:street|avenue|boulevard)\\b"),
     )
 
     private const val NAME = "[A-Z][a-z]+(?:['’-][A-Z]?[a-z]+)?"
     private const val PROPER = "[A-Z][A-Za-z]*(?:['’-][A-Z]?[a-z]+)?"
 
-    /** A person named in the sentence: by title, by address form, or as First Last before a speech verb. */
+    /**
+     * A person named in the sentence: by title, by address form, after "my friend" and
+     * the like, or as First Last before a speech verb. A single capitalized word before
+     * "said" is not taken: it is as often a company or agency ("Apple said") as a person,
+     * and the gatekeeper prompt already asks for private names to be left out.
+     */
     private val namePatterns = listOf(
         Regex("\\b(?:Dr|Mr|Mrs|Ms|Mx|Prof|Aunt|Uncle|Grandma|Grandpa)\\.?\\s+($NAME)"),
         Regex("^(?:Call|Tell|Text|Email|Ask|Message|Ping|Remind)\\s+($NAME)"),
+        Regex(
+            "\\b(?i:my|our|his|her|their|your)\\s+(?i:friend|wife|husband|partner|boss|neighbou?r|colleague|coworker|" +
+                "brother|sister|mom|mother|dad|father|son|daughter|cousin|doctor|landlord|teacher)\\s+($NAME)",
+        ),
         Regex("\\b($NAME\\s+$PROPER)\\s+(?:told|said|says|asked|thinks|mentioned|from)\\b"),
     )
 
+    /** Capitalized words that never begin a name ("The Fed said…"). */
+    private val notNames = setOf("The", "A", "An", "My", "Our", "Your", "His", "Her", "Their", "This", "That", "These", "Those")
+
     /**
-     * The kinds of personal data in [query]. [utterance] is the original sentence;
-     * [publicNames] (pinned topic, region) are never treated as personal names.
+     * The kinds of personal data in [query]. [utterance] is the original sentence and
+     * [earlier] the sentences the gatekeeper saw before it (it resolves "she" or "that
+     * number" from them); [publicNames] (pinned topic, region) are never treated as
+     * personal names.
      */
-    fun findIn(query: String, utterance: String, publicNames: List<String> = emptyList()): Set<PiiKind> {
+    fun findIn(
+        query: String,
+        utterance: String,
+        publicNames: List<String> = emptyList(),
+        earlier: List<String> = emptyList(),
+    ): Set<PiiKind> {
         val hits = mutableSetOf<PiiKind>()
         patternHits(query).forEach { hits += it.first }
-        // Personal data from the sentence that survived into the query, even partly
+        // Personal data from the sentences that survived into the query, even partly
         // (a card's first four digits, the end of a phone number).
-        val found = patternHits(utterance)
+        val sentences = earlier + utterance
+        val found = sentences.flatMap(::patternHits)
         found.forEach { (kind, text) ->
             val partial = kind in numeric && Regex("\\d{4,}").findAll(text).any { query.contains(it.value) }
             if (query.contains(text) || partial) hits += kind
         }
         val publicText = publicNames.joinToString(" ")
         val addresses = found.filter { it.first == PiiKind.ADDRESS }.joinToString(" ") { it.second }
-        names(utterance)
+        sentences.flatMap(::names)
             .filterNot { publicText.contains(it) || addresses.contains(it) }
             .forEach { if (Regex("\\b${Regex.escape(it)}\\b").containsMatchIn(query)) hits += PiiKind.NAME }
         return hits
@@ -69,7 +100,7 @@ object PiiPostScrubber {
         take(PiiKind.IBAN, iban.findAll(text))
         take(PiiKind.SSN, ssn.findAll(text))
         take(PiiKind.CARD, card.findAll(text).filter { luhn(it.value) })
-        take(PiiKind.ADDRESS, address.findAll(text))
+        addresses.forEach { take(PiiKind.ADDRESS, it.findAll(text)) }
         take(PiiKind.PHONE, phone.findAll(text))
         return out
     }
@@ -77,7 +108,10 @@ object PiiPostScrubber {
     /** Single name tokens (first and last names separately). */
     internal fun names(utterance: String): Set<String> =
         namePatterns.flatMap { p -> p.findAll(utterance.trim()).map { it.groupValues[1] }.toList() }
-            .flatMap { it.split(Regex("\\s+")) }
+            .map { it.split(Regex("\\s+")) }
+            // "The Fed said" is not a First Last.
+            .filterNot { it.first() in notNames }
+            .flatten()
             .filter { it.length > 1 }
             .toSet()
 

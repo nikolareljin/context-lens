@@ -21,11 +21,8 @@ object GatekeeperParser {
 
     fun parse(text: String?): GatekeeperResult? {
         if (text == null) return null
-        val start = text.indexOf('{')
-        val end = text.lastIndexOf('}')
-        if (start < 0 || end <= start) return null
-        val obj = runCatching { Json.parseToJsonElement(text.substring(start, end + 1)) }.getOrNull() as? JsonObject
-            ?: return null
+        val block = firstObject(text) ?: return null
+        val obj = runCatching { Json.parseToJsonElement(block) }.getOrNull() as? JsonObject ?: return null
         val claim = obj.flag("claim", "hasVerifiableClaim") ?: return null
         val query = obj.string("query", "sanitizedResolvedQuery").oneLine()
         if (claim && query.isEmpty()) return null
@@ -40,6 +37,27 @@ object GatekeeperParser {
             resolvedReferences = if (claim) refs else emptyList(),
             filterReason = if (claim) null else reason,
         )
+    }
+
+    /** The first balanced {...} block, skipping braces inside strings. */
+    internal fun firstObject(text: String): String? {
+        val start = text.indexOf('{')
+        if (start < 0) return null
+        var depth = 0
+        var inString = false
+        var escaped = false
+        for (i in start until text.length) {
+            val c = text[i]
+            when {
+                escaped -> escaped = false
+                inString && c == '\\' -> escaped = true
+                c == '"' -> inString = !inString
+                inString -> {}
+                c == '{' -> depth++
+                c == '}' -> if (--depth == 0) return text.substring(start, i + 1)
+            }
+        }
+        return null
     }
 
     private fun JsonObject.field(vararg keys: String): JsonElement? = keys.firstNotNullOfOrNull { this[it] }

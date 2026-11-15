@@ -23,6 +23,8 @@ class RulesTest {
         "Sorry, Rhode Island is the smallest US state.",
         "Call Mark at 555-0134 about the bus fare numbers.",
         "Thanks, the Moon is about 384,000 kilometers away.",
+        "Morning traffic doubled this year.",
+        "Please note the tax went up.",
     )
 
     @Test
@@ -43,6 +45,33 @@ class RulesTest {
             "",
             "ok",
         ).forEach { assertTrue(it, Tier0Filter.check(it) is Tier0Filter.Decision.Drop) }
+    }
+
+    @Test
+    fun scrubberCatchesSpokenFormsAndEarlierSentences() {
+        fun hits(query: String, utterance: String, earlier: List<String> = emptyList()) =
+            PiiPostScrubber.findIn(query, utterance, emptyList(), earlier)
+
+        assertEquals(setOf(PiiKind.PHONE), hits("Did fares rise? 5550001111", "Fares rose, call 5550001111."))
+        assertEquals(setOf(PiiKind.SSN), hits("Is fraud up for 123 45 6789?", "Fraud is up."))
+        assertEquals(setOf(PiiKind.ADDRESS), hits("Did rent at 12 elm street rise?", "Rent at 12 elm street rose."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did Jenna get the tax refund?", "My friend Jenna got the tax refund."))
+        // The gatekeeper resolved "she" from an earlier sentence.
+        assertEquals(
+            setOf(PiiKind.NAME),
+            hits("Did the clinic Jenna Liu mentioned close in October 2026?", "She said it closed last month.", listOf("Jenna Liu told me the clinic is closing.")),
+        )
+        assertEquals(setOf(PiiKind.PHONE), hits("Is 555-0134 a scam number?", "Is that number a scam?", listOf("They called from 555-0134.")))
+        // Organizations and capitalized sentence starts are not names.
+        assertEquals(emptySet<PiiKind>(), hits("Did the Fed raise rates in 2026?", "The Fed said rates rose."))
+        assertEquals(emptySet<PiiKind>(), hits("Is the US population about 340 million?", "The US has about 340 million people."))
+    }
+
+    @Test
+    fun gatekeeperParserTakesTheFirstBalancedObject() {
+        val r = GatekeeperParser.parse("{\"claim\": true, \"query\": \"Is {x} a set?\"} and {\"claim\": false}")
+        assertEquals("Is {x} a set?", r!!.sanitizedResolvedQuery)
+        assertNull(GatekeeperParser.parse("{\"claim\": true, \"query\": \"open"))
     }
 
     @Test
