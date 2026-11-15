@@ -40,6 +40,10 @@ plugins:
   # fonts and other external assets are downloaded at build time and served from the site
   - privacy
 
+extra:
+  # the Material header logo leads back to the web app at the site root
+  homepage: https://nikolareljin.github.io/context-lens/
+
 extra_css:
   - stylesheets/extra.css
 
@@ -57,7 +61,8 @@ exclude_docs: |
   /requirements.txt
 
 nav:
-  - Home: index.md
+  - App: https://nikolareljin.github.io/context-lens/
+  - Docs home: index.md
   - Download: download.md
   - Web companion setup: web-setup.md
   - Setup: setup.md

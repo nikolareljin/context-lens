@@ -12,13 +12,14 @@ const STAGES = [
 export default function App() {
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-10 px-4 py-8 sm:px-8">
-      <header className="flex items-center justify-between gap-4">
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <a href="/context-lens/" className="flex items-center gap-3">
           <img src={logoUrl} alt="" width={44} height={44} />
           <span className="text-2xl font-bold tracking-tight">ContextLens</span>
         </a>
-        <nav className="flex gap-4 text-sm text-slate-300">
+        <nav className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-300">
           <a className="hover:text-device" href={DOCS}>Docs</a>
+          <a className="hover:text-device" href={`${DOCS}setup/`}>Setup</a>
           <a className="hover:text-device" href={`${DOCS}privacy/`}>Privacy</a>
           <a className="hover:text-device" href={REPOSITORY}>Source</a>
         </nav>

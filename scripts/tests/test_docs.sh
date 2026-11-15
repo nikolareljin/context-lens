@@ -41,4 +41,9 @@ test_every_doc_is_in_nav() {
   done
   [[ -z "$missing" ]] || fail "not in mkdocs nav:$missing"
 }
+test_docs_lead_back_to_the_app() {
+  local app="https://nikolareljin.github.io/context-lens/"
+  grep -Eq "^  homepage: ${app}\$" "$TL_ROOT/mkdocs.yml" || fail "the docs logo does not lead to the app"
+  grep -Eq "^  - App: ${app}\$" "$TL_ROOT/mkdocs.yml" || fail "the docs nav has no link to the app"
+}
 run_tests
