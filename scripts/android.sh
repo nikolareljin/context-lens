@@ -42,7 +42,8 @@ case "$cmd" in
   install)
     require_android
     serial="$(pick_device)"
-    [[ -f "$TL_ANDROID_DIR/$DEBUG_APK" ]] || gradle :app:assembleDebug
+    # always build: Gradle skips unchanged work, and an old APK is never installed by mistake
+    gradle :app:assembleDebug
     "$(adb_bin)" -s "$serial" install -r "$TL_ANDROID_DIR/$DEBUG_APK"
     "$(adb_bin)" -s "$serial" shell monkey -p "$APP_ID" -c android.intent.category.LAUNCHER 1 >/dev/null
     log "installed and launched on $serial" ;;

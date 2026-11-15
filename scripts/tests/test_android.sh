@@ -34,6 +34,8 @@ test_install_single_device() {
   fake_android; fake_adb 'R5X\\tdevice usb:1\\n'
   bash "$script" install >/dev/null 2>&1 || fail "install failed"
   assert_contains "$(cat adb-calls)" "-s R5X install -r"
+  # an existing APK is rebuilt, never installed as it is
+  assert_contains "$(cat gradle-calls)" ":app:assembleDebug"
 }
 test_install_no_device_fails() {
   fake_android; fake_adb 'R5X\\tunauthorized\\n'
