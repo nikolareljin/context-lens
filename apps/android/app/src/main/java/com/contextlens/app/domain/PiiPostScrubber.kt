@@ -11,7 +11,8 @@ enum class PiiKind { EMAIL, PHONE, CARD, IBAN, SSN, ADDRESS, NAME }
 object PiiPostScrubber {
     private val email = Regex("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}")
     private val ssn = Regex("\\b\\d{3}([ -])\\d{2}\\1\\d{4}\\b")
-    private val card = Regex("\\b(?:\\d[ -]?){12,18}\\d\\b")
+    /** A whole run of digits; [cardWindows] finds the card inside it. */
+    private val card = Regex("\\b(?:\\d[ -]?){12,40}\\d\\b")
     private val iban = Regex("\\b[A-Z]{2}\\d{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,4})?\\b")
     /**
      * North American numbers with separators, and any "+" number of 7 to 15 digits. The
@@ -128,17 +129,23 @@ object PiiPostScrubber {
     private fun patternHits(text: String, bare: Boolean = false): List<Pair<PiiKind, String>> {
         val taken = mutableListOf<IntRange>()
         val out = mutableListOf<Pair<PiiKind, String>>()
-        fun takeSpans(kind: PiiKind, spans: Sequence<Pair<IntRange, String>>) = spans.forEach { (range, value) ->
-            if (taken.none { it.first <= range.last && range.first <= it.last }) {
-                taken += range
-                out += kind to value
+        fun take(kind: PiiKind, matches: Sequence<MatchResult>) = matches.forEach { m ->
+            if (taken.none { it.first <= m.range.last && m.range.first <= it.last }) {
+                taken += m.range
+                out += kind to m.value
             }
         }
-        fun take(kind: PiiKind, matches: Sequence<MatchResult>) = takeSpans(kind, matches.map { it.range to it.value })
         take(PiiKind.EMAIL, email.findAll(text))
         take(PiiKind.IBAN, iban.findAll(text))
         take(PiiKind.SSN, ssn.findAll(text))
-        takeSpans(PiiKind.CARD, card.findAll(text).mapNotNull(::cardPrefix))
+        // Every card window counts; the whole digit run is then taken so no other kind reads it.
+        card.findAll(text).forEach { m ->
+            val windows = cardWindows(m)
+            if (windows.isNotEmpty() && taken.none { it.first <= m.range.last && m.range.first <= it.last }) {
+                taken += m.range
+                windows.forEach { out += PiiKind.CARD to it }
+            }
+        }
         addresses.forEach { r -> take(PiiKind.ADDRESS, r.findAll(text).filterNot { publicAddresses.containsMatchIn(it.value) }) }
         take(PiiKind.PHONE, phone.findAll(text).filterNot { roundNumber(it.value) })
         if (bare) take(PiiKind.PHONE, barePhone.findAll(text).filterNot { roundNumber(it.value) })
@@ -156,22 +163,27 @@ object PiiPostScrubber {
             .toSet()
 
     /**
-     * The first 13-19 digit window of [m] that passes Luhn, starting at any digit group,
-     * so digits right before or after a card number (an expiry date, a CVV, a room
-     * number) don't hide it.
+     * Every 13-19 digit window of [m] that passes Luhn, so digits before or after a card
+     * number (an expiry date, a CVV, an order number) don't hide it. Windows that start
+     * and end on digit groups ("05 27 | 5555 5555 5555 4444") are tried first; a run
+     * without separators falls back to every window.
      */
-    private fun cardPrefix(m: MatchResult): Pair<IntRange, String>? {
+    private fun cardWindows(m: MatchResult): List<String> {
         val v = m.value
         val digitAt = v.indices.filter { v[it].isDigit() }
-        val groupStarts = digitAt.indices.filter { i -> i == 0 || digitAt[i] != digitAt[i - 1] + 1 }
-        for (first in groupStarts) {
-            for (count in minOf(digitAt.size - first, 19) downTo 13) {
+        val starts = digitAt.indices.filter { i -> i == 0 || digitAt[i] != digitAt[i - 1] + 1 }.toSet()
+        val ends = digitAt.indices.filter { i -> i == digitAt.lastIndex || digitAt[i + 1] != digitAt[i] + 1 }.toSet()
+        fun windows(aligned: Boolean) = digitAt.indices.flatMap { first ->
+            if (aligned && first !in starts) return@flatMap emptyList()
+            (13..19).mapNotNull { count ->
+                val last = first + count - 1
+                if (last > digitAt.lastIndex || (aligned && last !in ends)) return@mapNotNull null
                 val from = digitAt[first]
-                val value = v.substring(from, digitAt[first + count - 1] + 1)
-                if (luhn(value)) return (m.range.first + from until m.range.first + from + value.length) to value
+                val value = v.substring(from, digitAt[last] + 1)
+                value.takeIf(::luhn)
             }
         }
-        return null
+        return windows(aligned = true).ifEmpty { windows(aligned = false) }
     }
 
     internal fun luhn(candidate: String): Boolean {
