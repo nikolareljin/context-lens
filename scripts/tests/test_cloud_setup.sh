@@ -115,6 +115,32 @@ esac'
   [[ "$out" != *"$DEBUG_ID"* ]] || fail "the token was printed: $out"
   [[ "$(cat argv)" != *"$DEBUG_ID"* ]] || fail "the token was in curl's argv"
 }
+test_phone_token_matches_the_current_sdk_wording() {
+  sandbox; fake_gcloud
+  printf 'FIREBASE_PROJECT_ID=demo-proj\nFIREBASE_ANDROID_APP_ID=1:9:android:x\n' > dot.env
+  stub adb 'case "$*" in
+  devices*) printf "List of devices attached\nR5X\tdevice\n" ;;
+  *"pm list packages"*) echo package:com.contextlens.app ;;
+  *"getprop ro.product.model"*) echo "Galaxy Test" ;;
+  *"logcat -d"*) echo "W FirebaseAppCheck: Debug token was rejected by server. Register it with: firebase appcheck:debugtokens:create '"$DEBUG_ID"' --project demo-proj" ;;
+esac'
+  stub curl 'cat >> '"$PWD"'/bodies; echo "{}"'
+  export ADB="$PWD/adb" CURL="$PWD/curl"
+  out="$(bash "$phone" token 2>&1)" || fail "token step failed: $out"
+  assert_contains "$(cat bodies)" "\"token\":\"$DEBUG_ID\""
+}
+test_phone_status_reports_aicore_from_a_long_dumpsys() {
+  sandbox
+  stub adb 'case "$*" in
+  devices*) printf "List of devices attached\nR5X\tdevice\n" ;;
+  *"dumpsys package"*) echo "    versionName=1.2.3"; seq 1 20000 ;;
+  *"getprop ro.product.model"*) echo "Galaxy Test" ;;
+esac'
+  export ADB="$PWD/adb"
+  out="$(bash "$phone" status 2>&1)" || fail "status failed: $out"
+  assert_contains "$out" "AICore 1.2.3"
+  assert_contains "$out" "ContextLens"
+}
 test_phone_pair_skips_when_a_phone_is_connected() {
   sandbox
   stub adb 'case "$*" in devices*) printf "List of devices attached\nR5X\tdevice\n" ;; *) echo "adb $*" >> '"$PWD"'/adb-calls ;; esac'
