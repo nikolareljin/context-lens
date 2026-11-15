@@ -29,7 +29,7 @@ TL_TAG=cloud
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 # shellcheck source=lib/cloud.sh
 source "$TL_ROOT/scripts/lib/cloud.sh"
-load_env
+load_env "$TL_ENV_FILE"
 need jq "apt install jq"
 
 FB="$(firebase_bin)"; GC="$(gcloud_bin)"

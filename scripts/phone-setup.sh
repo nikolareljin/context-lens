@@ -22,7 +22,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 source "$TL_ROOT/scripts/lib/android.sh"
 # shellcheck source=lib/cloud.sh
 source "$TL_ROOT/scripts/lib/cloud.sh"
-load_env
+load_env "$TL_ENV_FILE"
 
 ADB_CMD="$(adb_bin)"
 WAIT="${WAIT_SECONDS:-120}"

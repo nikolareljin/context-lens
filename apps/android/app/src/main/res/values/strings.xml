@@ -15,5 +15,20 @@
     <string name="auth_anonymous">Anonymous</string>
     <string name="auth_signed_in">Signed in</string>
     <string name="auth_failed">Failed: %1$s</string>
-    <string name="diag_model_pending">On-device model status and the inference log are added with the diagnostics milestone.</string>
+    <string name="diag_model_title">On-device model (Gemini Nano)</string>
+    <string name="diag_model_status">Status</string>
+    <string name="diag_check">Check</string>
+    <string name="diag_download">Download</string>
+    <string name="diag_warm_up">Warm up</string>
+    <string name="diag_download_hint">Keep the phone on Wi-Fi and charging until the download finishes.</string>
+    <string name="diag_unavailable_hint">This phone cannot run the on-device model. Strict mode then filters with local rules only; the cloud tier still works.</string>
+    <string name="diag_probe_title">Test calls</string>
+    <string name="diag_probe_hint">Each test sends a fixed prompt with nothing personal in it and shows where the answer was computed.</string>
+    <string name="diag_cloud_model">Cloud model</string>
+    <string name="diag_not_tested">not tested</string>
+    <string name="diag_probe_device">Test on device</string>
+    <string name="diag_probe_cloud">Test in cloud</string>
+    <string name="diag_calls_title">Call log</string>
+    <string name="diag_calls_empty">No calls yet.</string>
+    <string name="diag_copy_report">Copy report</string>
 </resources>
