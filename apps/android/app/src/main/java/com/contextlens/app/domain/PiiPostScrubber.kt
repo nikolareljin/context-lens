@@ -13,11 +13,15 @@ object PiiPostScrubber {
     private val ssn = Regex("\\b\\d{3}([ -])\\d{2}\\1\\d{4}\\b")
     private val card = Regex("\\b(?:\\d[ -]?){12,18}\\d\\b")
     private val iban = Regex("\\b[A-Z]{2}\\d{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,4})?\\b")
-    /** North American numbers with separators, and any "+" number of 7 to 15 digits. */
+    /**
+     * North American numbers with separators, and any "+" number of 7 to 15 digits. The
+     * short form takes "-" or "." only and no year after it ("Fortune 500 2024", "737-2018").
+     * A range like "200-1500" still matches; it can't be told apart from "555-1500".
+     */
     private val phone = Regex(
         "\\+\\d(?:[ .-]?\\d){6,14}\\b" +
             "|(?:\\(\\d{3}\\)|\\b\\d{3})[ .-]?\\d{3}[ .-]\\d{4}\\b" +
-            "|\\b\\d{3}[ .-]\\d{4}\\b",
+            "|\\b\\d{3}[.-](?!(?:1[89]|20)\\d\\d\\b)\\d{4}\\b",
     )
 
     /**
@@ -36,14 +40,17 @@ object PiiPostScrubber {
     /** A street-name word: not an article or preposition ("40 people block the street"). */
     private const val STREET_WORD = "(?!(?i:the|a|an|on|in|at|of|to|and|or|for|from|by|with|into|down|up|along|across)\\b)"
 
-    /** Capitalized street names with any street type, or lower-case ones before an unambiguous type ("12 elm street"). */
+    /** Capitalized street names with any street type, or one lower-case word before an unambiguous type ("12 elm street"). */
     private val addresses = listOf(
         Regex(
             "$HOUSE(?:$STREET_WORD[A-Z][a-z]+\\s+){1,3}" +
                 "(?:Street|St|Lane|Ln|Avenue|Ave|Road|Rd|Court|Ct|Drive|Dr|Boulevard|Blvd|Way|Place|Pl|Terrace|Circle)\\b",
         ),
-        Regex("$HOUSE(?:$STREET_WORD[A-Za-z][a-z]+\\s+){1,3}(?i:street|avenue|boulevard)\\b"),
+        Regex("$HOUSE$STREET_WORD[a-z]+\\s+(?i:street|avenue|boulevard)\\b"),
     )
+
+    /** Public addresses that fact checks name ("10 Downing Street"). */
+    private val publicAddresses = Regex("(?i)\\b(?:Wall Street|Downing Street|Pennsylvania Avenue)\\b")
 
     private const val NAME = "[A-Z][a-z]+(?:['’-][A-Z]?[a-z]+)?"
     private const val PROPER = "[A-Z][A-Za-z]*(?:['’-][A-Z]?[a-z]+)?"
@@ -64,11 +71,18 @@ object PiiPostScrubber {
                 "brother|sister|mom|mother|dad|father|son|daughter|cousin|doctor|landlord|teacher)\\s+($NAME)",
         ),
         Regex("\\b($NAME\\s+$PROPER)\\s+(?:told (?:me|us)|asked (?:me|us)|texted|called (?:me|us)|mentioned (?:to )?(?:me|us))\\b"),
-        Regex("\\b($NAME\\s+$PROPER)\\s+from\\s+(?=[a-z])"),
+        Regex("\\b($NAME\\s+$PROPER)\\s+from\\s+(?!(?:the|a|an|his|her|their|our|my|its)\\b)(?=[a-z])"),
     )
 
     /** Capitalized words that never begin a name ("The Fed said…"). */
     private val notNames = setOf("The", "A", "An", "My", "Our", "Your", "His", "Her", "Their", "This", "That", "These", "Those")
+
+    /** Words that make a capitalized pair an organization, not a person ("Fox News told us"). */
+    private val orgWords = setOf(
+        "News", "Times", "Post", "Journal", "Press", "Media", "Bank", "Reserve", "Fed", "Council", "Department",
+        "Ministry", "University", "College", "Institute", "Party", "Senate", "House", "Court", "Agency", "Office",
+        "Group", "Inc", "Corp", "Company", "Foundation", "Association", "Union", "Committee", "Commission",
+    )
 
     /**
      * The kinds of personal data in [query]. [utterance] is the original sentence and
@@ -101,9 +115,10 @@ object PiiPostScrubber {
         }
         val publicText = publicNames.joinToString(" ")
         val addresses = found.filter { it.first == PiiKind.ADDRESS }.joinToString(" ") { it.second }
+        fun word(name: String) = Regex("\\b${Regex.escape(name)}\\b")
         sentences.flatMap(::names)
-            .filterNot { publicText.contains(it) || addresses.contains(it) }
-            .forEach { if (Regex("\\b${Regex.escape(it)}\\b").containsMatchIn(query)) hits += PiiKind.NAME }
+            .filterNot { word(it).containsMatchIn(publicText) || word(it).containsMatchIn(addresses) }
+            .forEach { if (word(it).containsMatchIn(query)) hits += PiiKind.NAME }
         return hits
     }
 
@@ -113,17 +128,18 @@ object PiiPostScrubber {
     private fun patternHits(text: String, bare: Boolean = false): List<Pair<PiiKind, String>> {
         val taken = mutableListOf<IntRange>()
         val out = mutableListOf<Pair<PiiKind, String>>()
-        fun take(kind: PiiKind, matches: Sequence<MatchResult>) = matches.forEach { m ->
-            if (taken.none { it.first <= m.range.last && m.range.first <= it.last }) {
-                taken += m.range
-                out += kind to m.value
+        fun takeSpans(kind: PiiKind, spans: Sequence<Pair<IntRange, String>>) = spans.forEach { (range, value) ->
+            if (taken.none { it.first <= range.last && range.first <= it.last }) {
+                taken += range
+                out += kind to value
             }
         }
+        fun take(kind: PiiKind, matches: Sequence<MatchResult>) = takeSpans(kind, matches.map { it.range to it.value })
         take(PiiKind.EMAIL, email.findAll(text))
         take(PiiKind.IBAN, iban.findAll(text))
         take(PiiKind.SSN, ssn.findAll(text))
-        take(PiiKind.CARD, card.findAll(text).filter { luhn(it.value) })
-        addresses.forEach { take(PiiKind.ADDRESS, it.findAll(text)) }
+        takeSpans(PiiKind.CARD, card.findAll(text).mapNotNull(::cardPrefix))
+        addresses.forEach { r -> take(PiiKind.ADDRESS, r.findAll(text).filterNot { publicAddresses.containsMatchIn(it.value) }) }
         take(PiiKind.PHONE, phone.findAll(text).filterNot { roundNumber(it.value) })
         if (bare) take(PiiKind.PHONE, barePhone.findAll(text).filterNot { roundNumber(it.value) })
         return out
@@ -134,10 +150,23 @@ object PiiPostScrubber {
         namePatterns.flatMap { p -> p.findAll(utterance.trim()).map { it.groupValues[1] }.toList() }
             .map { it.split(Regex("\\s+")) }
             // "The Fed said" is not a First Last.
-            .filterNot { it.first() in notNames }
+            .filterNot { it.first() in notNames || it.any(orgWords::contains) }
             .flatten()
             .filter { it.length > 1 }
             .toSet()
+
+    /**
+     * The longest 13-19 digit start of [m] that passes Luhn, so digits right after a
+     * card number (an expiry date, a CVV) don't hide it.
+     */
+    private fun cardPrefix(m: MatchResult): Pair<IntRange, String>? {
+        val digitAt = m.value.indices.filter { m.value[it].isDigit() }
+        for (count in minOf(digitAt.size, 19) downTo 13) {
+            val value = m.value.substring(0, digitAt[count - 1] + 1)
+            if (luhn(value)) return (m.range.first until m.range.first + value.length) to value
+        }
+        return null
+    }
 
     internal fun luhn(candidate: String): Boolean {
         val digits = candidate.filter(Char::isDigit)

@@ -73,6 +73,15 @@ class RulesTest {
         assertEquals(emptySet<PiiKind>(), hits("Did Houston reach 2300000 people?", "Houston has 2300000 people."))
         assertEquals(emptySet<PiiKind>(), hits("Did 500-1000 people attend?", "Hundreds attended."))
         assertEquals(emptySet<PiiKind>(), hits("Did Springfield raise fares in 2026?", "Fares rose this year.", listOf("They called from 555-2026.")))
+        assertEquals(emptySet<PiiKind>(), hits("Did the S&P 500 gain 23 percent in 2024?", "The S&P 500 2024 gain was 23 percent."))
+        assertEquals(emptySet<PiiKind>(), hits("Does the prime minister live at 10 Downing Street?", "The prime minister lives at 10 Downing Street."))
+        assertEquals(emptySet<PiiKind>(), hits("Did 500 protesters occupy Wall Street in 2011?", "Protesters occupied Wall Street."))
+        assertEquals(emptySet<PiiKind>(), hits("Did Bernie Sanders say drug prices doubled?", "Bernie Sanders from the Senate floor said drug prices doubled."))
+        assertEquals(emptySet<PiiKind>(), hits("Is crime up, as Fox News reported?", "Fox News told us crime is up."))
+        // A card followed by its expiry date is still a card.
+        assertEquals(setOf(PiiKind.CARD), hits("Did card fees rise for 4111?", "My card is 4111 1111 1111 1111 05 27."))
+        // A friend's name inside the region's name is still a name.
+        assertEquals(setOf(PiiKind.NAME), PiiPostScrubber.findIn("Did Ann get the refund?", "My friend Ann got the refund.", listOf("Annapolis, Maryland")))
     }
 
     @Test
