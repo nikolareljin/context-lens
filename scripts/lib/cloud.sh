@@ -27,6 +27,8 @@ env_set() {
   grep -v "^$key=" "$file" > "$tmp" || true
   printf '%s=%s\n' "$key" "$value" >> "$tmp"
   chmod 600 "$tmp"
+  # Callers pass the setup's .env file (TL_ENV_FILE), chosen by the local user.
+  # foxguard: ignore[bash/taint-path-traversal]
   mv "$tmp" "$file"
   export "$key=$value"
 }

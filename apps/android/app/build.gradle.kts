@@ -36,8 +36,12 @@ abstract class GenerateCityTable : DefaultTask() {
         val file = cacheDir.get().asFile.resolve(url.substringAfterLast('/'))
         if (file.length() > 0) return file
         file.parentFile.mkdirs()
+        // The cache file name comes from the pinned GeoNames URL in this build script.
+        // foxguard: ignore[kt/no-path-traversal]
         val tmp = File(file.path + ".part")
         try {
+            // Fixed GeoNames URLs set in this build script, not user input.
+            // foxguard: ignore[kt/no-ssrf]
             val conn = URI(url).toURL().openConnection().apply {
                 connectTimeout = 20_000
                 readTimeout = 60_000

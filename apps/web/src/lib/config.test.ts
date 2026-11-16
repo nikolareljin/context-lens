@@ -3,7 +3,7 @@ import { LATEST_APK, readConfig } from "./config";
 
 const full = {
   VITE_FIREBASE_API_KEY: "k",
-  VITE_FIREBASE_AUTH_DOMAIN: "p.firebaseapp.com",
+  VITE_FIREBASE_AUTH_DOMAIN: "demo-p.firebaseapp.com",
   VITE_FIREBASE_PROJECT_ID: "p",
   VITE_FIREBASE_APP_ID: "1:2:web:3",
   VITE_FIREBASE_MESSAGING_SENDER_ID: "2",

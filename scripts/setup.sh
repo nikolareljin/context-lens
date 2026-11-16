@@ -5,7 +5,7 @@
 #   --check   report only (default prints the same report and the next steps)
 #
 # Checks: git, bash 4+, JDK 17+, Android SDK with platform 35+, adb, Node 22+,
-# gitleaks, shellcheck. Nothing is installed without asking.
+# gitleaks, foxguard, exiftool, shellcheck. Nothing is installed without asking.
 set -euo pipefail
 TL_TAG=setup
 # shellcheck source=lib/common.sh
@@ -40,6 +40,8 @@ nv=""
 if command -v node >/dev/null 2>&1; then nv="$(node --version | tr -d v)"; fi
 report "$(at_least "${nv:-0}" 22)" "node $nv" "node 22+ (found ${nv:-none}; see .nvmrc)"
 report "$(has gitleaks)" "gitleaks" "gitleaks (secret scan)"
+report "$(has foxguard)" "foxguard" "foxguard (security scan, github.com/0sec-labs/foxguard)"
+report "$(has exiftool)" "exiftool" "exiftool (image metadata check)"
 report "$(has shellcheck)" "shellcheck" "shellcheck (script lint)"
 [[ -f "$TL_ANDROID_DIR/app/google-services.json" ]] && ok "google-services.json" \
   || printf '  later    google-services.json (from the Firebase console, see README)\n'
