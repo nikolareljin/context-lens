@@ -64,7 +64,8 @@ class DemoRunner(
             try {
                 DemoScript.lines.forEachIndexed { i, line ->
                     if (i > 0) delay(gapMs)
-                    pipeline.submit(line, demo = true)
+                    // A stopped run must not add a line to the next session.
+                    synchronized(lock) { if (job === self) pipeline.submit(line, demo = true) }
                 }
             } finally {
                 // A stopped run must not mark a newer one as finished.

@@ -57,20 +57,23 @@ data class Check(
     val note: String? = null,
     /** Fed by the demo script, not spoken or typed; the card says so. */
     val demo: Boolean = false,
+    /** The sentence and its context went to the cloud gatekeeper (or may have); recorded in the ledger. */
+    val sentToCloud: Boolean = false,
 )
 
 data class PipelineCounts(
     val processed: Int = 0,
     val filtered: Int = 0,
     val withheld: Int = 0,
-    /** Sentences whose gatekeeper ran in the cloud (Balanced fallback): read off the phone. */
+    /** Sentences that only the phone read: stopped by the local rules or read by the on-device model. */
+    val readOnPhone: Int = 0,
+    /** Sentences the cloud may have read (Balanced fallback, or a Strict reply that came from the cloud). */
     val readInCloud: Int = 0,
+    /** Bytes of sentence and context sent this session; the ledger has each request. */
+    val rawBytes: Int = 0,
     /** Sentences that got a grounded verdict. */
     val checked: Int = 0,
-) {
-    /** Sentences that only the phone read: the local rules or the on-device model. */
-    val readOnPhone: Int get() = (processed - readInCloud).coerceAtLeast(0)
-}
+)
 
 data class PipelinePrompts(val gatekeeper: Prompt, val verifier: Prompt)
 
@@ -111,10 +114,6 @@ class HybridContextPipeline(
     private val _counts = MutableStateFlow(PipelineCounts())
     val counts: StateFlow<PipelineCounts> = _counts.asStateFlow()
 
-    private val _sessionStart = MutableStateFlow(clock())
-    /** When the current session began (last [clear]); the ledger keeps older entries. */
-    val sessionStart: StateFlow<Long> = _sessionStart.asStateFlow()
-
     private val _mode = MutableStateFlow(PrivacyMode.STRICT)
     val mode: StateFlow<PrivacyMode> = _mode.asStateFlow()
 
@@ -152,7 +151,7 @@ class HybridContextPipeline(
         when (val decision = Tier0Filter.check(clean)) {
             is Tier0Filter.Decision.Drop -> {
                 put(Check(id, clean, clock(), Stage.FILTERED, note = decision.reason, demo = demo))
-                _counts.update { it.copy(filtered = it.filtered + 1) }
+                _counts.update { it.copy(filtered = it.filtered + 1, readOnPhone = it.readOnPhone + 1) }
             }
             Tier0Filter.Decision.Pass -> {
                 put(Check(id, clean, clock(), Stage.GATEKEEPING, demo = demo))
@@ -170,7 +169,6 @@ class HybridContextPipeline(
         current?.cancel()
         _checks.value = emptyList()
         _counts.value = PipelineCounts()
-        _sessionStart.value = clock()
     }
 
     private fun put(check: Check) = _checks.update { (listOf(check) + it).take(CHECKS_MAX) }
@@ -207,6 +205,7 @@ class HybridContextPipeline(
     private suspend fun gatekeep(work: Work, mode: PrivacyMode): GateInfo? {
         if (mode == PrivacyMode.STRICT && !models.onDeviceReady()) {
             update(work.id) { it.copy(stage = Stage.NEEDS_MODEL) }
+            _counts.update { it.copy(readOnPhone = it.readOnPhone + 1) }
             return null
         }
         val model = models.gatekeeper(mode)
@@ -218,15 +217,19 @@ class HybridContextPipeline(
             ),
         )
         val start = clock()
+        val promptBytes = EgressLedger.bytesOf(prompt)
         fun rawText(source: String?, label: String, count: Boolean = true) {
             ledger.add(
                 EgressEntry(
-                    start, EgressKind.RAW_TEXT, "gatekeeper", model.name, prompt, EgressLedger.bytesOf(prompt),
+                    start, EgressKind.RAW_TEXT, "gatekeeper", model.name, prompt, promptBytes,
                     source, clock() - start, prompts.gatekeeper.version, label,
                 ),
             )
-            // A call stopped by Clear belongs to the session that just ended.
-            if (count) _counts.update { it.copy(readInCloud = it.readInCloud + 1) }
+            // A call stopped by Clear belongs to the session that just ended; its card is gone.
+            if (count) {
+                _counts.update { it.copy(readInCloud = it.readInCloud + 1, rawBytes = it.rawBytes + promptBytes) }
+                update(work.id) { it.copy(sentToCloud = true) }
+            }
         }
         // Balanced can fall back to the cloud, so a call stopped midway may already have been sent.
         val outcome = call(gateTimeoutMs, onCancel = { if (mode == PrivacyMode.BALANCED) rawText(null, MAYBE_SENT, count = false) }) {
@@ -235,6 +238,8 @@ class HybridContextPipeline(
         val latency = clock() - start
         val reply = outcome.reply
         val tier = if (reply?.source == ON_DEVICE || (mode == PrivacyMode.STRICT && reply == null)) Tier.ON_DEVICE else Tier.CLOUD
+        // Strict without a reply never left the phone (on device only); a Balanced call without one may have.
+        if (tier == Tier.ON_DEVICE) _counts.update { it.copy(readOnPhone = it.readOnPhone + 1) }
         callLog?.add(CallRecord(start, tier, "gatekeeper ${model.name}", reply?.source, latency, outcome.label))
         if (mode == PrivacyMode.STRICT && reply != null && reply.source != ON_DEVICE) {
             // Strict asked for the phone only; a reply from anywhere else is recorded and not used.

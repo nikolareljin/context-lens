@@ -39,19 +39,20 @@ import com.contextlens.app.domain.Verdict
 import com.contextlens.app.domain.searchUrl
 import com.contextlens.app.ui.theme.Cyan
 import com.contextlens.app.ui.theme.Slate400
+import com.contextlens.app.ui.theme.Violet
 import java.time.LocalDate
 
 /**
- * One sentence and what happened to it, in three stages: the sentence (stays on
- * the phone), the clean question written on the device, and the grounded verdict
- * from the cloud. Each stage appears once it is reached.
+ * One sentence and what happened to it, in three stages: the sentence, the clean
+ * question, and the grounded verdict from the cloud. The labels say where each
+ * was read or written. Each stage appears once it is reached.
  */
 @Composable
 fun CheckCard(check: Check, today: LocalDate) {
     val uri = LocalUriHandler.current
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            // Stage 1: the sentence, which never leaves the phone in Strict mode.
+            // Stage 1: the sentence, and whether it left the phone.
             val heard = heardLabel(check)
             StageLabel(stringResource(heard.first), heard.second) {
                 if (check.demo) Tag(stringResource(R.string.check_demo), Slate400)
@@ -111,18 +112,15 @@ fun CheckCard(check: Check, today: LocalDate) {
 }
 
 /**
- * What the first stage may claim. "Stays on this phone" only when nothing read the
- * sentence off the phone: the local rules stopped it, or the gatekeeper reported
- * ON_DEVICE. A gatekeeper reply from the cloud (Balanced fallback) says so.
+ * What the first stage may claim. "Sent to cloud Gemini" whenever the pipeline
+ * recorded the sentence as raw text sent; "stays on this phone" only when the local
+ * rules stopped it or the gatekeeper reported ON_DEVICE; otherwise just "Heard".
  */
-private fun heardLabel(check: Check): Pair<Int, ComposeColor> {
-    val source = check.gate?.source
-    return when {
-        check.stage == Stage.FILTERED || check.stage == Stage.NEEDS_MODEL || source == ON_DEVICE ->
-            R.string.check_stage_phone to Cyan
-        source != null -> R.string.check_stage_sent to sourceColor(source)
-        else -> R.string.check_stage_heard to Slate400
-    }
+private fun heardLabel(check: Check): Pair<Int, ComposeColor> = when {
+    check.sentToCloud -> R.string.check_stage_sent to Violet
+    check.stage == Stage.FILTERED || check.stage == Stage.NEEDS_MODEL || check.gate?.source == ON_DEVICE ->
+        R.string.check_stage_phone to Cyan
+    else -> R.string.check_stage_heard to Slate400
 }
 
 /** A stage heading with a colored dot: cyan for the phone, violet for the cloud. */

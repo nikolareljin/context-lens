@@ -50,7 +50,6 @@ import com.contextlens.app.context.SessionContextManager
 import com.contextlens.app.domain.DemoRunner
 import com.contextlens.app.domain.HybridContextPipeline
 import com.contextlens.app.domain.PrivacyMode
-import com.contextlens.app.domain.totals
 import com.contextlens.app.speech.ListenState
 import com.contextlens.app.speech.SpeechListener
 import kotlinx.coroutines.Job
@@ -68,8 +67,6 @@ fun ListenScreen(session: SessionContextManager, pipeline: HybridContextPipeline
     val checks by pipeline.checks.collectAsState()
     val mode by pipeline.mode.collectAsState()
     val counts by pipeline.counts.collectAsState()
-    val entries by pipeline.ledger.entries.collectAsState()
-    val sessionStart by pipeline.sessionStart.collectAsState()
     val demoRunning by demo.running.collectAsState()
     // Not saveable: typed speech must not reach saved instance state on disk.
     var typed by remember { mutableStateOf("") }
@@ -158,7 +155,7 @@ fun ListenScreen(session: SessionContextManager, pipeline: HybridContextPipeline
         regionMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         Text(stringResource(R.string.listen_area_hint), style = MaterialTheme.typography.bodySmall)
 
-        PrivacyCounters(counts, entries.filter { it.atMillis >= sessionStart }.totals())
+        PrivacyCounters(counts)
 
         // Microphone: on-device recognition only.
         Card(Modifier.fillMaxWidth()) {

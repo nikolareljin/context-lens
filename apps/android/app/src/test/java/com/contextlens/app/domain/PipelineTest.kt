@@ -81,7 +81,7 @@ class PipelineTest {
         assertEquals(Stage.FILTERED, check.stage)
         assertTrue(models.strict.prompts.isEmpty())
         assertTrue(h.pipeline.ledger.entries.value.isEmpty())
-        assertEquals(PipelineCounts(processed = 1, filtered = 1), h.pipeline.counts.value)
+        assertEquals(PipelineCounts(processed = 1, filtered = 1, readOnPhone = 1), h.pipeline.counts.value)
         h.scope.cancel()
     }
 
@@ -142,6 +142,11 @@ class PipelineTest {
         assertEquals(1, h.pipeline.counts.value.readInCloud)
         assertEquals(0, h.pipeline.counts.value.readOnPhone)
         assertEquals(1, h.pipeline.counts.value.checked)
+        assertEquals(raw[0].bytes, h.pipeline.counts.value.rawBytes)
+        assertTrue(check.sentToCloud)
+        // Clearing the Ledger tab does not hide what this session sent.
+        h.pipeline.ledger.clear()
+        assertEquals(raw[0].bytes, h.pipeline.counts.value.rawBytes)
         h.scope.cancel()
     }
 
@@ -153,6 +158,20 @@ class PipelineTest {
         h.settle(h.pipeline.submit("The Eiffel Tower is about 330 meters tall.")!!)
         assertTrue(h.pipeline.ledger.entries.value.none { it.kind == EgressKind.RAW_TEXT })
         assertEquals(1, h.pipeline.counts.value.readOnPhone)
+        assertEquals(0, h.pipeline.counts.value.rawBytes)
+        h.scope.cancel()
+    }
+
+    @Test
+    fun balancedCloudReplyThatFailsStillSaysItWasSent() {
+        val models = FakeSource(gate(claimJson), gate("not json", source = "IN_CLOUD"), listOf(verifier()), ready = false)
+        val h = harness(models)
+        h.pipeline.setMode(PrivacyMode.BALANCED)
+        val check = h.settle(h.pipeline.submit("The Eiffel Tower is about 330 meters tall.")!!)
+        assertEquals(Stage.FAILED, check.stage)
+        assertEquals(null, check.gate)
+        assertTrue(check.sentToCloud)
+        assertEquals(PipelineCounts(processed = 1, readInCloud = 1, rawBytes = h.pipeline.ledger.entries.value.single().bytes), h.pipeline.counts.value)
         h.scope.cancel()
     }
 
@@ -209,10 +228,7 @@ class PipelineTest {
         val models = FakeSource(gate(claimJson), gate(claimJson), listOf(verifier()))
         val h = harness(models)
         h.settle(h.pipeline.submit("Python was first released in 1991.")!!)
-        Thread.sleep(5)
         h.pipeline.clear()
-        // The session counters start again; the ledger keeps the earlier request, dated before the session.
-        assertTrue(h.pipeline.ledger.entries.value.all { it.atMillis < h.pipeline.sessionStart.value })
         assertTrue(h.pipeline.checks.value.isEmpty())
         assertEquals(PipelineCounts(), h.pipeline.counts.value)
         assertEquals(1, h.pipeline.ledger.entries.value.size)
@@ -235,6 +251,7 @@ class PipelineTest {
         assertEquals(HybridContextPipeline.MAYBE_SENT, entries[0].outcome)
         // It belongs to the session that was cleared, not to the new one.
         assertEquals(0, h.pipeline.counts.value.readInCloud)
+        assertEquals(0, h.pipeline.counts.value.rawBytes)
         h.scope.cancel()
     }
 

@@ -63,5 +63,6 @@ data class EgressTotals(val rawBytes: Int, val cleanBytes: Int, val cloudChecks:
 fun List<EgressEntry>.totals(): EgressTotals = EgressTotals(
     rawBytes = filter { it.kind == EgressKind.RAW_TEXT }.sumOf { it.bytes },
     cleanBytes = filter { it.kind == EgressKind.CLEAN_QUERY }.sumOf { it.bytes },
-    cloudChecks = count { it.kind == EgressKind.CLEAN_QUERY && it.source != null },
+    // Answered with text; an empty reply makes the pipeline try the next model.
+    cloudChecks = count { it.kind == EgressKind.CLEAN_QUERY && it.source != null && it.outcome == "ok" },
 )

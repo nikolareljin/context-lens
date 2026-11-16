@@ -19,7 +19,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.contextlens.app.R
-import com.contextlens.app.domain.EgressTotals
 import com.contextlens.app.domain.PipelineCounts
 import com.contextlens.app.domain.Verdict
 import com.contextlens.app.ui.theme.Cyan
@@ -79,18 +78,18 @@ internal fun VerdictBadge(label: String, verdict: Verdict) {
 }
 
 /**
- * The privacy counters for this session. Raw text sent is measured from the
- * egress ledger entries since the session began; anything above 0 B shows in red.
+ * The privacy counters for this session. Raw text sent adds up the bytes of every
+ * request the pipeline records as raw text; anything above 0 B shows in red.
  */
 @Composable
-internal fun PrivacyCounters(counts: PipelineCounts, totals: EgressTotals) {
-    // All three count from the start of the session; the Ledger tab keeps every request.
+internal fun PrivacyCounters(counts: PipelineCounts) {
+    // All three count from the start of the session, kept by the pipeline; the Ledger tab keeps every request.
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Counter(stringResource(R.string.hud_local), "${counts.readOnPhone}", Cyan, Modifier.weight(1f))
         Counter(
             stringResource(R.string.hud_raw),
-            "${totals.rawBytes} B",
-            if (totals.rawBytes == 0) Emerald else Red,
+            "${counts.rawBytes} B",
+            if (counts.rawBytes == 0) Emerald else Red,
             Modifier.weight(1f),
         )
         Counter(stringResource(R.string.hud_cloud), "${counts.checked}", Violet, Modifier.weight(1f))
