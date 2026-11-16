@@ -19,7 +19,7 @@ The gatekeeper (the step that turns a sentence into a clean search question) is 
 
 ## Known limits
 
-The personal-data check is a backstop behind the prompt, not a complete name detector. It finds names after titles and relation words ("Dr. Patel", "my friend Jenna"), before personal verbs ("Jenna Liu told me"), after "Call" or "Tell", and in first.last email addresses. A name written any other way, or an address without separators ("jrivera@"), relies on the model leaving it out; the on-device run measures how often it does.
+The personal-data check is a backstop behind the prompt, not a complete name detector. It finds names after titles and relation words ("Dr. Patel", "my friend Jenna"), before personal verbs ("Jenna Liu told me"), after "Call" or "Tell", and in first.last email addresses. A name written any other way, an address without separators ("jrivera@"), or a two-letter given name that is also an everyday word ("An", "My"), relies on the model leaving it out; the on-device run measures how often it does.
 
 ## Results
 

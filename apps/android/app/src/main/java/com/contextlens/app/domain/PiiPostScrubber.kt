@@ -132,9 +132,9 @@ object PiiPostScrubber {
             .replace(Regex("\\p{Mn}+"), "").lowercase()
             .replace(Regex("['’]s\\b"), "").replace(Regex("['’]"), "").replace("-", hyphen)
         val looseQueries = listOf(loose(query, ""), loose(query, " "))
-        val loosePublic = loose(publicText, " ")
+        val loosePublics = listOf(loose(publicText, ""), loose(publicText, " "))
         sentences.flatMap(::emailNames).map { loose(it, "") }.toSet()
-            .filterNot { word(it).containsMatchIn(loosePublic) }
+            .filterNot { name -> loosePublics.any { word(name).containsMatchIn(it) } }
             .forEach { name -> if (looseQueries.any { word(name).containsMatchIn(it) }) hits += PiiKind.NAME }
         return hits
     }
@@ -197,7 +197,11 @@ object PiiPostScrubber {
         // Hyphenated parts also as one word: "smith-jones" for "Smith-Jones".
         val joined = local.split(Regex("[._]+")).map { it.trimEnd(Char::isDigit) }
             .filter { '-' in it }.map { it.replace("-", "") }
-        val mailbox = parts.isEmpty() || parts.first() in mailboxStarts || parts.last() in officeEnds
+        val mailbox = parts.isEmpty() ||
+            parts.joinToString("") in replyAddresses ||
+            (parts.size == 1 && parts[0] in singleRoles) ||
+            parts.first() in mailboxStarts ||
+            parts.last() in officeEnds
         if (mailbox) {
             emptySequence()
         } else {
@@ -207,17 +211,23 @@ object PiiPostScrubber {
 
     /** Local parts that start a shared mailbox, not a person ("info@", "city.council@"). */
     private val mailboxStarts = setOf(
-        "info", "support", "contact", "admin", "hello", "office", "team", "mail", "noreply", "no", "donotreply", "do",
+        "info", "support", "contact", "admin", "hello", "office", "team", "mail", "noreply", "donotreply",
         "help", "news", "billing", "sales", "press", "media", "careers", "events", "orders", "hr", "city", "town",
         "county", "state", "public", "customer", "service", "services", "school", "police", "fire", "board",
         "parking", "council", "tickets", "returns", "tips", "feedback", "privacy", "legal", "marketing", "accounts",
         "notifications", "alerts", "webmaster", "postmaster", "registrar",
     )
 
+    /** "no-reply@", "do_not_reply@" and the like, whatever the separators. */
+    private val replyAddresses = setOf("noreply", "donotreply", "donotrespond", "noresponse", "replies")
+
+    /** Role words that are also surnames: a mailbox only when they are the whole address ("jobs@", "parks@"). */
+    private val singleRoles = setOf("jobs", "parks", "recreation", "rates", "fares", "permits", "tolls")
+
     /** Local parts that end an office's address ("springfield.library@", "parks.department@"). */
     private val officeEnds = setOf(
         "library", "council", "department", "dept", "office", "committee", "commission", "agency", "ministry",
-        "university", "college", "institute", "foundation", "association", "board", "services", "clerk",
+        "university", "college", "institute", "foundation", "association", "board", "services", "clerk", "recreation",
     )
 
     /** Surname particles: part of a name, but too common as words to block on ("LA"). */

@@ -87,6 +87,10 @@ class RulesTest {
         // Role mailboxes name nobody.
         assertEquals(emptySet<PiiKind>(), hits("Did retail sales rise this year?", "Email sales@example.com about the sales figures."))
         assertEquals(emptySet<PiiKind>(), hits("Are there no new toll rules?", "I got mail from no-reply@example.gov about toll rules."))
+        assertEquals(emptySet<PiiKind>(), hits("Did the jobs report beat expectations?", "I emailed jobs@example.com about the opening."))
+        assertEquals(emptySet<PiiKind>(), hits("Did city parks and recreation cut hours?", "Write to parks.recreation@example.org about hours."))
+        // Surnames that look like reply words still name someone.
+        assertEquals(setOf(PiiKind.NAME), hits("Did Minh get the refund?", "Email do.minh@example.com about the refund."))
         assertEquals(setOf(PiiKind.NAME), hits("Did Kevin O’Brien say revenue grew?", "Kevin O'Brien from accounting said revenue grew."))
         // The gatekeeper resolved "she" from an earlier sentence.
         assertEquals(
@@ -123,6 +127,16 @@ class RulesTest {
         assertEquals(setOf(PiiKind.ADDRESS), hits("Did rent at 42 Maple street rise?", "Rent at 42 Maple street rose."))
         // A friend's name inside the region's name is still a name.
         assertEquals(setOf(PiiKind.NAME), PiiPostScrubber.findIn("Did Ann get the refund?", "My friend Ann got the refund.", listOf("Annapolis, Maryland")))
+    }
+
+    @Test
+    fun aPublicHyphenatedPlaceInAnEmailIsNotAName() {
+        val hits = PiiPostScrubber.findIn(
+            "Did Wilkes-Barre raise parking fees?",
+            "Email ana.wilkes-barre@example.com about fees.",
+            listOf("Wilkes-Barre"),
+        )
+        assertEquals(emptySet<PiiKind>(), hits)
     }
 
     @Test
