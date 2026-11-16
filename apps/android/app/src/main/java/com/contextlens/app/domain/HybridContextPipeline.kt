@@ -18,6 +18,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -106,6 +107,9 @@ class HybridContextPipeline(
     private val clock: () -> Long = System::currentTimeMillis,
     private val gateTimeoutMs: Long = GATE_TIMEOUT_MS,
     private val verifyTimeoutMs: Long = VERIFY_TIMEOUT_MS,
+    /** Waits before asking the phone's model again after it refused for its usage quota (Strict). */
+    private val quotaBackoffMs: List<Long> = QUOTA_BACKOFF_MS,
+    private val pause: suspend (Long) -> Unit = { delay(it) },
 ) {
     private val _checks = MutableStateFlow<List<Check>>(emptyList())
     /** Newest first, at most [CHECKS_MAX]. */
@@ -235,9 +239,21 @@ class HybridContextPipeline(
             }
         }
         // Balanced can fall back to the cloud, so a call stopped midway may already have been sent.
-        val outcome = call(gateTimeoutMs, onCancel = { if (mode == PrivacyMode.BALANCED) rawText(null, MAYBE_SENT, inSession = false) }) {
+        suspend fun attempt() = call(gateTimeoutMs, onCancel = { if (mode == PrivacyMode.BALANCED) rawText(null, MAYBE_SENT, inSession = false) }) {
             model.generate(prompt)
         }
+        var outcome = attempt()
+        // Android limits how often one app may call the phone's model. In Strict a refusal
+        // never left the phone, so asking again later is safe; Balanced is not retried, since
+        // the call may already have gone to the cloud.
+        for (wait in quotaBackoffMs) {
+            val error = outcome.error
+            if (mode != PrivacyMode.STRICT || error == null || !GatekeeperEval.isQuota(error)) break
+            update(work.id) { it.copy(note = "the phone's model is busy; trying again in ${wait / 1000} s") }
+            pause(wait)
+            outcome = attempt()
+        }
+        if (outcome.reply != null) update(work.id) { it.copy(note = null) }
         val latency = clock() - start
         val reply = outcome.reply
         val tier = if (reply?.source == ON_DEVICE || (mode == PrivacyMode.STRICT && reply == null)) Tier.ON_DEVICE else Tier.CLOUD
@@ -302,7 +318,7 @@ class HybridContextPipeline(
         update(id) { it.copy(stage = Stage.FAILED, note = "verifier: $lastLabel") }
     }
 
-    private class Outcome(val reply: ModelReply?, val label: String)
+    private class Outcome(val reply: ModelReply?, val label: String, val error: Throwable? = null)
 
     /**
      * [onCancel] runs when the pipeline is stopped mid-call (Clear), before the
@@ -326,7 +342,7 @@ class HybridContextPipeline(
     } catch (e: Exception) {
         // A failure delivered after Clear is a cancellation too, so nothing counts it in the new session.
         if (currentCoroutineContext().isActive) {
-            Outcome(null, e.describe())
+            Outcome(null, e.describe(), e)
         } else {
             onCancel()
             throw CancellationException("cleared").apply { initCause(e) }
@@ -337,6 +353,7 @@ class HybridContextPipeline(
         const val CHECKS_MAX = 30
         const val GATE_TIMEOUT_MS = 15_000L
         const val VERIFY_TIMEOUT_MS = 30_000L
+        val QUOTA_BACKOFF_MS = listOf(5_000L, 15_000L)
         const val ON_DEVICE = "ON_DEVICE"
         const val MAYBE_SENT = "cancelled; may have been sent"
     }

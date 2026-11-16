@@ -6,6 +6,7 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ### Fixed
 
+- Listening in Strict mode asks the phone's model again when Android refuses a sentence for its usage quota (after 5 s, then 15 s), with the wait shown on the card; Balanced mode is not retried, since that call may already have gone to the cloud.
 - The on-device evaluation retries a call Android refused for its usage quota (after 5 s, then 15 s) instead of scoring it as a miss, and its summary lists failure reasons and the ids of claims answered "no claim".
 
 ### Added
