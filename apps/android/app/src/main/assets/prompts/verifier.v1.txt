@@ -1,0 +1,5 @@
+Check this claim with Google Search. Reply in exactly this format and nothing else:
+VERDICT: VERIFIED, NUANCED, FALSE or INSUFFICIENT_EVIDENCE
+SUMMARY: at most two short, neutral sentences that say what the sources show.
+
+Claim: {{query}}

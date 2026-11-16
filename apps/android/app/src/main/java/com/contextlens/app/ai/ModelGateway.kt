@@ -13,8 +13,10 @@ import com.google.firebase.ai.OnDeviceConfig
 import com.google.firebase.ai.OnDeviceExtension
 import com.google.firebase.ai.OnDeviceModelStatus
 import com.google.firebase.ai.ai
+import com.google.firebase.ai.type.GenerationConfig
 import com.google.firebase.ai.type.GenerativeBackend
 import com.google.firebase.ai.type.PublicPreviewAPI
+import com.google.firebase.ai.type.Tool
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -59,9 +61,26 @@ class ModelGateway(
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy.asStateFlow()
 
-    private fun model(mode: InferenceMode, name: String): GenerativeModel =
-        Firebase.ai(backend = GenerativeBackend.googleAI())
-            .generativeModel(modelName = name, onDeviceConfig = OnDeviceConfig(mode = mode))
+    private fun model(mode: InferenceMode, name: String): GenerativeModel = build(name, OnDeviceConfig(mode = mode))
+
+    /** A model behind Firebase AI Logic; [name] is the cloud model (the fallback in hybrid modes). */
+    fun build(
+        name: String,
+        onDeviceConfig: OnDeviceConfig,
+        generationConfig: GenerationConfig? = null,
+        tools: List<Tool>? = null,
+    ): GenerativeModel = Firebase.ai(backend = GenerativeBackend.googleAI()).generativeModel(
+        modelName = name,
+        generationConfig = generationConfig,
+        tools = tools,
+        onDeviceConfig = onDeviceConfig,
+    )
+
+    /** False when the on-device model is known to be missing or not downloaded yet. */
+    fun onDeviceReady(): Boolean = when (_state.value) {
+        ModelState.Unavailable, ModelState.Downloadable, is ModelState.Downloading -> false
+        else -> true
+    }
 
     private val onDevice: GenerativeModel by lazy {
         model(InferenceMode.ONLY_ON_DEVICE, CLOUD_MODEL_CANDIDATES.first())
@@ -184,7 +203,7 @@ class ModelGateway(
                 false
             } else {
                 val outcome = if (response.text.isNullOrBlank()) "ok, empty reply" else "ok"
-                log.add(CallRecord(start, tier, name, response.inferenceSource.toString(), clock() - start, outcome))
+                log.add(CallRecord(start, tier, name, response.inferenceSource.label(), clock() - start, outcome))
                 true
             }
         } catch (e: CancellationException) {

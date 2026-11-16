@@ -14,7 +14,12 @@ class MainActivity : ComponentActivity() {
         val app = application as ContextLensApp
         setContent {
             ContextLensTheme {
-                AppNav(session = app.session, models = app.models, sessionContext = app.sessionContext)
+                AppNav(
+                    session = app.session,
+                    models = app.models,
+                    sessionContext = app.sessionContext,
+                    pipeline = app.pipeline,
+                )
             }
         }
     }
