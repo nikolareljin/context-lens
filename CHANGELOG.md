@@ -6,7 +6,7 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ### Fixed
 
-- The on-device evaluation retries a call Android refused for its usage quota (after 5 s, then 15 s) instead of scoring it as a miss, and its summary lists failure reasons and the ids of missed claims.
+- The on-device evaluation retries a call Android refused for its usage quota (after 5 s, then 15 s) instead of scoring it as a miss, and its summary lists failure reasons and the ids of claims answered "no claim".
 
 ### Added
 

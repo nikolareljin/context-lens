@@ -15,7 +15,7 @@ The gatekeeper (the step that turns a sentence into a clean search question) is 
 ## How to run it
 
 - **On a computer:** `./dev eval` runs the parts that need no model against every sentence in the set: the local rules never drop a labelled claim, the date hints match every labelled date reference, and the personal-data check stops every planted value even when it is copied into a question word for word. CI runs the same tests.
-- **On a phone:** Diagnostics → **Run evaluation** sends each scored sentence to Gemini Nano with the same prompt as the Listen screen, in Strict mode, so nothing leaves the phone. Android limits how often one app may call the on-device model, and the run sends sentences back to back, so a call refused for that quota is retried after 5 s and again after 15 s; only the last refusal counts as a failure. The summary lists failure reasons and the ids of missed claims; **Copy results** adds one line per sentence.
+- **On a phone:** Diagnostics → **Run evaluation** sends each scored sentence to Gemini Nano with the same prompt as the Listen screen, in Strict mode, so nothing leaves the phone. Android limits how often one app may call the on-device model, and the run sends sentences back to back, so a call refused for that quota is retried after 5 s and again after 15 s; only the last refusal counts as a failure. The summary lists failure reasons and the ids of claims the model answered "no claim" to (failed calls on claims count in FN but are listed under failures); **Copy results** adds one line per sentence.
 
 ## Known limits
 

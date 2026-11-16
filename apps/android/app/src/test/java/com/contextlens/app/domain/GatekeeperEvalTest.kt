@@ -182,9 +182,11 @@ class GatekeeperEvalTest {
 
     @Test
     fun failuresKeepTheExceptionMessageAndMissedClaimsAreListed() {
+        var calls = 0
         val model = object : TextModel {
             override val name = "fake"
             override suspend fun generate(prompt: String): ModelReply {
+                calls++
                 val said = prompt.substringAfterLast("Sentence: \"").substringBeforeLast("\"")
                 if (said.startsWith("Python")) throw IllegalStateException("model busy\nsecond line")
                 return ModelReply("{\"claim\": false, \"query\": \"\"}", "ON_DEVICE")
@@ -192,7 +194,8 @@ class GatekeeperEvalTest {
         }
         val prompt = Prompt("v1", "{{context}}\n{{hints}}\nSentence: \"{{utterance}}\"")
         val subset = items.filter { it.id in setOf("fc09") } + items.filter { it.scored && it.claim && it.id != "fc09" }.take(1)
-        val results = runBlocking { GatekeeperEval(model, prompt).run(subset) }
+        val results = runBlocking { GatekeeperEval(model, prompt, pause = { error("only quota refusals wait") }).run(subset) }
+        assertEquals(2, calls)
         val s = GatekeeperEval.summarize(results)
         assertEquals(mapOf("IllegalStateException: model busy" to 1), s.failures)
         assertEquals(listOf(subset[1].id), s.missed)
