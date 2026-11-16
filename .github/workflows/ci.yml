@@ -159,3 +159,26 @@ jobs:
           if git ls-files | grep -E '(^|/)google-services\.json$|\.(jks|keystore)$|keystore\.properties$|(^|/)\.env$|service-account.*\.json$'; then
             echo "tracked files above must never be committed" >&2; exit 1
           fi
+      - name: install foxguard and exiftool
+        env:
+          FOXGUARD_VERSION: "0.14.1"
+          # published checksum of foxguard-linux-x86_64 for v0.14.1
+          FOXGUARD_SHA256: 10a531279f7f3e9dcd01996e5e288309cd6d7d2bb2b7fa35de583d0bbe715bc2
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin" && cd "$RUNNER_TEMP/bin"
+          curl -fsSL -o foxguard "https://github.com/0sec-labs/foxguard/releases/download/v${FOXGUARD_VERSION}/foxguard-linux-x86_64"
+          echo "${FOXGUARD_SHA256}  foxguard" | sha256sum -c -
+          chmod +x foxguard
+          sudo apt-get install -y -qq libimage-exiftool-perl >/dev/null
+      - name: security scan (foxguard; reviewed findings carry an inline ignore with the reason)
+        run: foxguard .
+      - name: personal data (tree, and every commit and file version in this change)
+        env:
+          BASE: ${{ github.event_name == 'push' && github.event.before || github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event_name == 'push' && github.sha || github.event.pull_request.head.sha }}
+        run: |
+          args=()
+          if [[ -n "$BASE" && "$BASE" != 0000000000000000000000000000000000000000 ]]; then
+            args+=(--range "$BASE..$HEAD_SHA")
+          fi
+          bash scripts/privacy-check.sh "${args[@]}"

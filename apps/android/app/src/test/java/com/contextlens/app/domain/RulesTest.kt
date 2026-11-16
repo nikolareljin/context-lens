@@ -86,7 +86,7 @@ class RulesTest {
         assertEquals(setOf(PiiKind.NAME), hits("Did Jordan Parks get the refund?", "Email parks.jordan@example.com about the refund."))
         // Role mailboxes name nobody.
         assertEquals(emptySet<PiiKind>(), hits("Did retail sales rise this year?", "Email sales@example.com about the sales figures."))
-        assertEquals(emptySet<PiiKind>(), hits("Are there no new toll rules?", "I got mail from no-reply@example.gov about toll rules."))
+        assertEquals(emptySet<PiiKind>(), hits("Are there no new toll rules?", "I got mail from no-reply@example.org about toll rules."))
         assertEquals(emptySet<PiiKind>(), hits("Did the jobs report beat expectations?", "I emailed jobs@example.com about the opening."))
         assertEquals(emptySet<PiiKind>(), hits("Did AWS raise prices?", "I got an email from no-reply-aws@example.com about price changes."))
         assertEquals(emptySet<PiiKind>(), hits("Are payments delayed?", "Mail from payments-noreply@example.com says payments are delayed."))

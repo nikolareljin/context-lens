@@ -26,6 +26,8 @@ assert_status() {
 
 _cleanup_dir() {
   local d="$1"
+  # Only removes mktemp directories under TMPDIR, checked by the case pattern.
+  # foxguard: ignore[bash/taint-path-traversal]
   case "$d" in "${TMPDIR:-/tmp}"/tltest.*) rm -rf -- "$d" ;; esac
 }
 

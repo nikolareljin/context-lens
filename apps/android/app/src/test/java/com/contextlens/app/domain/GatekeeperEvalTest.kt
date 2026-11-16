@@ -17,6 +17,8 @@ import org.junit.Test
 class GatekeeperEvalTest {
     private val items: List<EvalItem> by lazy {
         val path = System.getProperty("contextlens.evalSet") ?: error("contextlens.evalSet is not set")
+        // The path is set by the Gradle test task.
+        // foxguard: ignore[kt/no-path-traversal]
         EvalSet.parse(File(path).readText())
     }
 

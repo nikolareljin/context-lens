@@ -8,7 +8,7 @@
 #   build                  debug APK
 #   test                   Android unit tests (when present), functions tests (when present), script tests
 #   lint                   Android lint (when present), shellcheck
-#   scan                   secret scan of the tree (gitleaks)
+#   scan                   leak checks: gitleaks (tree and history), foxguard, personal data
 #   apk [debug|release]    build an APK
 #   install                install the debug APK on a connected device and launch it
 #   phone-install [opts]   install a release APK over USB (scripts/phone-install.sh --help)
@@ -53,7 +53,11 @@ case "$cmd" in
     log "shellcheck clean (${#files[@]} files)" ;;
   scan)
     need gitleaks "https://github.com/gitleaks/gitleaks"
-    gitleaks dir --no-banner --redact "$TL_ROOT" ;;
+    need foxguard "https://github.com/0sec-labs/foxguard"
+    gitleaks dir --no-banner --redact "$TL_ROOT"
+    gitleaks git --no-banner --redact "$TL_ROOT"
+    foxguard "$TL_ROOT"
+    bash "$S/privacy-check.sh" ;;
   apk) bash "$S/android.sh" apk "$@" ;;
   install) bash "$S/android.sh" install ;;
   phone-install) bash "$S/phone-install.sh" "$@" ;;

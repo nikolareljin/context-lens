@@ -25,5 +25,7 @@ object GroundingParser {
         )
     }
 
+    // Parses the host for display; nothing is fetched.
+    // foxguard: ignore[kt/no-ssrf]
     private fun host(uri: String): String = runCatching { URI(uri).host }.getOrNull().orEmpty()
 }
