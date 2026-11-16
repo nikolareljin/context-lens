@@ -38,3 +38,10 @@ A dated record of the work done during the hackathon. Each entry lists what was 
 - The Search Console ownership file is served from the site root.
 - Verified: type check, 6 unit tests and the production build in `node:22`; the assembled site (app plus docs) built locally.
 
+
+## 2026-11-15: listening screen
+
+- Context bar with the Strict/Balanced chip, date, area and pinned topic; three counters for the session (sentences read only on the phone, raw text sent, claims checked in the cloud), with raw text sent in green at 0 B and red above it. In Balanced mode, when the cloud reads a sentence, the card says so instead of "stays on this phone".
+- Cards in three stages: what was heard (marked "stays on this phone" only when the local rules or the on-device model read it), the clean question with resolved references and the reported inference source, and the grounded check with a verdict badge, sources and Google's Search Suggestions. Where a sentence stopped is shown under the last stage it reached.
+- Demo script: a fixed conversation in a fictional Springfield goes through the real pipeline; cards are marked "Demo input".
+- Verified: unit tests (demo script, runner start, stop and restart), lint; on the S26 the demo filtered four small-talk lines with no model call, wrote both questions on the device (`ON_DEVICE`, Gemini Nano, about 2 s), dropped the name and number from the phone-number line, and sent 0 B of raw text. The cloud check is refused until billing is on, and the card offers the search link instead.

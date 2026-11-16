@@ -4,9 +4,15 @@ import android.graphics.Color
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -15,7 +21,9 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.viewinterop.AndroidView
@@ -25,65 +33,60 @@ import androidx.compose.ui.unit.dp
 import com.contextlens.app.R
 import com.contextlens.app.context.DateResolver
 import com.contextlens.app.domain.Check
+import com.contextlens.app.domain.HybridContextPipeline.Companion.ON_DEVICE
 import com.contextlens.app.domain.Stage
 import com.contextlens.app.domain.Verdict
 import com.contextlens.app.domain.searchUrl
+import com.contextlens.app.ui.theme.Cyan
+import com.contextlens.app.ui.theme.Slate400
+import com.contextlens.app.ui.theme.Violet
 import java.time.LocalDate
 
 /**
- * One sentence and what happened to it: the sentence (stays on the phone), the
- * clean question written on the device, and the grounded verdict from the cloud.
- * The full split-card layout comes with the HUD; this shows every stage plainly.
+ * One sentence and what happened to it, in three stages: the sentence, the clean
+ * question, and the grounded verdict from the cloud. The labels say where each
+ * was read or written. Each stage appears once it is reached.
  */
 @Composable
 fun CheckCard(check: Check, today: LocalDate) {
+    val uri = LocalUriHandler.current
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            // Stage 1: the sentence, and whether it left the phone.
+            val heard = heardLabel(check)
+            StageLabel(stringResource(heard.first), heard.second) {
+                if (check.demo) Tag(stringResource(R.string.check_demo), Slate400)
+            }
             Text(check.utterance, style = MaterialTheme.typography.bodyLarge)
             DateResolver.resolve(check.utterance, today)?.let { m ->
                 val range = if (m.start == m.end) "${m.start}" else "${m.start} – ${m.end}"
                 Text(stringResource(R.string.listen_date_mention, m.phrase, range), style = MaterialTheme.typography.bodySmall)
             }
-            Text(stageText(check), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
 
+            // Stage 2: the clean question, with the references the gatekeeper resolved.
             check.gate?.takeIf { it.result.hasVerifiableClaim }?.let { gate ->
                 HorizontalDivider()
+                val where = if (gate.source == ON_DEVICE) R.string.check_stage_query_device else R.string.check_stage_query_cloud
+                StageLabel(stringResource(where), sourceColor(gate.source))
                 Text(gate.result.sanitizedResolvedQuery, style = MaterialTheme.typography.titleSmall)
                 if (gate.result.resolvedReferences.isNotEmpty()) {
-                    Text(gate.result.resolvedReferences.joinToString(" · "), style = MaterialTheme.typography.bodySmall)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        gate.result.resolvedReferences.forEach { Tag(it.replace("->", "→"), Slate400) }
+                    }
                 }
-                Text(pill(gate.source, gate.latencyMs, gate.model), style = MaterialTheme.typography.labelSmall)
+                SourcePill(gate.source, gate.latencyMs, gate.model)
             }
 
-            if (check.stage == Stage.CLOUD_UNAVAILABLE) {
-                val query = check.gate?.result?.sanitizedResolvedQuery.orEmpty()
-                val uri = LocalUriHandler.current
-                Text(
-                    stringResource(R.string.check_search_this),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    textDecoration = TextDecoration.Underline,
-                    modifier = Modifier.clickable { runCatching { uri.openUri(searchUrl(query)) } },
-                )
-            }
-
+            // Stage 3: the grounded verdict; the rules have the last word over the model.
             check.card?.let { card ->
                 HorizontalDivider()
-                Text(verdictLabel(card.verdict), style = MaterialTheme.typography.titleMedium, color = verdictColor(card.verdict))
+                StageLabel(stringResource(R.string.check_stage_cloud), sourceColor(card.source))
+                VerdictBadge(verdictLabel(card.verdict), card.verdict)
                 if (card.modelVerdict != null && card.modelVerdict != card.verdict) {
                     Text(stringResource(R.string.check_no_sources_rule), style = MaterialTheme.typography.bodySmall)
                 }
                 if (card.summary.isNotEmpty()) Text(card.summary, style = MaterialTheme.typography.bodyMedium)
-                val uri = LocalUriHandler.current
-                card.grounding.citations.forEach { c ->
-                    Text(
-                        "${c.title} (${c.domain})",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        textDecoration = TextDecoration.Underline,
-                        modifier = Modifier.clickable { runCatching { uri.openUri(c.uri) } },
-                    )
-                }
+                card.grounding.citations.forEach { c -> Link("${c.title} (${c.domain})") { uri.openUri(c.uri) } }
                 val chip = card.grounding.searchEntryPointHtml
                 if (chip != null) {
                     SearchSuggestions(chip, uri)
@@ -93,10 +96,52 @@ fun CheckCard(check: Check, today: LocalDate) {
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
-                Text(pill(card.source, card.latencyMs, card.model) + " · " + stringResource(R.string.check_grounded), style = MaterialTheme.typography.labelSmall)
+                SourcePill(card.source, card.latencyMs, card.model, stringResource(R.string.check_grounded))
+            }
+
+            // Where the sentence stopped, under the last stage it reached.
+            if (check.stage != Stage.DONE) {
+                Text(stageText(check), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+            }
+            if (check.stage == Stage.CLOUD_UNAVAILABLE) {
+                val query = check.gate?.result?.sanitizedResolvedQuery.orEmpty()
+                Link(stringResource(R.string.check_search_this)) { uri.openUri(searchUrl(query)) }
             }
         }
     }
+}
+
+/**
+ * What the first stage may claim. "Sent to cloud Gemini" whenever the pipeline
+ * recorded the sentence as raw text sent; "stays on this phone" only when the local
+ * rules stopped it or the gatekeeper reported ON_DEVICE; otherwise just "Heard".
+ */
+private fun heardLabel(check: Check): Pair<Int, ComposeColor> = when {
+    check.sentToCloud -> R.string.check_stage_sent to Violet
+    check.stage == Stage.FILTERED || check.stage == Stage.NEEDS_MODEL || check.gate?.source == ON_DEVICE ->
+        R.string.check_stage_phone to Cyan
+    else -> R.string.check_stage_heard to Slate400
+}
+
+/** A stage heading with a colored dot: cyan for the phone, violet for the cloud. */
+@Composable
+private fun StageLabel(text: String, color: ComposeColor, trailing: @Composable () -> Unit = {}) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(Modifier.size(8.dp).background(color, CircleShape))
+        Text(text, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        trailing()
+    }
+}
+
+@Composable
+private fun Link(text: String, open: () -> Unit) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.primary,
+        textDecoration = TextDecoration.Underline,
+        modifier = Modifier.clickable { runCatching(open) },
+    )
 }
 
 /**
@@ -157,10 +202,3 @@ private fun verdictLabel(v: Verdict): String = stringResource(
         Verdict.INSUFFICIENT_EVIDENCE -> R.string.verdict_insufficient
     },
 )
-
-@Composable
-private fun verdictColor(v: Verdict) = when (v) {
-    Verdict.VERIFIED -> MaterialTheme.colorScheme.primary
-    Verdict.FALSE -> MaterialTheme.colorScheme.error
-    else -> MaterialTheme.colorScheme.onSurfaceVariant
-}

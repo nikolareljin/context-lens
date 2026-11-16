@@ -81,7 +81,7 @@ class PipelineTest {
         assertEquals(Stage.FILTERED, check.stage)
         assertTrue(models.strict.prompts.isEmpty())
         assertTrue(h.pipeline.ledger.entries.value.isEmpty())
-        assertEquals(PipelineCounts(processed = 1, filtered = 1), h.pipeline.counts.value)
+        assertEquals(PipelineCounts(processed = 1, filtered = 1, readOnPhone = 1), h.pipeline.counts.value)
         h.scope.cancel()
     }
 
@@ -138,6 +138,15 @@ class PipelineTest {
         assertEquals(1, raw.size)
         assertTrue(raw[0].text.contains("Eiffel Tower"))
         assertTrue(h.pipeline.ledger.entries.value.totals().rawBytes > 0)
+        // The cloud read it, so it does not count as read only on the phone.
+        assertEquals(1, h.pipeline.counts.value.readInCloud)
+        assertEquals(0, h.pipeline.counts.value.readOnPhone)
+        assertEquals(1, h.pipeline.counts.value.checked)
+        assertEquals(raw[0].bytes, h.pipeline.counts.value.rawBytes)
+        assertTrue(check.sentToCloud)
+        // Clearing the Ledger tab does not hide what this session sent.
+        h.pipeline.ledger.clear()
+        assertEquals(raw[0].bytes, h.pipeline.counts.value.rawBytes)
         h.scope.cancel()
     }
 
@@ -148,6 +157,21 @@ class PipelineTest {
         h.pipeline.setMode(PrivacyMode.BALANCED)
         h.settle(h.pipeline.submit("The Eiffel Tower is about 330 meters tall.")!!)
         assertTrue(h.pipeline.ledger.entries.value.none { it.kind == EgressKind.RAW_TEXT })
+        assertEquals(1, h.pipeline.counts.value.readOnPhone)
+        assertEquals(0, h.pipeline.counts.value.rawBytes)
+        h.scope.cancel()
+    }
+
+    @Test
+    fun balancedCloudReplyThatFailsStillSaysItWasSent() {
+        val models = FakeSource(gate(claimJson), gate("not json", source = "IN_CLOUD"), listOf(verifier()), ready = false)
+        val h = harness(models)
+        h.pipeline.setMode(PrivacyMode.BALANCED)
+        val check = h.settle(h.pipeline.submit("The Eiffel Tower is about 330 meters tall.")!!)
+        assertEquals(Stage.FAILED, check.stage)
+        assertEquals(null, check.gate)
+        assertTrue(check.sentToCloud)
+        assertEquals(PipelineCounts(processed = 1, readInCloud = 1, rawBytes = h.pipeline.ledger.entries.value.single().bytes), h.pipeline.counts.value)
         h.scope.cancel()
     }
 
@@ -193,6 +217,7 @@ class PipelineTest {
         val outcomes = h.pipeline.ledger.entries.value.reversed().map { it.model to it.outcome }
         assertEquals(listOf("slow" to "timed out", "failing" to "IllegalStateException: network unreachable", "good" to "ok"), outcomes)
         assertEquals(1, h.pipeline.ledger.entries.value.totals().cloudChecks)
+        assertEquals(1, h.pipeline.counts.value.checked)
         assertEquals(listOf("good"), models.answered)
         assertTrue(h.log.entries.value.any { it.model == "gatekeeper gate" })
         h.scope.cancel()
@@ -224,6 +249,36 @@ class PipelineTest {
         val entries = runBlocking { withTimeout(5_000) { h.pipeline.ledger.entries.first { it.isNotEmpty() } } }
         assertEquals(EgressKind.RAW_TEXT, entries[0].kind)
         assertEquals(HybridContextPipeline.MAYBE_SENT, entries[0].outcome)
+        // It belongs to the session that was cleared, not to the new one.
+        assertEquals(0, h.pipeline.counts.value.readInCloud)
+        assertEquals(0, h.pipeline.counts.value.rawBytes)
+        h.scope.cancel()
+    }
+
+    @Test
+    fun aFailureDeliveredAfterClearDoesNotCountInTheNewSession() {
+        val started = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val release = kotlinx.coroutines.CompletableDeferred<Unit>()
+        // Fails only after Clear, and ignores the cancellation meanwhile, like an error already on its way back.
+        val lateFailure = FakeModel("gate") {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                started.complete(Unit)
+                release.await()
+            }
+            throw java.io.IOException("connection reset")
+        }
+        val models = FakeSource(gate(claimJson), lateFailure, listOf(verifier()), ready = false)
+        val h = harness(models)
+        h.pipeline.setMode(PrivacyMode.BALANCED)
+        h.pipeline.submit("The Eiffel Tower is about 330 meters tall.")
+        runBlocking { withTimeout(5_000) { started.await() } }
+        h.pipeline.clear()
+        release.complete(Unit)
+        val entries = runBlocking { withTimeout(5_000) { h.pipeline.ledger.entries.first { it.isNotEmpty() } } }
+        // Still recorded as possibly sent, but it belongs to the session that was cleared.
+        assertEquals(HybridContextPipeline.MAYBE_SENT, entries.single().outcome)
+        assertEquals(PipelineCounts(), h.pipeline.counts.value)
+        assertTrue(h.pipeline.checks.value.isEmpty())
         h.scope.cancel()
     }
 
