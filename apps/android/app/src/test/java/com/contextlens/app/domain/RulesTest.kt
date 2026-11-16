@@ -88,6 +88,8 @@ class RulesTest {
         assertEquals(emptySet<PiiKind>(), hits("Did retail sales rise this year?", "Email sales@example.com about the sales figures."))
         assertEquals(emptySet<PiiKind>(), hits("Are there no new toll rules?", "I got mail from no-reply@example.gov about toll rules."))
         assertEquals(emptySet<PiiKind>(), hits("Did the jobs report beat expectations?", "I emailed jobs@example.com about the opening."))
+        assertEquals(emptySet<PiiKind>(), hits("Did AWS raise prices?", "I got an email from no-reply-aws@example.com about price changes."))
+        assertEquals(emptySet<PiiKind>(), hits("Did the billing rules change?", "Mail came from do_not_reply.billing@example.com about the billing rules."))
         assertEquals(emptySet<PiiKind>(), hits("Did city parks and recreation cut hours?", "Write to parks.recreation@example.org about hours."))
         // Surnames that look like reply words still name someone.
         assertEquals(setOf(PiiKind.NAME), hits("Did Minh get the refund?", "Email do.minh@example.com about the refund."))
