@@ -1,5 +1,7 @@
 package com.contextlens.app.domain
 
+import java.text.Normalizer
+
 enum class PiiKind { EMAIL, PHONE, CARD, IBAN, SSN, ADDRESS, NAME }
 
 /**
@@ -120,7 +122,20 @@ object PiiPostScrubber {
         fun word(name: String) = Regex("\\b${Regex.escape(name)}\\b")
         sentences.flatMap(::names)
             .filterNot { word(it).containsMatchIn(publicText) || word(it).containsMatchIn(addresses) }
-            .forEach { if (word(it).containsMatchIn(query)) hits += PiiKind.NAME }
+            // "O’Brien" with a curly apostrophe is the same name as "O'Brien".
+            .forEach { if (word(it.replace('’', '\'')).containsMatchIn(query.replace('’', '\''))) hits += PiiKind.NAME }
+        // An email gives a name without its spelling ("j.mcdonald@" for McDonald, "j.obrien@" for O'Brien),
+        // so those compare without case, apostrophes or hyphens.
+        // Accents are dropped ("García" is "garcia"), a possessive is dropped ("Rivera's"), and a
+        // hyphenated name is tried both joined and split ("Smith-Jones": "smithjones", "smith jones").
+        fun loose(text: String, hyphen: String) = Normalizer.normalize(text, Normalizer.Form.NFD)
+            .replace(Regex("\\p{Mn}+"), "").lowercase()
+            .replace(Regex("['’]s\\b"), "").replace(Regex("['’]"), "").replace("-", hyphen)
+        val looseQueries = listOf(loose(query, ""), loose(query, " "))
+        val loosePublics = listOf(loose(publicText, ""), loose(publicText, " "))
+        sentences.flatMap(::emailNames).map { loose(it, "") }.toSet()
+            .filterNot { name -> loosePublics.any { word(name).containsMatchIn(it) } }
+            .forEach { name -> if (looseQueries.any { word(name).containsMatchIn(it) }) hits += PiiKind.NAME }
         return hits
     }
 
@@ -155,13 +170,73 @@ object PiiPostScrubber {
 
     /** Single name tokens (first and last names separately). */
     internal fun names(utterance: String): Set<String> =
-        namePatterns.flatMap { p -> p.findAll(utterance.trim()).map { it.groupValues[1] }.toList() }
-            .map { it.split(Regex("\\s+")) }
-            // "The Fed said" is not a First Last.
-            .filterNot { it.first() in notNames || it.any(orgWords::contains) }
-            .flatten()
-            .filter { it.length > 1 }
-            .toSet()
+        (
+            namePatterns.flatMap { p -> p.findAll(utterance.trim()).map { it.groupValues[1] }.toList() }
+                .map { it.split(Regex("\\s+")) }
+                // "The Fed said" is not a First Last.
+                .filterNot { it.first() in notNames || it.any(orgWords::contains) }
+                .flatten()
+                // "Aunt Rosa's house": the name is Rosa.
+                .map { it.removeSuffix("'s").removeSuffix("’s") }
+                .filter { it.length > 1 }
+            ).toSet()
+
+    /**
+     * Names in an email address: "sam.rivera@" gives Sam and Rivera, as do
+     * "sam.rivera92@", "sam.rivera+fares@", "maria.de.la.cruz@" (Maria, Cruz) and
+     * "a.smith-jones@" (Smith, Jones, and Smithjones for "Smith-Jones"); one-letter
+     * initials are dropped. An address that starts with a mailbox word ("info@",
+     * "sales@", "city.council@") or ends with an office word ("springfield.library@",
+     * "parks.department@") names nobody.
+     * Not covered: an address without separators ("jrivera@") gives one word that rarely
+     * matches the name in a question; the gatekeeper prompt is the first line there.
+     */
+    internal fun emailNames(utterance: String): List<String> = email.findAll(utterance).flatMap { m ->
+        val local = m.value.substringBefore('@').substringBefore('+').lowercase()
+        val parts = local.split(Regex("[._-]+")).map { it.trimEnd(Char::isDigit) }.filter { it.isNotEmpty() }
+        // Hyphenated parts also as one word: "smith-jones" for "Smith-Jones".
+        val joined = local.split(Regex("[._]+")).map { it.trimEnd(Char::isDigit) }
+            .filter { '-' in it }.map { it.replace("-", "") }
+        val mailbox = parts.isEmpty() ||
+            // "no-reply@", "no-reply-aws@", "payments-noreply@": a reply word anywhere in the address.
+            parts.indices.any { i -> (i + 1..parts.size).any { j -> parts.subList(i, j).joinToString("") in replyAddresses } } ||
+            (parts.size == 1 && parts[0] in singleRoles) ||
+            parts.first() in mailboxStarts ||
+            parts.last() in officeEnds
+        if (mailbox) {
+            emptySequence()
+        } else {
+            (parts + joined).asSequence().filter { it.length >= 2 && it.all(Char::isLetter) && it !in particles }
+        }
+    }.toList()
+
+    /** Local parts that start a shared mailbox, not a person ("info@", "city.council@"). */
+    private val mailboxStarts = setOf(
+        "info", "support", "contact", "admin", "hello", "office", "team", "mail", "noreply", "donotreply",
+        "help", "news", "billing", "sales", "press", "media", "careers", "events", "orders", "hr", "city", "town",
+        "county", "state", "public", "customer", "service", "services", "school", "police", "fire", "board",
+        "parking", "council", "tickets", "returns", "tips", "feedback", "privacy", "legal", "marketing", "accounts",
+        "notifications", "alerts", "webmaster", "postmaster", "registrar",
+    )
+
+    /** "no-reply", "do_not_reply" and the like anywhere in an address, whatever the separators. */
+    private val replyAddresses = setOf("noreply", "donotreply", "donotrespond", "noresponse", "replies")
+
+    /** Role words that are also surnames: a mailbox only when they are the whole address ("jobs@", "parks@"). */
+    private val singleRoles = setOf("jobs", "parks", "recreation", "rates", "fares", "permits", "tolls")
+
+    /** Local parts that end an office's address ("springfield.library@", "parks.department@"). */
+    private val officeEnds = setOf(
+        "library", "council", "department", "dept", "office", "committee", "commission", "agency", "ministry",
+        "university", "college", "institute", "foundation", "association", "board", "services", "clerk", "recreation",
+    )
+
+    /** Surname particles: part of a name, but too common as words to block on ("LA"). */
+    private val particles = setOf(
+        "de", "la", "del", "della", "van", "von", "der", "da", "di", "du", "le", "al", "el", "bin", "ibn",
+        // Two-letter everyday words that would block almost any question.
+        "an", "do", "to", "so", "no", "in", "on", "at", "of", "or", "is", "it", "us", "we", "me", "my", "up",
+    )
 
     /**
      * Every 13-19 digit window of [m] that passes Luhn, so digits before or after a card

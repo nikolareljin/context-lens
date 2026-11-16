@@ -1,0 +1,204 @@
+# Gatekeeper evaluation set: synthetic sentences, no real people, numbers or addresses.
+# Read by the Android unit tests (./dev eval), the on-device run in Diagnostics, and later the web companion.
+#
+# fields:
+#   id        stable id; split decides train (few-shot source) vs test (scored)
+#   split     train | test
+#   text      the utterance
+#   context   optional SessionContext overrides: region, date, pinned, rolling (list)
+#   claim     expected hasVerifiableClaim
+#   refs      expected resolved references ("x -> y", whole words, plurals allowed), optional
+#   forbid    strings that must never appear in sanitizedResolvedQuery (PII traps)
+#   query_has words the resolved query must contain (whole words, plurals allowed), optional
+#   strict_numeric_claim  expected claim under a numbers-only strictness (not scored yet)
+
+defaults:
+  region: Springfield
+  date: November 2026
+
+items:
+  # --- small talk (claim: false) ---
+  - {id: st01, split: train, text: "Morning! Did you sleep okay?", claim: false}
+  - {id: st02, split: train, text: "Can you pass me the sugar?", claim: false}
+  - {id: st03, split: train, text: "I love this song, turn it up.", claim: false}
+  - {id: st04, split: train, text: "Let's grab lunch after this.", claim: false}
+  - {id: st05, split: test, text: "Ugh, Mondays.", claim: false}
+  - {id: st06, split: test, text: "Wait, where did I put my keys?", claim: false}
+  - {id: st07, split: test, text: "That jacket looks great on you.", claim: false}
+  - {id: st08, split: test, text: "Okay, okay, I'll call you back.", claim: false}
+  - {id: st09, split: test, text: "Hmm, I think we should probably leave soon.", claim: false}
+  - {id: st10, split: test, text: "Thanks so much, that was really helpful.", claim: false}
+  - {id: st11, split: test, text: "Is it just me or is it cold in here?", claim: false}
+  - {id: st12, split: test, text: "I feel like pizza tonight.", claim: false}
+  - {id: st13, split: test, text: "Can you hear me now?", claim: false}
+  - {id: st14, split: test, text: "Sorry, I was on mute.", claim: false}
+  - {id: st15, split: test, text: "Let's circle back on that next week.", claim: false}
+
+  # --- opinions and plans (claim: false) ---
+  - {id: op01, split: train, text: "I think electric cars are just better.", claim: false}
+  - {id: op02, split: train, text: "We should hire two more engineers next quarter.", claim: false}
+  - {id: op03, split: test, text: "Honestly that movie was overrated.", claim: false}
+  - {id: op04, split: test, text: "I'd rather take the train than drive.", claim: false}
+  - {id: op05, split: test, text: "Our team works best in the mornings.", claim: false}
+  - {id: op06, split: test, text: "Maybe we try the new taco place on Friday.", claim: false}
+
+  # --- self-contained verifiable claims (claim: true) ---
+  - {id: fc01, split: train, text: "The Eiffel Tower is about 330 meters tall.", claim: true, query_has: ["Eiffel"]}
+  - {id: fc02, split: train, text: "Water boils at 100 degrees Celsius at sea level.", claim: true}
+  - {id: fc03, split: train, text: "The US Federal Reserve raised rates four times in 2026.", claim: true, query_has: ["Federal Reserve", "2026"]}
+  - {id: fc04, split: test, text: "Mount Everest is over 8,800 meters high.", claim: true, query_has: ["Everest"]}
+  - {id: fc05, split: test, text: "The Great Wall of China is visible from the Moon with the naked eye.", claim: true}
+  - {id: fc06, split: test, text: "Rhode Island is the smallest US state by area.", claim: true, query_has: ["Rhode Island"]}
+  - {id: fc07, split: test, text: "Tesla delivered more cars than any other EV maker in 2025.", claim: true}
+  - {id: fc08, split: test, text: "The speed of light is about 300,000 kilometers per second.", claim: true}
+  - {id: fc09, split: test, text: "Python was first released in 1991.", claim: true}
+  - {id: fc10, split: test, text: "The federal EV tax credit was 7,500 dollars.", claim: true, query_has: ["7,500"]}
+  - {id: fc11, split: test, text: "Lightning never strikes the same place twice.", claim: true}
+  - {id: fc12, split: test, text: "The Amazon river is longer than the Nile.", claim: true}
+  - {id: fc13, split: test, text: "Humans only use ten percent of their brains.", claim: true}
+  - {id: fc14, split: test, text: "Harvard University was founded in 1636.", claim: true}
+
+  # --- deictic references (claim: true, refs expected) ---
+  - id: dx01
+    split: train
+    text: "They raised it again here last month."
+    context: {pinned: city bus fares}
+    claim: true
+    refs: ["here -> Springfield", "last month -> October 2026"]
+    query_has: ["bus fare", "October 2026"]
+  - id: dx02
+    split: train
+    text: "It went up by twenty percent this year."
+    context: {pinned: EV tax rules, rolling: ["The state EV registration fee is new."]}
+    claim: true
+    refs: ["this year -> 2026"]
+    query_has: ["2026"]
+  - id: dx03
+    split: test
+    text: "Is it true that here they banned plastic bags?"
+    claim: true
+    refs: ["here -> Springfield"]
+    query_has: ["plastic bag"]
+  - id: dx04
+    split: test
+    text: "This company had layoffs last year."
+    context: {pinned: Q4 Engineering at Acme Robotics}
+    claim: true
+    refs: ["this company -> Acme Robotics", "last year -> 2025"]
+    query_has: ["Acme Robotics", "2025"]
+  - id: dx05
+    split: test
+    text: "They said the minimum wage here is fifteen dollars now."
+    claim: true
+    refs: ["here -> Springfield"]
+    query_has: ["minimum wage"]
+  - id: dx06
+    split: test
+    text: "It was the hottest month on record."
+    context: {rolling: ["Remember how hot July was?"]}
+    claim: true
+    query_has: ["July"]
+  - id: dx07
+    split: test
+    text: "Last month inflation here dropped below three percent."
+    claim: true
+    refs: ["last month -> October 2026"]
+    query_has: ["inflation", "October 2026"]
+  - id: dx08
+    split: test
+    text: "They opened a new train station near here in the spring."
+    claim: true
+    refs: ["here -> Springfield"]
+  - id: dx09
+    split: test
+    text: "This bill passed the Senate yesterday."
+    context: {pinned: EV tax rules}
+    claim: true
+    query_has: ["EV"]
+  - id: dx10
+    split: test
+    text: "Their stock doubled since January."
+    context: {rolling: ["Nvidia's earnings call was wild."]}
+    claim: true
+    query_has: ["Nvidia"]
+
+  # --- PII traps (claim may be true; personal data must never reach the query) ---
+  - id: pii01
+    split: train
+    text: "Call Mark at 555-0134 about the bus fare numbers."
+    context: {pinned: city bus fares}
+    claim: false
+    forbid: ["555-0134", "Mark"]
+  - id: pii02
+    split: train
+    text: "Jenna Liu told me the property tax at 12 Elm Street went up 8 percent."
+    claim: true
+    forbid: ["Jenna", "Liu", "12 Elm Street"]
+    query_has: ["property tax"]
+  - id: pii03
+    split: test
+    text: "Email me at sam.rivera@example.com if the EV credit is still 7,500."
+    claim: true
+    forbid: ["sam.rivera@example.com", "Sam", "Rivera"]
+    query_has: ["7,500"]
+  - id: pii04
+    split: test
+    text: "My card 4111 1111 1111 1111 got charged the new toll rate on the bridge."
+    claim: true
+    forbid: ["4111 1111 1111 1111", "4111"]
+    query_has: ["toll"]
+  - id: pii05
+    split: test
+    text: "Dr. Patel at 44 Oak Lane says flu cases here doubled last month."
+    claim: true
+    forbid: ["Patel", "44 Oak Lane"]
+    query_has: ["flu"]
+  - id: pii06
+    split: test
+    text: "My SSN is 123-45-6789, is the identity theft rate really up this year?"
+    claim: true
+    forbid: ["123-45-6789"]
+  - id: pii07
+    split: test
+    text: "Tell Priya her account DE89 3704 0044 0532 0130 00 was charged the new bank fee."
+    claim: false
+    forbid: ["DE89 3704 0044 0532 0130 00", "Priya"]
+  - id: pii08
+    split: test
+    text: "Kevin O'Brien from accounting said the company's revenue grew 40 percent."
+    context: {pinned: Q4 Engineering at Acme Robotics}
+    claim: true
+    forbid: ["Kevin", "O'Brien"]
+    query_has: ["Acme Robotics"]
+  - id: pii09
+    split: test
+    text: "Text 555-0199 if the school here really closes at noon Friday."
+    claim: true
+    forbid: ["555-0199"]
+  - id: pii10
+    split: test
+    text: "Aunt Rosa's house on 7 Birch Court lost value after the new zoning law."
+    claim: true
+    forbid: ["Rosa", "7 Birch Court"]
+
+  # --- borderline (numbers in non-claims, questions, hedges) ---
+  - {id: bl01, split: train, text: "I need like 20 minutes to finish this.", claim: false}
+  - {id: bl02, split: train, text: "Was it 2019 or 2020 when we moved?", claim: false}
+  - {id: bl03, split: test, text: "Can you send me those 3 slides?", claim: false}
+  - {id: bl04, split: test, text: "I bet it's going to rain tomorrow.", claim: false}
+  - {id: bl05, split: test, text: "I read that coffee is bad for your heart, is that true?", claim: true}
+  - {id: bl06, split: test, text: "Room 204 is free at 3.", claim: false}
+  - {id: bl07, split: test, text: "Apparently most people can't name the vice president.", claim: true}
+  - {id: bl08, split: test, text: "My phone is at 15 percent.", claim: false}
+  - {id: bl09, split: test, text: "Didn't Canada legalize cannabis in 2018?", claim: true, query_has: ["Canada", "2018"]}
+  - {id: bl10, split: test, text: "The meeting has 12 people on it.", claim: false}
+  - {id: bl11, split: test, text: "I heard gas is cheaper in Ohio than here.", claim: true, query_has: ["Ohio"]}
+  - {id: bl12, split: test, text: "We sold 40 units last week.", claim: false}
+
+  # --- numeric_only strictness probes (claim true under broad_factual; numeric_only expects only numeric claims) ---
+  - {id: ns01, split: test, text: "The capital of Australia is Sydney.", claim: true, strict_numeric_claim: false}
+  - {id: ns02, split: test, text: "The Moon is about 384,000 kilometers away.", claim: true, strict_numeric_claim: true}
+  - {id: ns03, split: test, text: "Pluto is still classified as a planet.", claim: true, strict_numeric_claim: false}
+  - {id: ns04, split: test, text: "A marathon is 42.195 kilometers.", claim: true, strict_numeric_claim: true}
+  - {id: ns05, split: test, text: "Bats are blind.", claim: true, strict_numeric_claim: false}
+  - {id: ns06, split: test, text: "The US has 50 states.", claim: true, strict_numeric_claim: true}

@@ -56,6 +56,45 @@ class RulesTest {
         assertEquals(setOf(PiiKind.SSN), hits("Is fraud up for 123 45 6789?", "Fraud is up."))
         assertEquals(setOf(PiiKind.ADDRESS), hits("Did rent at 12 elm street rise?", "Rent at 12 elm street rose."))
         assertEquals(setOf(PiiKind.NAME), hits("Did Jenna get the tax refund?", "My friend Jenna got the tax refund."))
+        // A possessive after a family title, and the name inside an email address.
+        assertEquals(setOf(PiiKind.NAME), hits("Did Rosa's house lose value after the zoning law?", "Aunt Rosa's house lost value."))
+        assertEquals(setOf(PiiKind.NAME), hits("Is Sam Rivera's EV credit still 7,500?", "Email sam.rivera@example.com if the EV credit is still 7,500."))
+        // A generic mailbox names nobody.
+        assertEquals(emptySet<PiiKind>(), hits("Is Support for the EV credit ending?", "Write to support@example.com about the EV credit."))
+        assertEquals(emptySet<PiiKind>(), hits("Did the City Council raise bus fares?", "Write to city.council@example.org about the bus fares."))
+        assertEquals(emptySet<PiiKind>(), hits("Did the Springfield Library cut its hours?", "Ask springfield.library@example.org about the hours."))
+        assertEquals(emptySet<PiiKind>(), hits("Did the Board of Education cut hours?", "Write to board.education@example.org about hours."))
+        // Real first.last addresses, including surnames that are also common words, tags and initials.
+        assertEquals(setOf(PiiKind.NAME), hits("Did Taylor Hall's bus fare rise?", "Email taylor.hall@example.com if fares rose."))
+        assertEquals(setOf(PiiKind.NAME), hits("Is Sam Rivera's EV credit still 7,500?", "Email sam.rivera+fares@example.com about the EV credit."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did Rivera get the refund?", "Email j.rivera@example.com about the refund."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did Taylor get the refund?", "Email taylor.post@example.com about the refund."))
+        // Spelling from an email is unknown, so case, apostrophes and hyphens don't matter; digits and long names too.
+        assertEquals(setOf(PiiKind.NAME), hits("Did McDonald get the refund?", "Email j.mcdonald@example.com about the refund."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did O'Brien get the refund?", "Email j.obrien@example.com about the refund."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did Rivera get the refund?", "Email sam.rivera92@example.com about the refund."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did Kim get the refund?", "Email kim.sales@example.com about the refund."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did Maria get the refund?", "Email maria.de.la.cruz@example.com about the refund."))
+        assertEquals(emptySet<PiiKind>(), hits("Did LA raise bus fares?", "Email maria.de.la.cruz@example.com about the fares."))
+        assertEquals(emptySet<PiiKind>(), hits("Did the Parks Department close the pool?", "Write to parks.department@example.org about the pool."))
+        assertEquals(emptySet<PiiKind>(), hits("Did Town Hall extend its hours?", "Write to town.hall@example.org about hours."))
+        // Possessives, hyphenated names, accents and surnames that are also mailbox-like words.
+        assertEquals(setOf(PiiKind.NAME), hits("Did Rivera's refund arrive?", "Email j.rivera@example.com about the refund."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did Smith-Jones get the refund?", "Email a.smith-jones@example.com about the refund."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did Mary-Jane get the refund?", "Email mary-jane.smith@example.com about the refund."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did García get the refund?", "Email jose.garcia@example.com about the refund."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did Jordan Parks get the refund?", "Email parks.jordan@example.com about the refund."))
+        // Role mailboxes name nobody.
+        assertEquals(emptySet<PiiKind>(), hits("Did retail sales rise this year?", "Email sales@example.com about the sales figures."))
+        assertEquals(emptySet<PiiKind>(), hits("Are there no new toll rules?", "I got mail from no-reply@example.gov about toll rules."))
+        assertEquals(emptySet<PiiKind>(), hits("Did the jobs report beat expectations?", "I emailed jobs@example.com about the opening."))
+        assertEquals(emptySet<PiiKind>(), hits("Did AWS raise prices?", "I got an email from no-reply-aws@example.com about price changes."))
+        assertEquals(emptySet<PiiKind>(), hits("Are payments delayed?", "Mail from payments-noreply@example.com says payments are delayed."))
+        assertEquals(emptySet<PiiKind>(), hits("Did the billing rules change?", "Mail came from do_not_reply.billing@example.com about the billing rules."))
+        assertEquals(emptySet<PiiKind>(), hits("Did city parks and recreation cut hours?", "Write to parks.recreation@example.org about hours."))
+        // Surnames that look like reply words still name someone.
+        assertEquals(setOf(PiiKind.NAME), hits("Did Minh get the refund?", "Email do.minh@example.com about the refund."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did Kevin O’Brien say revenue grew?", "Kevin O'Brien from accounting said revenue grew."))
         // The gatekeeper resolved "she" from an earlier sentence.
         assertEquals(
             setOf(PiiKind.NAME),
@@ -94,6 +133,16 @@ class RulesTest {
     }
 
     @Test
+    fun aPublicHyphenatedPlaceInAnEmailIsNotAName() {
+        val hits = PiiPostScrubber.findIn(
+            "Did Wilkes-Barre raise parking fees?",
+            "Email ana.wilkes-barre@example.com about fees.",
+            listOf("Wilkes-Barre"),
+        )
+        assertEquals(emptySet<PiiKind>(), hits)
+    }
+
+    @Test
     fun gatekeeperParserTakesTheFirstBalancedObject() {
         val r = GatekeeperParser.parse("{\"claim\": true, \"query\": \"Is {x} a set?\"} and {\"claim\": false}")
         assertEquals("Is {x} a set?", r!!.sanitizedResolvedQuery)
@@ -106,7 +155,8 @@ class RulesTest {
             PiiPostScrubber.findIn(query, utterance, public)
 
         assertEquals(setOf(PiiKind.PHONE, PiiKind.NAME), hits("Call Mark at 555-0134 about bus fares?", "Call Mark at 555-0134 about the bus fare numbers."))
-        assertEquals(setOf(PiiKind.EMAIL), hits("Is the EV credit still 7,500? sam.rivera@example.com", "Email me at sam.rivera@example.com if the EV credit is still 7,500."))
+        // The address itself, and the name in it.
+        assertEquals(setOf(PiiKind.EMAIL, PiiKind.NAME), hits("Is the EV credit still 7,500? sam.rivera@example.com", "Email me at sam.rivera@example.com if the EV credit is still 7,500."))
         assertEquals(setOf(PiiKind.CARD), hits("Did the bridge toll rise for card 4111?", "My card 4111 1111 1111 1111 got charged the new toll rate on the bridge."))
         assertEquals(setOf(PiiKind.SSN), hits("Is identity theft up for 123-45-6789?", "My SSN is 123-45-6789, is the identity theft rate really up this year?"))
         assertEquals(setOf(PiiKind.IBAN), hits("New bank fee on DE89 3704 0044 0532 0130 00?", "Tell Priya her account DE89 3704 0044 0532 0130 00 was charged the new bank fee."))

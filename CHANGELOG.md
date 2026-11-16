@@ -6,6 +6,7 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ### Added
 
+- Gatekeeper evaluation: 73 made-up sentences in `eval/utterances.yaml`; `./dev eval` checks the local rules, date hints and personal-data check against every one; Diagnostics → Run evaluation scores Gemini Nano on the device (claim precision and recall, references, personal data left and sent, latency) with nothing sent.
 - Listening screen layout: a context bar with the Strict/Balanced chip, the date, area and topic; three counters for the session (sentences read only on the phone, raw text sent, claims checked in the cloud) kept by the pipeline for the session; each card in three stages (heard, clean question, grounded check), whose labels say when the cloud read the sentence in Balanced mode, with the reported inference source as a colored pill, resolved references as tags and a colored verdict badge; "Run demo" plays a scripted conversation set in a fictional Springfield through the real pipeline, each card marked "Demo input".
 - Hybrid pipeline: Tier 0 rules drop obvious small talk; Gemini Nano on the phone writes one self-contained question with the place, date and topic resolved (Strict: on device only; Balanced: may fall back to cloud Gemini, recorded as raw text sent); a personal-data check withholds any question that still carries a name, phone, email, card, IBAN, SSN or street address from the sentence or the ones before it; switching to Strict also covers sentences already waiting; cloud Gemini with Google Search grounding returns the verdict with Google's Search Suggestions chip, and no web source means "not enough evidence"; when the cloud refuses for quota or billing, the card offers a search of the clean question in the browser instead. Versioned prompts; every request that leaves the phone is in the egress ledger with its exact text, including one stopped midway by Clear, and the counters come from it.
 - Listening session: on-device speech recognition with a restart loop (the microphone stays off where on-device recognition is missing), typed sentences, a pinned topic, the last three sentences in memory, relative dates resolved to ranges, and "Set my area" with a bundled GeoNames city table (no geocoder).
@@ -19,5 +20,6 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ### Fixed
 
+- The personal-data check now recognizes a name after a family title with a possessive ("Aunt Rosa's house") and the name in an email address ("sam.rivera@…").
 - The ledger counted refused cloud requests as not sent; it now reads "Clean questions answered" with the bytes that were sent.
 - Docs pages lead back to the web app: the header logo and a first "App" entry in the navigation; the app header links Setup as well as Docs and Privacy.

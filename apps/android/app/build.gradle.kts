@@ -84,9 +84,29 @@ val generateCityTable = tasks.register<GenerateCityTable>("generateCityTable") {
     cacheDir.set(rootProject.layout.projectDirectory.dir("../../.cache/geonames"))
 }
 
+/** The evaluation set at the repository root, packaged as assets/eval/utterances.yaml for the on-device run. */
+abstract class CopyEvalSet : DefaultTask() {
+    @get:InputFile abstract val source: RegularFileProperty
+    @get:OutputDirectory abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        val target = outputDir.get().asFile.resolve("eval")
+        target.mkdirs()
+        source.get().asFile.copyTo(target.resolve("utterances.yaml"), overwrite = true)
+    }
+}
+
+val evalSetFile = rootProject.layout.projectDirectory.file("../../eval/utterances.yaml")
+
+val copyEvalSet = tasks.register<CopyEvalSet>("copyEvalSet") {
+    source.set(evalSetFile)
+}
+
 androidComponents {
     onVariants { variant ->
         variant.sources.assets?.addGeneratedSourceDirectory(generateCityTable, GenerateCityTable::outputDir)
+        variant.sources.assets?.addGeneratedSourceDirectory(copyEvalSet, CopyEvalSet::outputDir)
     }
 }
 
@@ -134,6 +154,15 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    testOptions {
+        // The JVM evaluation reads the same file the app packages.
+        unitTests.all {
+            it.systemProperty("contextlens.evalSet", evalSetFile.asFile.absolutePath)
+            // An edit to the set re-runs the tests instead of reusing a cached result.
+            it.inputs.file(evalSetFile).withPropertyName("evalSet").withPathSensitivity(PathSensitivity.NONE)
+        }
+    }
+
     lint {
         warningsAsErrors = false
         abortOnError = true
@@ -173,6 +202,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.snakeyaml.engine)
 
     testImplementation(libs.junit)
 }

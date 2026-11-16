@@ -22,12 +22,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.contextlens.app.BuildConfig
 import com.contextlens.app.R
+import com.contextlens.app.ai.FirebaseModelSource
 import com.contextlens.app.ai.ModelGateway
+import com.contextlens.app.ai.loadPrompts
+import com.contextlens.app.domain.EvalSet
+import com.contextlens.app.domain.GatekeeperEval
+import com.contextlens.app.domain.PrivacyMode
 import com.contextlens.app.diagnostics.ModelState
 import com.contextlens.app.diagnostics.ReportInfo
 import com.contextlens.app.diagnostics.buildReport
@@ -37,6 +44,8 @@ import com.contextlens.app.firebase.AppCheckProviders
 import com.contextlens.app.firebase.AuthState
 import com.contextlens.app.firebase.FirebaseSession
 import com.contextlens.app.speech.SpeechListener
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 @Composable
@@ -58,6 +67,13 @@ fun DiagnosticsScreen(session: FirebaseSession, models: ModelGateway) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val onDeviceSpeech = remember { SpeechListener.isOnDeviceAvailable(context) }
+    // Strict gatekeeper: on the device only, so the evaluation never reaches the cloud.
+    val evalModel = remember(models) { FirebaseModelSource(models).gatekeeper(PrivacyMode.STRICT) }
+    var evalProgress by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    var evalReport by remember { mutableStateOf<String?>(null) }
+    var evalJob by remember { mutableStateOf<Job?>(null) }
+    // The evaluation uses the on-device model too; other model actions wait until it ends.
+    val modelBusy = busy || evalProgress != null
 
     // First visit: ask the phone once; later visits keep the last answer.
     LaunchedEffect(Unit) { if (model == ModelState.Unknown) models.checkStatus() }
@@ -98,17 +114,17 @@ fun DiagnosticsScreen(session: FirebaseSession, models: ModelGateway) {
                 Text(stringResource(R.string.diag_unavailable_hint), style = MaterialTheme.typography.bodySmall)
             }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { models.checkStatus() }, enabled = !busy) {
+                OutlinedButton(onClick = { models.checkStatus() }, enabled = !modelBusy) {
                     Text(stringResource(R.string.diag_check))
                 }
                 // A download already running (e.g. started before the app restarted) can be followed again.
                 Button(
                     onClick = { models.download() },
-                    enabled = !busy && (model == ModelState.Downloadable || model is ModelState.Downloading),
+                    enabled = !modelBusy && (model == ModelState.Downloadable || model is ModelState.Downloading),
                 ) {
                     Text(stringResource(R.string.diag_download))
                 }
-                OutlinedButton(onClick = { models.warmUp() }, enabled = !busy && model == ModelState.Available) {
+                OutlinedButton(onClick = { models.warmUp() }, enabled = !modelBusy && model == ModelState.Available) {
                     Text(stringResource(R.string.diag_warm_up))
                 }
             }
@@ -119,12 +135,59 @@ fun DiagnosticsScreen(session: FirebaseSession, models: ModelGateway) {
             Text(stringResource(R.string.diag_probe_hint), style = MaterialTheme.typography.bodySmall)
             LabeledValue(stringResource(R.string.diag_cloud_model), cloudModel ?: stringResource(R.string.diag_not_tested))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { models.probeOnDevice() }, enabled = !busy && model == ModelState.Available) {
+                Button(onClick = { models.probeOnDevice() }, enabled = !modelBusy && model == ModelState.Available) {
                     Text(stringResource(R.string.diag_probe_device))
                 }
                 Button(onClick = { models.probeCloud() }, enabled = !busy) {
                     Text(stringResource(R.string.diag_probe_cloud))
                 }
+            }
+        }
+
+        Section {
+            // The gatekeeper on the evaluation set, on the device only; nothing is sent.
+            Text(stringResource(R.string.diag_eval_title), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.diag_eval_hint), style = MaterialTheme.typography.bodySmall)
+            val p = evalProgress
+            if (p != null) {
+                LinearProgressIndicator(progress = { p.first.toFloat() / p.second.coerceAtLeast(1) }, modifier = Modifier.fillMaxWidth())
+                Text(stringResource(R.string.diag_eval_progress, p.first, p.second), style = MaterialTheme.typography.bodySmall)
+            }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = {
+                        evalProgress = 0 to 0
+                        evalReport = null
+                        evalJob = scope.launch {
+                            try {
+                                val items = EvalSet.parse(context.assets.open("eval/utterances.yaml").bufferedReader().use { it.readText() })
+                                val prompts = loadPrompts(context.assets)
+                                val results = GatekeeperEval(evalModel, prompts.gatekeeper).run(items) { done, total -> evalProgress = done to total }
+                                val header = "App ${BuildConfig.VERSION_NAME} · $device · on-device model ${modelName ?: "unknown"}"
+                                evalReport = GatekeeperEval.report(results, header, prompts.gatekeeper.version)
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                evalReport = "Evaluation failed: ${e.javaClass.simpleName}"
+                            } finally {
+                                evalProgress = null
+                            }
+                        }
+                    },
+                    enabled = !busy && evalProgress == null && model == ModelState.Available,
+                ) { Text(stringResource(R.string.diag_eval_run)) }
+                if (evalProgress != null) {
+                    OutlinedButton(onClick = { evalJob?.cancel() }) { Text(stringResource(R.string.diag_eval_stop)) }
+                }
+                evalReport?.let { report ->
+                    OutlinedButton(onClick = {
+                        scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("ContextLens evaluation", report))) }
+                    }) { Text(stringResource(R.string.diag_eval_copy)) }
+                }
+            }
+            evalReport?.let { report ->
+                // The summary lines; the full list is in the copied report.
+                Text(report.lineSequence().drop(1).takeWhile { it.isNotBlank() }.joinToString("\n"), style = MaterialTheme.typography.bodySmall)
             }
         }
 

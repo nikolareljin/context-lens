@@ -20,7 +20,7 @@ report() {
   if present "$dir" && { [[ "$all" == true ]] || touched "$pattern"; }; then v=true; fi
   echo "$name=$v"
 }
-report android apps/android '^(apps/android/|VERSION$)'
+report android apps/android '^(apps/android/|eval/|VERSION$)'
 report functions functions '^functions/'
 report web apps/web '^apps/web/'
 report firebase firebase '^(firebase/|firebase\.json$)'
