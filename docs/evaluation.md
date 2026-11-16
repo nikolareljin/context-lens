@@ -24,3 +24,25 @@ The personal-data check is a backstop behind the prompt, not a complete name det
 ## Results
 
 Results are added here with the phone model, Android version and app version after each on-device run.
+
+### Samsung Galaxy S26 (SM-S942U), Android 17, app 0.0.1, Nov 16, 2026
+
+On-device model nano-v4-fast, prompt v1, 58 scored sentences, Strict mode.
+
+| Metric | Result |
+|---|---|
+| Failed calls | 0 |
+| Claim precision | 96% |
+| Claim recall | 75% (27 found, 1 invented, 9 missed) |
+| References resolved | 5 of 6 |
+| Expected words in the questions for found claims | 14 of 16 |
+| Personal data left by the model | 0 |
+| Personal data that would be sent | **0** |
+| Median latency | about 1.8 s |
+| Inference source | `ON_DEVICE` for all 58 |
+
+Missed claims: fc05, fc11, fc13, dx06, pii03, pii04, pii10, bl07, ns05. The next prompt version targets these.
+
+The first run on this phone had 9 calls refused by Android's usage quota for Gemini Nano, because the evaluation sends sentences back to back. The evaluation now waits and retries a refused call, and the summary lists the reason for any call that still fails.
+
+<img class="cl-screen" src="../assets/screen-evaluation.png" alt="Diagnostics evaluation summary on the phone: 58 test sentences, 0 failed, claim precision 96%, recall 75%, references 5 of 6, personal data 0 left and 0 would have been sent, median latency 1804 ms, all on device">

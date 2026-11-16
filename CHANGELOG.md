@@ -26,6 +26,7 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ### Fixed
 
+- Diagnostics call log: a gatekeeper call that ran on the phone is named after the on-device model, not the cloud fallback model.
 - The personal-data check now recognizes a name after a family title with a possessive ("Aunt Rosa's house") and the name in an email address ("sam.rivera@…").
 - The ledger counted refused cloud requests as not sent; it now reads "Clean questions answered" with the bytes that were sent.
 - Docs pages lead back to the web app: the header logo and a first "App" entry in the navigation; the app header links Setup as well as Docs and Privacy.

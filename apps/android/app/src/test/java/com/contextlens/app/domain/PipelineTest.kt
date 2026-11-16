@@ -3,6 +3,7 @@ package com.contextlens.app.domain
 import com.contextlens.app.context.Region
 import com.contextlens.app.context.SessionContextManager
 import com.contextlens.app.diagnostics.CallLog
+import com.contextlens.app.diagnostics.Tier
 import java.time.LocalDate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -41,11 +42,13 @@ class PipelineTest {
         val balanced: FakeModel,
         val verifiers: List<FakeModel>,
         var ready: Boolean = true,
+        val onDevice: String? = null,
     ) : ModelSource {
         val answered = mutableListOf<String>()
         override fun gatekeeper(mode: PrivacyMode): TextModel = if (mode == PrivacyMode.STRICT) strict else balanced
         override fun verifiers(): List<TextModel> = verifiers
         override fun onDeviceReady(): Boolean = ready
+        override fun onDeviceName(): String? = onDevice
         override fun verifierAnswered(name: String) {
             answered += name
         }
@@ -227,8 +230,26 @@ class PipelineTest {
         assertEquals(1, h.pipeline.ledger.entries.value.totals().cloudChecks)
         assertEquals(1, h.pipeline.counts.value.checked)
         assertEquals(listOf("good"), models.answered)
-        assertTrue(h.log.entries.value.any { it.model == "gatekeeper gate" })
+        assertTrue(h.log.entries.value.any { it.model == "gatekeeper on-device model" })
         h.scope.cancel()
+    }
+
+    @Test
+    fun theCallLogNamesTheModelThatRanTheGatekeeper() {
+        val onPhone = FakeSource(gate(claimJson), gate(claimJson), listOf(verifier()), onDevice = "nano-v4-fast")
+        val h = harness(onPhone)
+        h.settle(h.pipeline.submit("Python was first released in 1991.")!!)
+        val gateCall = h.log.entries.value.single { it.model.startsWith("gatekeeper") }
+        assertEquals("gatekeeper nano-v4-fast" to Tier.ON_DEVICE, gateCall.model to gateCall.tier)
+        h.scope.cancel()
+
+        val inCloud = FakeSource(gate(claimJson), gate(claimJson, source = "IN_CLOUD"), listOf(verifier()), onDevice = "nano-v4-fast")
+        val h2 = harness(inCloud)
+        h2.pipeline.setMode(PrivacyMode.BALANCED)
+        h2.settle(h2.pipeline.submit("Python was first released in 1991.")!!)
+        val cloudCall = h2.log.entries.value.single { it.model.startsWith("gatekeeper") }
+        assertEquals("gatekeeper gate" to Tier.CLOUD, cloudCall.model to cloudCall.tier)
+        h2.scope.cancel()
     }
 
     @Test
@@ -367,6 +388,8 @@ class PipelineTest {
         val gates = h.log.entries.value.filter { it.model.startsWith("gatekeeper") }
         assertEquals(2, gates.size)
         assertEquals(1, gates.count { it.outcome.contains("usage quota") && it.outcome.endsWith("trying again in 5 s") })
+        // both attempts stayed on the phone, so both are named after the on-device model
+        assertTrue(gates.all { it.model == "gatekeeper on-device model" && it.tier == Tier.ON_DEVICE })
         h.scope.cancel()
     }
 

@@ -56,3 +56,9 @@
 .md-typeset .admonition.note, .md-typeset details.note { border-color: var(--cl-violet); }
 .md-typeset .note > .admonition-title, .md-typeset .note > summary { background-color: rgba(168, 85, 247, .1); }
 .md-typeset .note > .admonition-title::before, .md-typeset .note > summary::before { background-color: var(--cl-violet); }
+
+/* Phone screenshots: side by side on wide screens, stacked on narrow ones. */
+.md-typeset .cl-screens { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 1rem; }
+.md-typeset .cl-screens figure { margin: 0; }
+.md-typeset .cl-screens img, .md-typeset .cl-screen { border-radius: 0.75rem; border: 1px solid var(--cl-slate-700); }
+.md-typeset .cl-screen { display: block; max-width: 22rem; }

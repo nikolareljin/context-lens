@@ -27,6 +27,14 @@ Checking what is said in a meeting, a lecture or a conversation usually means se
 
 Each card shows the source Firebase AI Logic reported for that request (on device or in cloud) and how long it took. See [how the hybrid split works](hybrid.md) and the [privacy firewall](privacy.md).
 
+## On the phone
+
+<div class="cl-screens" markdown>
+<figure><img src="assets/screen-listen-top.png" alt="Listen screen in Strict mode with the date, the fictional Springfield area, a pinned topic and three counters: 6 sentences read only on this phone, 0 B raw text sent, 0 claims checked in the cloud"><figcaption>Listen: Strict mode, the pinned topic and the session counters.</figcaption></figure>
+<figure><img src="assets/screen-listen-cards.png" alt="Two demo cards: each sentence rewritten on the device into a clean question about Springfield bus fares, with its resolved references and an ON_DEVICE source pill; the cloud check offers a browser search instead"><figcaption>Cards from the demo: the clean question is written on the device; here the cloud check was not set up yet, so the card offers a search.</figcaption></figure>
+<figure><img src="assets/screen-ledger.png" alt="Egress ledger: 6 sentences processed, 4 filtered on the phone, 0 B raw text sent, and the exact clean question that was sent to the cloud"><figcaption>Ledger: everything that left the phone, word for word.</figcaption></figure>
+</div>
+
 ## Get it
 
 In Chrome: the [web companion](../) runs the same three stages in the browser.

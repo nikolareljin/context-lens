@@ -109,6 +109,8 @@ class FirebaseModelSource(private val gateway: ModelGateway) : ModelSource {
     override fun verifierAnswered(name: String) {
         preferred = name
     }
+
+    override fun onDeviceName(): String? = gateway.onDeviceName.value
 }
 
 /** Loads the versioned prompts from assets/prompts. */

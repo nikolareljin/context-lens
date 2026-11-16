@@ -91,6 +91,9 @@ interface ModelSource {
 
     /** Called with the verifier that answered, so it is tried first next time. */
     fun verifierAnswered(name: String) {}
+
+    /** The on-device model's own name, for the call log; null when not known yet. */
+    fun onDeviceName(): String? = null
 }
 
 /**
@@ -239,6 +242,7 @@ class HybridContextPipeline(
                 update(work.id) { it.copy(sentToCloud = true) }
             }
         }
+        fun onDeviceLabel() = models.onDeviceName() ?: ON_DEVICE_MODEL_LABEL
         // Balanced can fall back to the cloud, so a call stopped midway may already have been sent.
         suspend fun attempt() = call(gateTimeoutMs, onCancel = { if (mode == PrivacyMode.BALANCED) rawText(null, MAYBE_SENT, inSession = false) }) {
             model.generate(prompt)
@@ -254,7 +258,7 @@ class HybridContextPipeline(
             val error = outcome.error
             if (mode != PrivacyMode.STRICT || error == null || !GatekeeperEval.isQuota(error)) break
             val retry = "trying again in ${wait / 1000} s"
-            callLog?.add(CallRecord(attemptStart, Tier.ON_DEVICE, "gatekeeper ${model.name}", null, clock() - attemptStart, "${outcome.label}; $retry"))
+            callLog?.add(CallRecord(attemptStart, Tier.ON_DEVICE, "gatekeeper ${onDeviceLabel()}", null, clock() - attemptStart, "${outcome.label}; $retry"))
             update(work.id) { it.copy(note = "The phone's model is busy; $retry.") }
             pause(wait)
             // Clear during the wait must stop here, however the wait itself handles cancellation.
@@ -268,7 +272,9 @@ class HybridContextPipeline(
         val tier = if (reply?.source == ON_DEVICE || (mode == PrivacyMode.STRICT && reply == null)) Tier.ON_DEVICE else Tier.CLOUD
         // Strict without a reply never left the phone (on device only); a Balanced call without one may have.
         if (tier == Tier.ON_DEVICE) count(work.session) { it.copy(readOnPhone = it.readOnPhone + 1) }
-        callLog?.add(CallRecord(attemptStart, tier, "gatekeeper ${model.name}", reply?.source, latency, outcome.label))
+        // model.name is the cloud fallback; a call kept on the phone is named after the on-device model.
+        val label = if (tier == Tier.ON_DEVICE) onDeviceLabel() else model.name
+        callLog?.add(CallRecord(attemptStart, tier, "gatekeeper $label", reply?.source, latency, outcome.label))
         if (mode == PrivacyMode.STRICT && reply != null && reply.source != ON_DEVICE) {
             // Strict asked for the phone only; a reply from anywhere else is recorded and not used.
             rawText(reply.source, "${outcome.label}; not on the device in Strict mode")
@@ -364,6 +370,8 @@ class HybridContextPipeline(
         const val VERIFY_TIMEOUT_MS = 30_000L
         val QUOTA_BACKOFF_MS = listOf(5_000L, 15_000L)
         const val ON_DEVICE = "ON_DEVICE"
+        /** The call-log name of the on-device model before the system reports its own. */
+        const val ON_DEVICE_MODEL_LABEL = "on-device model"
         const val MAYBE_SENT = "cancelled; may have been sent"
     }
 }
