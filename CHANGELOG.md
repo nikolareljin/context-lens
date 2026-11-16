@@ -4,6 +4,10 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ## [Unreleased]
 
+### Fixed
+
+- The on-device evaluation retries a call Android refused for its usage quota (after 5 s, then 15 s) instead of scoring it as a miss, and its summary lists failure reasons and the ids of claims answered "no claim".
+
 ### Added
 
 - Leak checks before anything is published: `./dev scan` and CI run gitleaks (tree and history), foxguard (reviewed false positives ignored inline with the reason), and a personal-data check over the tree and every commit and file version in a pull request (email addresses, phone numbers, Firebase identifiers, coordinates and image metadata).

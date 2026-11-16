@@ -6,6 +6,7 @@ import java.time.LocalDate
 import java.time.Month
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 import org.snakeyaml.engine.v2.api.Load
 import org.snakeyaml.engine.v2.api.LoadSettings
@@ -93,6 +94,10 @@ data class EvalSummary(
     val sentLeaks: Int,
     val medianLatencyMs: Long?,
     val sources: Map<String, Int>,
+    /** Why calls failed, by reason. */
+    val failures: Map<String, Int> = emptyMap(),
+    /** Labelled claims the gatekeeper answered "no claim" to (failed calls are not listed here). */
+    val missed: List<String> = emptyList(),
 ) {
     val precision: Double? get() = ratio(truePositives, truePositives + falsePositives)
     val recall: Double? get() = ratio(truePositives, truePositives + falseNegatives)
@@ -110,6 +115,9 @@ class GatekeeperEval(
     private val prompt: Prompt,
     private val clock: () -> Long = System::currentTimeMillis,
     private val timeoutMs: Long = 20_000,
+    /** Waits before retrying a call the phone refused for its usage quota. */
+    private val quotaBackoffMs: List<Long> = listOf(5_000, 15_000),
+    private val pause: suspend (Long) -> Unit = { delay(it) },
 ) {
     suspend fun run(items: List<EvalItem>, onProgress: (done: Int, total: Int) -> Unit = { _, _ -> }): List<EvalResult> {
         val scored = items.filter { it.scored }
@@ -117,22 +125,46 @@ class GatekeeperEval(
     }
 
     private suspend fun one(item: EvalItem): EvalResult {
-        val start = clock()
-        val reply = try {
-            withTimeoutOrNull(timeoutMs) { model.generate(gatekeeperPrompt(prompt, item.context, item.text)) }
-                ?: return EvalResult(item, null, "", emptyList(), null, clock() - start, error = "timed out")
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            return EvalResult(item, null, "", emptyList(), null, clock() - start, error = e.javaClass.simpleName)
+        var attempt = 0
+        while (true) {
+            val start = clock()
+            val reply = try {
+                withTimeoutOrNull(timeoutMs) { model.generate(gatekeeperPrompt(prompt, item.context, item.text)) }
+                    ?: return EvalResult(item, null, "", emptyList(), null, clock() - start, error = "timed out")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // The phone limits how often one app may call the on-device model; a run sends
+                // sentences back to back, so wait and try again rather than score a refusal.
+                if (isQuota(e) && attempt < quotaBackoffMs.size) {
+                    pause(quotaBackoffMs[attempt++])
+                    continue
+                }
+                return EvalResult(item, null, "", emptyList(), null, clock() - start, error = describe(e))
+            }
+            return scoreReply(item, reply, clock() - start)
         }
-        val latency = clock() - start
+    }
+
+    private fun scoreReply(item: EvalItem, reply: ModelReply, latency: Long): EvalResult {
         val result = GatekeeperParser.parse(reply.text)
             ?: return EvalResult(item, null, "", emptyList(), reply.source, latency, error = "reply was not valid")
         return score(item, result, reply.source, latency)
     }
 
     companion object {
+        /** AICore's refusal when the app is over its on-device usage quota (error code 9). */
+        internal fun isQuota(e: Throwable): Boolean {
+            val m = e.message.orEmpty()
+            return m.contains("usage quota", ignoreCase = true) || m.contains("ErrorCode 9]")
+        }
+
+        /** The exception type and, when there is one, the first line of its message, kept short. */
+        internal fun describe(e: Throwable): String {
+            val message = e.message?.lineSequence()?.firstOrNull()?.trim()?.take(80).orEmpty()
+            return if (message.isEmpty()) e.javaClass.simpleName else "${e.javaClass.simpleName}: $message"
+        }
+
         /** Compares one gatekeeper answer with its label; also used by the JVM tests. */
         fun score(item: EvalItem, result: GatekeeperResult, source: String?, latencyMs: Long): EvalResult {
             val query = if (result.hasVerifiableClaim) result.sanitizedResolvedQuery else ""
@@ -194,6 +226,8 @@ class GatekeeperEval(
                 sentLeaks = results.sumOf { it.sentLeaks.size },
                 medianLatencyMs = latencies.getOrNull(latencies.size / 2),
                 sources = results.groupingBy { it.source ?: "none" }.eachCount(),
+                failures = results.mapNotNull { it.error }.groupingBy { it }.eachCount(),
+                missed = answered.filter { it.item.claim && it.claim == false }.map { it.item.id },
             )
         }
 
@@ -208,6 +242,8 @@ class GatekeeperEval(
             appendLine("References resolved ${s.refsFound}/${s.refsExpected} · expected words in the questions for found claims ${s.queryHasFound}/${s.queryHasExpected}")
             appendLine("Personal data: ${s.modelLeaks} left in a question by the model, ${s.sentLeaks} would have been sent")
             appendLine("Median latency ${s.medianLatencyMs?.let { "$it ms" } ?: "n/a"} · sources ${s.sources.entries.joinToString { "${it.key} ${it.value}" }}")
+            if (s.failures.isNotEmpty()) appendLine("Failures: ${s.failures.entries.joinToString { "${it.key} ×${it.value}" }}")
+            if (s.missed.isNotEmpty()) appendLine("Missed claims: ${s.missed.joinToString()}")
             appendLine()
             results.forEach { r ->
                 val verdict = when {
