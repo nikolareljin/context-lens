@@ -63,6 +63,13 @@ class RulesTest {
         assertEquals(emptySet<PiiKind>(), hits("Is Support for the EV credit ending?", "Write to support@example.com about the EV credit."))
         assertEquals(emptySet<PiiKind>(), hits("Did the City Council raise bus fares?", "Write to city.council@example.org about the bus fares."))
         assertEquals(emptySet<PiiKind>(), hits("Did the Springfield Library cut its hours?", "Ask springfield.library@example.org about the hours."))
+        assertEquals(emptySet<PiiKind>(), hits("Did the Board of Education cut hours?", "Write to board.education@example.org about hours."))
+        // Real first.last addresses, including surnames that are also common words, tags and initials.
+        assertEquals(setOf(PiiKind.NAME), hits("Did Taylor Hall's bus fare rise?", "Email taylor.hall@example.com if fares rose."))
+        assertEquals(setOf(PiiKind.NAME), hits("Is Sam Rivera's EV credit still 7,500?", "Email sam.rivera+fares@example.com about the EV credit."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did Rivera get the refund?", "Email j.rivera@example.com about the refund."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did Taylor get the refund?", "Email taylor.post@example.com about the refund."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did Kevin O’Brien say revenue grew?", "Kevin O'Brien from accounting said revenue grew."))
         // The gatekeeper resolved "she" from an earlier sentence.
         assertEquals(
             setOf(PiiKind.NAME),

@@ -7,9 +7,9 @@
 #   text      the utterance
 #   context   optional SessionContext overrides: region, date, pinned, rolling (list)
 #   claim     expected hasVerifiableClaim
-#   refs      expected resolved references (substring match on "x -> y"), optional
+#   refs      expected resolved references ("x -> y", whole words, plurals allowed), optional
 #   forbid    strings that must never appear in sanitizedResolvedQuery (PII traps)
-#   query_has strings the resolved query must contain, optional
+#   query_has words the resolved query must contain (whole words, plurals allowed), optional
 #   strict_numeric_claim  expected claim under a numbers-only strictness (not scored yet)
 
 defaults:

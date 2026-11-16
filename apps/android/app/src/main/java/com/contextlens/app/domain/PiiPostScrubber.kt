@@ -120,7 +120,8 @@ object PiiPostScrubber {
         fun word(name: String) = Regex("\\b${Regex.escape(name)}\\b")
         sentences.flatMap(::names)
             .filterNot { word(it).containsMatchIn(publicText) || word(it).containsMatchIn(addresses) }
-            .forEach { if (word(it).containsMatchIn(query)) hits += PiiKind.NAME }
+            // "O’Brien" with a curly apostrophe is the same name as "O'Brien".
+            .forEach { if (word(it.replace('’', '\'')).containsMatchIn(query.replace('’', '\''))) hits += PiiKind.NAME }
         return hits
     }
 
@@ -167,22 +168,25 @@ object PiiPostScrubber {
             ).toSet()
 
     /**
-     * "sam.rivera@example.com" names Sam Rivera: only a first.last local part counts.
-     * "city.council@" and "press@" name nobody, so "the City Council" stays askable.
+     * "sam.rivera@example.com" names Sam Rivera, and so do "sam.rivera+fares@",
+     * "j.rivera@" (Rivera) and "sam.j.rivera@". An address with a mailbox word in it
+     * ("city.council@", "springfield.library@", "press@") names nobody, so "the City
+     * Council" stays askable; organization words are never taken as names ("taylor.post@"
+     * names Taylor).
      */
     private fun emailNames(utterance: String): List<String> = email.findAll(utterance).flatMap { m ->
-        val parts = m.value.substringBefore('@').split(Regex("[._-]+"))
+        val parts = m.value.substringBefore('@').substringBefore('+').split(Regex("[._-]+"))
+            .filter { it.isNotEmpty() }
             .map { part -> part.lowercase().replaceFirstChar { it.titlecase() } }
-        val personal = parts.size == 2 && parts.all { p ->
-            p.length >= 2 && p.all(Char::isLetter) && p !in orgWords && p !in notNames && p.lowercase() !in mailboxWords
-        }
-        if (personal) parts.asSequence() else emptySequence()
+        val mailbox = parts.any { it.lowercase() in mailboxWords } || parts.firstOrNull() in notNames
+        val names = parts.filter { it.length >= 2 && it.all(Char::isLetter) && it !in orgWords }
+        if (mailbox || parts.size !in 2..3 || names.isEmpty()) emptySequence() else names.asSequence()
     }.toList()
 
     private val mailboxWords = setOf(
-        "info", "support", "contact", "admin", "sales", "hello", "office", "team", "mail", "noreply", "no", "reply", "help",
-        "news", "billing", "press", "media", "jobs", "careers", "events", "orders", "hr", "city", "hall", "library", "parks",
-        "dept", "public", "works", "customer", "service", "services", "school", "town", "county", "state", "police", "fire",
+        "info", "support", "contact", "admin", "sales", "hello", "office", "team", "mail", "noreply", "no", "help",
+        "news", "billing", "press", "media", "careers", "events", "orders", "hr", "city", "library", "dept",
+        "public", "customer", "service", "services", "school", "county", "police", "board", "parking", "council",
     )
 
     /**

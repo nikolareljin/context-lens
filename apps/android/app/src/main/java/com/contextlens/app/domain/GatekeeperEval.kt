@@ -156,16 +156,19 @@ class GatekeeperEval(
         }
 
         /**
-         * Case-insensitive, with "→" read as "->". Words match whole ("Sam" is not in
-         * "same"); in numbers, spaces and dashes are ignored ("4111111111111111").
+         * Case-insensitive, with "→" read as "->" and curly apostrophes as straight ones.
+         * Words match whole, plurals allowed ("Sam" is not in "same"; "plastic bag" is in
+         * "plastic bags"). Numbers match whole, ignoring spaces and dashes
+         * ("4111111111111111" has "4111 1111 1111 1111"; "41110" does not have "4111").
          */
         internal fun contains(haystack: String, needle: String): Boolean {
-            fun norm(s: String) = s.lowercase(Locale.US).replace("→", "->").replace(Regex("\\s+"), " ")
+            fun norm(s: String) = s.lowercase(Locale.US).replace("→", "->").replace('’', '\'').replace(Regex("\\s+"), " ")
             fun digitsOnly(s: String) = s.replace(Regex("[\\s-]"), "")
             val h = norm(haystack)
             val n = norm(needle)
-            if (Regex("(?<![\\p{L}\\p{N}])" + Regex.escape(n) + "(?![\\p{L}\\p{N}])").containsMatchIn(h)) return true
-            return n.any(Char::isDigit) && digitsOnly(h).contains(digitsOnly(n))
+            if (Regex("(?<![\\p{L}\\p{N}])" + Regex.escape(n) + "(?:s|es|'s)?(?![\\p{L}\\p{N}])").containsMatchIn(h)) return true
+            return n.any(Char::isDigit) &&
+                Regex("(?<!\\d)" + Regex.escape(digitsOnly(n)) + "(?!\\d)").containsMatchIn(digitsOnly(h))
         }
 
         /**

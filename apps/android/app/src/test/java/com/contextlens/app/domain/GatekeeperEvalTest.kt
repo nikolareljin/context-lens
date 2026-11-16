@@ -104,6 +104,12 @@ class GatekeeperEvalTest {
         assertFalse(GatekeeperEval.contains("Is the EV credit still the same 7,500 dollars?", "Sam"))
         assertFalse(GatekeeperEval.contains("Did the stock market fall?", "Mark"))
         assertTrue(GatekeeperEval.contains("Ask Mark about it", "Mark"))
+        assertTrue(GatekeeperEval.contains("Did Springfield ban plastic bags?", "plastic bag"))
+        assertTrue(GatekeeperEval.contains("Ask Kevin O’Brien", "O'Brien"))
+        // Numbers match whole.
+        assertFalse(GatekeeperEval.contains("Did 41110 drivers pay the toll?", "4111"))
+        assertFalse(GatekeeperEval.contains("Is the credit 17,500 now?", "7,500"))
+        assertFalse(GatekeeperEval.contains("Did rent at 112 Elm Street rise?", "12 Elm Street"))
     }
 
     @Test
