@@ -414,8 +414,11 @@ class PipelineTest {
         assertEquals(Stage.GATEKEEPING, card.stage)
         assertEquals("The phone's model is busy; trying again in 5 s.", card.note)
         h.pipeline.clear()
+        // a wait that survived Clear would ask the model again once it ends
+        waiting.complete(Unit)
         runBlocking { delay(200) }
         assertEquals(1, strict.prompts.size)
+        assertEquals(1, h.log.entries.value.count { it.model.startsWith("gatekeeper") })
         assertTrue(h.pipeline.checks.value.isEmpty())
         assertTrue(h.pipeline.ledger.entries.value.isEmpty())
         assertEquals(PipelineCounts(), h.pipeline.counts.value)
