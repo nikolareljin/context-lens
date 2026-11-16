@@ -256,6 +256,33 @@ class PipelineTest {
     }
 
     @Test
+    fun aFailureDeliveredAfterClearDoesNotCountInTheNewSession() {
+        val started = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val release = kotlinx.coroutines.CompletableDeferred<Unit>()
+        // Fails only after Clear, and ignores the cancellation meanwhile, like an error already on its way back.
+        val lateFailure = FakeModel("gate") {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                started.complete(Unit)
+                release.await()
+            }
+            throw java.io.IOException("connection reset")
+        }
+        val models = FakeSource(gate(claimJson), lateFailure, listOf(verifier()), ready = false)
+        val h = harness(models)
+        h.pipeline.setMode(PrivacyMode.BALANCED)
+        h.pipeline.submit("The Eiffel Tower is about 330 meters tall.")
+        runBlocking { withTimeout(5_000) { started.await() } }
+        h.pipeline.clear()
+        release.complete(Unit)
+        val entries = runBlocking { withTimeout(5_000) { h.pipeline.ledger.entries.first { it.isNotEmpty() } } }
+        // Still recorded as possibly sent, but it belongs to the session that was cleared.
+        assertEquals(HybridContextPipeline.MAYBE_SENT, entries.single().outcome)
+        assertEquals(PipelineCounts(), h.pipeline.counts.value)
+        assertTrue(h.pipeline.checks.value.isEmpty())
+        h.scope.cancel()
+    }
+
+    @Test
     fun switchingToStrictCoversSentencesAlreadyQueued() {
         val gateOpen = kotlinx.coroutines.CompletableDeferred<Unit>()
         val balanced = FakeModel("cloud-gate") { gateOpen.await(); ModelReply(claimJson, "IN_CLOUD") }

@@ -29,7 +29,7 @@
     <string name="demo_hint">Plays a short scripted conversation set in a fictional Springfield. It goes through the same steps as speech, and each card is marked.</string>
     <string name="check_stage_phone">Heard · stays on this phone</string>
     <string name="check_stage_heard">Heard</string>
-    <string name="check_stage_sent">Heard · sent to cloud Gemini (Balanced)</string>
+    <string name="check_stage_sent">Heard · sent to cloud Gemini</string>
     <string name="check_stage_query_device">Clean question · written on the device</string>
     <string name="check_stage_query_cloud">Clean question · written in the cloud</string>
     <string name="check_stage_cloud">Grounded check · Google Search</string>

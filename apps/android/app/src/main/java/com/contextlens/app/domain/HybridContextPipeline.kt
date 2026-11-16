@@ -117,10 +117,12 @@ class HybridContextPipeline(
     private val _mode = MutableStateFlow(PrivacyMode.STRICT)
     val mode: StateFlow<PrivacyMode> = _mode.asStateFlow()
 
-    private class Work(val id: Long, val text: String, val context: SessionContext, val mode: PrivacyMode)
+    private class Work(val id: Long, val text: String, val context: SessionContext, val mode: PrivacyMode, val session: Long)
 
     private val queue = Channel<Work>(Channel.UNLIMITED)
     private val ids = AtomicLong(0)
+    /** Goes up with every [clear]; work from an earlier session no longer changes the counters. */
+    private val sessions = AtomicLong(0)
     @Volatile private var current: Job? = null
 
     init {
@@ -155,7 +157,7 @@ class HybridContextPipeline(
             }
             Tier0Filter.Decision.Pass -> {
                 put(Check(id, clean, clock(), Stage.GATEKEEPING, demo = demo))
-                queue.trySend(Work(id, clean, context, _mode.value))
+                queue.trySend(Work(id, clean, context, _mode.value, sessions.get()))
             }
         }
         return id
@@ -168,7 +170,13 @@ class HybridContextPipeline(
         }
         current?.cancel()
         _checks.value = emptyList()
+        sessions.incrementAndGet()
         _counts.value = PipelineCounts()
+    }
+
+    /** Counts for [session] only if it is still the current one. */
+    private fun count(session: Long, change: (PipelineCounts) -> PipelineCounts) {
+        if (sessions.get() == session) _counts.update(change)
     }
 
     private fun put(check: Check) = _checks.update { (listOf(check) + it).take(CHECKS_MAX) }
@@ -182,19 +190,20 @@ class HybridContextPipeline(
             val mode = if (_mode.value == PrivacyMode.STRICT) PrivacyMode.STRICT else work.mode
             val gate = gatekeep(work, mode) ?: return
             if (!gate.result.hasVerifiableClaim) {
+                // Counters first, so they are up to date whenever a card shows its final stage.
+                if (gate.source == ON_DEVICE) count(work.session) { it.copy(filtered = it.filtered + 1) }
                 update(work.id) { it.copy(stage = Stage.NO_CLAIM, gate = gate) }
-                if (gate.source == ON_DEVICE) _counts.update { it.copy(filtered = it.filtered + 1) }
                 return
             }
             val publicNames = listOfNotNull(work.context.pinnedTopic, work.context.region?.label())
             val hits = PiiPostScrubber.findIn(gate.result.sanitizedResolvedQuery, work.text, publicNames, work.context.recent)
             if (hits.isNotEmpty()) {
+                count(work.session) { it.copy(withheld = it.withheld + 1) }
                 update(work.id) { it.copy(stage = Stage.WITHHELD, gate = gate, withheld = hits) }
-                _counts.update { it.copy(withheld = it.withheld + 1) }
                 return
             }
             update(work.id) { it.copy(stage = Stage.VERIFYING, gate = gate) }
-            verify(work.id, gate.result.sanitizedResolvedQuery)
+            verify(work.id, work.session, gate.result.sanitizedResolvedQuery)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -204,8 +213,8 @@ class HybridContextPipeline(
 
     private suspend fun gatekeep(work: Work, mode: PrivacyMode): GateInfo? {
         if (mode == PrivacyMode.STRICT && !models.onDeviceReady()) {
+            count(work.session) { it.copy(readOnPhone = it.readOnPhone + 1) }
             update(work.id) { it.copy(stage = Stage.NEEDS_MODEL) }
-            _counts.update { it.copy(readOnPhone = it.readOnPhone + 1) }
             return null
         }
         val model = models.gatekeeper(mode)
@@ -218,7 +227,7 @@ class HybridContextPipeline(
         )
         val start = clock()
         val promptBytes = EgressLedger.bytesOf(prompt)
-        fun rawText(source: String?, label: String, count: Boolean = true) {
+        fun rawText(source: String?, label: String, inSession: Boolean = true) {
             ledger.add(
                 EgressEntry(
                     start, EgressKind.RAW_TEXT, "gatekeeper", model.name, prompt, promptBytes,
@@ -226,20 +235,20 @@ class HybridContextPipeline(
                 ),
             )
             // A call stopped by Clear belongs to the session that just ended; its card is gone.
-            if (count) {
-                _counts.update { it.copy(readInCloud = it.readInCloud + 1, rawBytes = it.rawBytes + promptBytes) }
+            if (inSession) {
+                count(work.session) { it.copy(readInCloud = it.readInCloud + 1, rawBytes = it.rawBytes + promptBytes) }
                 update(work.id) { it.copy(sentToCloud = true) }
             }
         }
         // Balanced can fall back to the cloud, so a call stopped midway may already have been sent.
-        val outcome = call(gateTimeoutMs, onCancel = { if (mode == PrivacyMode.BALANCED) rawText(null, MAYBE_SENT, count = false) }) {
+        val outcome = call(gateTimeoutMs, onCancel = { if (mode == PrivacyMode.BALANCED) rawText(null, MAYBE_SENT, inSession = false) }) {
             model.generate(prompt)
         }
         val latency = clock() - start
         val reply = outcome.reply
         val tier = if (reply?.source == ON_DEVICE || (mode == PrivacyMode.STRICT && reply == null)) Tier.ON_DEVICE else Tier.CLOUD
         // Strict without a reply never left the phone (on device only); a Balanced call without one may have.
-        if (tier == Tier.ON_DEVICE) _counts.update { it.copy(readOnPhone = it.readOnPhone + 1) }
+        if (tier == Tier.ON_DEVICE) count(work.session) { it.copy(readOnPhone = it.readOnPhone + 1) }
         callLog?.add(CallRecord(start, tier, "gatekeeper ${model.name}", reply?.source, latency, outcome.label))
         if (mode == PrivacyMode.STRICT && reply != null && reply.source != ON_DEVICE) {
             // Strict asked for the phone only; a reply from anywhere else is recorded and not used.
@@ -263,7 +272,7 @@ class HybridContextPipeline(
         return GateInfo(result, model.name, reply.source, latency)
     }
 
-    private suspend fun verify(id: Long, query: String) {
+    private suspend fun verify(id: Long, session: Long, query: String) {
         val prompt = prompts.verifier.fill(mapOf("query" to query))
         val bytes = EgressLedger.bytesOf(prompt)
         var lastLabel = "no cloud model configured"
@@ -285,8 +294,8 @@ class HybridContextPipeline(
             if (reply != null && !reply.text.isNullOrBlank()) {
                 models.verifierAnswered(model.name)
                 val card = VerdictRules.card(reply, model.name, latency)
+                count(session) { it.copy(checked = it.checked + 1) }
                 update(id) { it.copy(stage = Stage.DONE, card = card) }
-                _counts.update { it.copy(checked = it.checked + 1) }
                 return
             }
             lastLabel = outcome.label
@@ -321,7 +330,13 @@ class HybridContextPipeline(
             throw e
         }
     } catch (e: Exception) {
-        Outcome(null, e.describe())
+        // A failure delivered after Clear is a cancellation too, so nothing counts it in the new session.
+        if (currentCoroutineContext().isActive) {
+            Outcome(null, e.describe())
+        } else {
+            onCancel()
+            throw CancellationException("cleared").apply { initCause(e) }
+        }
     }
 
     companion object {
