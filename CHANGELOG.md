@@ -6,6 +6,7 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ### Fixed
 
+- The personal-data check accepts `noreply@github.com`, the committer GitHub records on merges made on the site; it had failed `main` after the first merge.
 - The on-device evaluation retries a call Android refused for its usage quota (after 5 s, then 15 s) instead of scoring it as a miss, and its summary lists failure reasons and the ids of claims answered "no claim".
 
 ### Added

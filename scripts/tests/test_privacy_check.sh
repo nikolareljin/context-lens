@@ -55,6 +55,14 @@ test_the_author_email_is_checked() {
   out="$(check --range "$base..HEAD" || true)"
   assert_contains "$out" "author/committer:1: email address"
 }
+test_a_merge_made_on_github_passes() {
+  repo; base="$(git rev-parse HEAD)"
+  git -c user.name=GitHub -c user.email="noreply${at}github.com" commit -q --allow-empty -m "Merge pull request #1 from x/y"
+  assert_status 0 check --range "$base..HEAD"
+  echo "x noreply${at}github.com.evil.io" > a.md
+  out="$(check || true)"
+  assert_contains "$out" "a.md:1: email address"
+}
 test_a_merge_resolution_is_checked() {
   repo; base="$(git rev-parse HEAD)"
   git checkout -q -b side; echo side > s.md; git add s.md; git commit -q -m "docs: side"

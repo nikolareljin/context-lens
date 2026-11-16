@@ -34,8 +34,9 @@ hits=0
 hit() { echo "  $1" >&2; hits=$((hits + 1)); }
 
 email_re='[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}'
-# reserved for documentation (RFC 2606, RFC 6761) and GitHub's noreply addresses
-email_ok='@((([A-Za-z0-9-]+\.)*example\.(com|org|net|edu))|([A-Za-z0-9.-]+\.(example|invalid|test|localhost))|users\.noreply\.github\.com|noreply\.github\.com)$'
+# reserved for documentation (RFC 2606, RFC 6761) and GitHub's noreply addresses, including
+# noreply@github.com, the committer of merges made on github.com
+email_ok='(@((([A-Za-z0-9-]+\.)*example\.(com|org|net|edu))|([A-Za-z0-9.-]+\.(example|invalid|test|localhost))|users\.noreply\.github\.com|noreply\.github\.com)|(^|:)noreply@github\.com)$'
 phone_re='(^|[^0-9A-Za-z])(\+?1[ .-]?)?\(?[2-9][0-9]{2}\)?[ .-]?[2-9][0-9]{2}[ .-]?[0-9]{4}([^0-9A-Za-z]|$)'
 phone_ok='\(?[2-9][0-9]{2}\)?[ .-]?555[ .-]?[0-9]{4}'
 firebase_re='[0-9]+:[0-9]{6,}:(android|ios|web):[0-9a-f]+|"project_number": *"[0-9]*[1-9][0-9]*"|AIza[0-9A-Za-z_-]{35}|[a-z0-9-]+\.(firebaseapp\.com|appspot\.com|firebasestorage\.app|web\.app)'
