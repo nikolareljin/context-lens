@@ -19,6 +19,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -256,6 +257,8 @@ class HybridContextPipeline(
             callLog?.add(CallRecord(attemptStart, Tier.ON_DEVICE, "gatekeeper ${model.name}", null, clock() - attemptStart, "${outcome.label}; $retry"))
             update(work.id) { it.copy(note = "The phone's model is busy; $retry.") }
             pause(wait)
+            // Clear during the wait must stop here, however the wait itself handles cancellation.
+            currentCoroutineContext().ensureActive()
             attemptStart = clock()
             outcome = attempt()
             if (outcome.reply != null) update(work.id) { it.copy(note = null) }

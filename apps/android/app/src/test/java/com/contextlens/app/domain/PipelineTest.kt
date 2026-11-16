@@ -405,16 +405,22 @@ class PipelineTest {
     @Test
     fun theCardShowsTheWaitAndClearStopsIt() {
         val strict = busyGate(1)
+        val entered = kotlinx.coroutines.CompletableDeferred<Unit>()
         val waiting = kotlinx.coroutines.CompletableDeferred<Unit>()
-        val h = harness(FakeSource(strict, gate(claimJson), listOf(verifier())), pause = { waiting.await() })
+        // A wait that ignores cancellation: only the pipeline's own check after it can stop the retry.
+        val h = harness(FakeSource(strict, gate(claimJson), listOf(verifier())), pause = {
+            entered.complete(Unit)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { waiting.await() }
+        })
         val id = h.pipeline.submit("They raised bus fares here last month.")!!
         val card = runBlocking {
             withTimeout(5_000) { h.pipeline.checks.first { list -> list.any { it.id == id && it.note != null } } }.first { it.id == id }
         }
         assertEquals(Stage.GATEKEEPING, card.stage)
         assertEquals("The phone's model is busy; trying again in 5 s.", card.note)
+        runBlocking { withTimeout(5_000) { entered.await() } }
         h.pipeline.clear()
-        // a wait that survived Clear would ask the model again once it ends
+        // the wait ends after Clear; asking the model again now would be a second prompt
         waiting.complete(Unit)
         runBlocking { delay(200) }
         assertEquals(1, strict.prompts.size)
