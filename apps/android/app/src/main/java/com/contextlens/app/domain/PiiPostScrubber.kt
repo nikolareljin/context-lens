@@ -1,5 +1,7 @@
 package com.contextlens.app.domain
 
+import java.text.Normalizer
+
 enum class PiiKind { EMAIL, PHONE, CARD, IBAN, SSN, ADDRESS, NAME }
 
 /**
@@ -124,12 +126,16 @@ object PiiPostScrubber {
             .forEach { if (word(it.replace('’', '\'')).containsMatchIn(query.replace('’', '\''))) hits += PiiKind.NAME }
         // An email gives a name without its spelling ("j.mcdonald@" for McDonald, "j.obrien@" for O'Brien),
         // so those compare without case, apostrophes or hyphens.
-        fun loose(text: String) = text.lowercase().replace(Regex("['’-]"), "")
-        val looseQuery = loose(query)
-        val loosePublic = loose(publicText)
-        sentences.flatMap(::emailNames).map(::loose).toSet()
+        // Accents are dropped ("García" is "garcia"), a possessive is dropped ("Rivera's"), and a
+        // hyphenated name is tried both joined and split ("Smith-Jones": "smithjones", "smith jones").
+        fun loose(text: String, hyphen: String) = Normalizer.normalize(text, Normalizer.Form.NFD)
+            .replace(Regex("\\p{Mn}+"), "").lowercase()
+            .replace(Regex("['’]s\\b"), "").replace(Regex("['’]"), "").replace("-", hyphen)
+        val looseQueries = listOf(loose(query, ""), loose(query, " "))
+        val loosePublic = loose(publicText, " ")
+        sentences.flatMap(::emailNames).map { loose(it, "") }.toSet()
             .filterNot { word(it).containsMatchIn(loosePublic) }
-            .forEach { if (word(it).containsMatchIn(looseQuery)) hits += PiiKind.NAME }
+            .forEach { name -> if (looseQueries.any { word(name).containsMatchIn(it) }) hits += PiiKind.NAME }
         return hits
     }
 
@@ -177,25 +183,35 @@ object PiiPostScrubber {
 
     /**
      * Names in an email address: "sam.rivera@" gives Sam and Rivera, as do
-     * "sam.rivera92@", "sam.rivera+fares@" and "maria.de.la.cruz@" (Maria, Cruz…);
-     * one-letter initials are dropped. An address that starts with a mailbox word
-     * ("info@", "city.council@") or ends with an office word ("springfield.library@",
-     * "parks.department@") names nobody. Misses lean toward blocking a question,
-     * never toward sending a name.
+     * "sam.rivera92@", "sam.rivera+fares@", "maria.de.la.cruz@" (Maria, Cruz) and
+     * "a.smith-jones@" (Smith, Jones, and Smithjones for "Smith-Jones"); one-letter
+     * initials are dropped. An address that starts with a mailbox word ("info@",
+     * "sales@", "city.council@") or ends with an office word ("springfield.library@",
+     * "parks.department@") names nobody.
+     * Not covered: an address without separators ("jrivera@") gives one word that rarely
+     * matches the name in a question; the gatekeeper prompt is the first line there.
      */
     internal fun emailNames(utterance: String): List<String> = email.findAll(utterance).flatMap { m ->
-        val parts = m.value.substringBefore('@').substringBefore('+').split(Regex("[._-]+"))
-            .map { it.trimEnd(Char::isDigit).lowercase() }
-            .filter { it.isNotEmpty() }
+        val local = m.value.substringBefore('@').substringBefore('+').lowercase()
+        val parts = local.split(Regex("[._-]+")).map { it.trimEnd(Char::isDigit) }.filter { it.isNotEmpty() }
+        // Hyphenated parts also as one word: "smith-jones" for "Smith-Jones".
+        val joined = local.split(Regex("[._]+")).map { it.trimEnd(Char::isDigit) }
+            .filter { '-' in it }.map { it.replace("-", "") }
         val mailbox = parts.isEmpty() || parts.first() in mailboxStarts || parts.last() in officeEnds
-        if (mailbox) emptySequence() else parts.asSequence().filter { it.length >= 2 && it.all(Char::isLetter) && it !in particles }
+        if (mailbox) {
+            emptySequence()
+        } else {
+            (parts + joined).asSequence().filter { it.length >= 2 && it.all(Char::isLetter) && it !in particles }
+        }
     }.toList()
 
     /** Local parts that start a shared mailbox, not a person ("info@", "city.council@"). */
     private val mailboxStarts = setOf(
-        "info", "support", "contact", "admin", "hello", "office", "team", "mail", "noreply", "help", "news",
-        "billing", "press", "media", "careers", "jobs", "events", "orders", "hr", "city", "town", "county", "state",
-        "public", "customer", "service", "services", "school", "police", "fire", "parks", "board", "parking", "council",
+        "info", "support", "contact", "admin", "hello", "office", "team", "mail", "noreply", "no", "donotreply", "do",
+        "help", "news", "billing", "sales", "press", "media", "careers", "events", "orders", "hr", "city", "town",
+        "county", "state", "public", "customer", "service", "services", "school", "police", "fire", "board",
+        "parking", "council", "tickets", "returns", "tips", "feedback", "privacy", "legal", "marketing", "accounts",
+        "notifications", "alerts", "webmaster", "postmaster", "registrar",
     )
 
     /** Local parts that end an office's address ("springfield.library@", "parks.department@"). */
@@ -205,7 +221,11 @@ object PiiPostScrubber {
     )
 
     /** Surname particles: part of a name, but too common as words to block on ("LA"). */
-    private val particles = setOf("de", "la", "del", "della", "van", "von", "der", "da", "di", "du", "le", "al", "el", "bin", "ibn")
+    private val particles = setOf(
+        "de", "la", "del", "della", "van", "von", "der", "da", "di", "du", "le", "al", "el", "bin", "ibn",
+        // Two-letter everyday words that would block almost any question.
+        "an", "do", "to", "so", "no", "in", "on", "at", "of", "or", "is", "it", "us", "we", "me", "my", "up",
+    )
 
     /**
      * Every 13-19 digit window of [m] that passes Luhn, so digits before or after a card

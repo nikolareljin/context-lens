@@ -17,6 +17,10 @@ The gatekeeper (the step that turns a sentence into a clean search question) is 
 - **On a computer:** `./dev eval` runs the parts that need no model against every sentence in the set: the local rules never drop a labelled claim, the date hints match every labelled date reference, and the personal-data check stops every planted value even when it is copied into a question word for word. CI runs the same tests.
 - **On a phone:** Diagnostics → **Run evaluation** sends each scored sentence to Gemini Nano with the same prompt as the Listen screen, in Strict mode, so nothing leaves the phone. **Copy results** gives the summary and one line per sentence.
 
+## Known limits
+
+The personal-data check is a backstop behind the prompt, not a complete name detector. It finds names after titles and relation words ("Dr. Patel", "my friend Jenna"), before personal verbs ("Jenna Liu told me"), after "Call" or "Tell", and in first.last email addresses. A name written any other way, or an address without separators ("jrivera@"), relies on the model leaving it out; the on-device run measures how often it does.
+
 ## Results
 
 Results are added here with the phone model, Android version and app version after each on-device run.

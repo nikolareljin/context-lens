@@ -78,6 +78,15 @@ class RulesTest {
         assertEquals(emptySet<PiiKind>(), hits("Did LA raise bus fares?", "Email maria.de.la.cruz@example.com about the fares."))
         assertEquals(emptySet<PiiKind>(), hits("Did the Parks Department close the pool?", "Write to parks.department@example.org about the pool."))
         assertEquals(emptySet<PiiKind>(), hits("Did Town Hall extend its hours?", "Write to town.hall@example.org about hours."))
+        // Possessives, hyphenated names, accents and surnames that are also mailbox-like words.
+        assertEquals(setOf(PiiKind.NAME), hits("Did Rivera's refund arrive?", "Email j.rivera@example.com about the refund."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did Smith-Jones get the refund?", "Email a.smith-jones@example.com about the refund."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did Mary-Jane get the refund?", "Email mary-jane.smith@example.com about the refund."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did García get the refund?", "Email jose.garcia@example.com about the refund."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did Jordan Parks get the refund?", "Email parks.jordan@example.com about the refund."))
+        // Role mailboxes name nobody.
+        assertEquals(emptySet<PiiKind>(), hits("Did retail sales rise this year?", "Email sales@example.com about the sales figures."))
+        assertEquals(emptySet<PiiKind>(), hits("Are there no new toll rules?", "I got mail from no-reply@example.gov about toll rules."))
         assertEquals(setOf(PiiKind.NAME), hits("Did Kevin O’Brien say revenue grew?", "Kevin O'Brien from accounting said revenue grew."))
         // The gatekeeper resolved "she" from an earlier sentence.
         assertEquals(
