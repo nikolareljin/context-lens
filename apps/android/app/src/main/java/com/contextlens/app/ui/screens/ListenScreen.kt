@@ -53,6 +53,7 @@ import com.contextlens.app.domain.PrivacyMode
 import com.contextlens.app.domain.totals
 import com.contextlens.app.speech.ListenState
 import com.contextlens.app.speech.SpeechListener
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 @Composable
@@ -68,11 +69,13 @@ fun ListenScreen(session: SessionContextManager, pipeline: HybridContextPipeline
     val mode by pipeline.mode.collectAsState()
     val counts by pipeline.counts.collectAsState()
     val entries by pipeline.ledger.entries.collectAsState()
+    val sessionStart by pipeline.sessionStart.collectAsState()
     val demoRunning by demo.running.collectAsState()
     // Not saveable: typed speech must not reach saved instance state on disk.
     var typed by remember { mutableStateOf("") }
     var micDenied by remember { mutableStateOf(false) }
     var locating by remember { mutableStateOf(false) }
+    var locateJob by remember { mutableStateOf<Job?>(null) }
     var regionMessage by remember { mutableStateOf<String?>(null) }
     val onDeviceSpeech = remember { SpeechListener.isOnDeviceAvailable(context) }
     val noArea = stringResource(R.string.listen_area_not_found)
@@ -84,9 +87,11 @@ fun ListenScreen(session: SessionContextManager, pipeline: HybridContextPipeline
 
     fun findArea() {
         locating = true
-        scope.launch {
+        locateJob = scope.launch {
             try {
                 val region = runCatching { locator.locate() }.getOrNull()
+                // The demo's fictional town must not be replaced by a real one on camera.
+                if (demo.running.value) return@launch
                 if (region != null) session.setRegion(region)
                 regionMessage = if (region == null) noArea else null
             } finally {
@@ -110,7 +115,8 @@ fun ListenScreen(session: SessionContextManager, pipeline: HybridContextPipeline
             FilterChip(
                 selected = mode == PrivacyMode.STRICT,
                 onClick = { pipeline.setMode(if (mode == PrivacyMode.STRICT) PrivacyMode.BALANCED else PrivacyMode.STRICT) },
-                label = { Text(stringResource(if (mode == PrivacyMode.STRICT) R.string.mode_strict_chip else R.string.mode_balanced_chip)) },
+                // A fixed label with an on/off state, so "selected" always means Strict is on.
+                label = { Text(stringResource(R.string.mode_strict_chip)) },
                 leadingIcon = if (mode == PrivacyMode.STRICT) {
                     { Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(FilterChipDefaults.IconSize)) }
                 } else {
@@ -152,7 +158,7 @@ fun ListenScreen(session: SessionContextManager, pipeline: HybridContextPipeline
         regionMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         Text(stringResource(R.string.listen_area_hint), style = MaterialTheme.typography.bodySmall)
 
-        PrivacyCounters(counts, entries.totals())
+        PrivacyCounters(counts, entries.filter { it.atMillis >= sessionStart }.totals())
 
         // Microphone: on-device recognition only.
         Card(Modifier.fillMaxWidth()) {
@@ -208,7 +214,7 @@ fun ListenScreen(session: SessionContextManager, pipeline: HybridContextPipeline
             if (demoRunning) {
                 OutlinedButton(onClick = { demo.stop() }) { Text(stringResource(R.string.demo_stop)) }
             } else {
-                OutlinedButton(onClick = { speech.stop(); demo.start() }) { Text(stringResource(R.string.demo_start)) }
+                OutlinedButton(onClick = { speech.stop(); locateJob?.cancel(); demo.start() }) { Text(stringResource(R.string.demo_start)) }
             }
             Text(stringResource(R.string.demo_hint), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
         }

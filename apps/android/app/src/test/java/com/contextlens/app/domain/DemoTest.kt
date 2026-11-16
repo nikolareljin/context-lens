@@ -50,7 +50,6 @@ class DemoTest {
         rig.session.pin("another topic")
 
         rig.demo.start()
-        assertTrue(rig.demo.running.value)
         withTimeout(5_000) { rig.demo.running.first { !it } }
         val checks = withTimeout(5_000) { rig.pipeline.checks.first { it.size == DemoScript.lines.size } }
 

@@ -138,6 +138,10 @@ class PipelineTest {
         assertEquals(1, raw.size)
         assertTrue(raw[0].text.contains("Eiffel Tower"))
         assertTrue(h.pipeline.ledger.entries.value.totals().rawBytes > 0)
+        // The cloud read it, so it does not count as read only on the phone.
+        assertEquals(1, h.pipeline.counts.value.readInCloud)
+        assertEquals(0, h.pipeline.counts.value.readOnPhone)
+        assertEquals(1, h.pipeline.counts.value.checked)
         h.scope.cancel()
     }
 
@@ -148,6 +152,7 @@ class PipelineTest {
         h.pipeline.setMode(PrivacyMode.BALANCED)
         h.settle(h.pipeline.submit("The Eiffel Tower is about 330 meters tall.")!!)
         assertTrue(h.pipeline.ledger.entries.value.none { it.kind == EgressKind.RAW_TEXT })
+        assertEquals(1, h.pipeline.counts.value.readOnPhone)
         h.scope.cancel()
     }
 
@@ -193,6 +198,7 @@ class PipelineTest {
         val outcomes = h.pipeline.ledger.entries.value.reversed().map { it.model to it.outcome }
         assertEquals(listOf("slow" to "timed out", "failing" to "IllegalStateException: network unreachable", "good" to "ok"), outcomes)
         assertEquals(1, h.pipeline.ledger.entries.value.totals().cloudChecks)
+        assertEquals(1, h.pipeline.counts.value.checked)
         assertEquals(listOf("good"), models.answered)
         assertTrue(h.log.entries.value.any { it.model == "gatekeeper gate" })
         h.scope.cancel()
@@ -203,7 +209,10 @@ class PipelineTest {
         val models = FakeSource(gate(claimJson), gate(claimJson), listOf(verifier()))
         val h = harness(models)
         h.settle(h.pipeline.submit("Python was first released in 1991.")!!)
+        Thread.sleep(5)
         h.pipeline.clear()
+        // The session counters start again; the ledger keeps the earlier request, dated before the session.
+        assertTrue(h.pipeline.ledger.entries.value.all { it.atMillis < h.pipeline.sessionStart.value })
         assertTrue(h.pipeline.checks.value.isEmpty())
         assertEquals(PipelineCounts(), h.pipeline.counts.value)
         assertEquals(1, h.pipeline.ledger.entries.value.size)
@@ -224,6 +233,8 @@ class PipelineTest {
         val entries = runBlocking { withTimeout(5_000) { h.pipeline.ledger.entries.first { it.isNotEmpty() } } }
         assertEquals(EgressKind.RAW_TEXT, entries[0].kind)
         assertEquals(HybridContextPipeline.MAYBE_SENT, entries[0].outcome)
+        // It belongs to the session that was cleared, not to the new one.
+        assertEquals(0, h.pipeline.counts.value.readInCloud)
         h.scope.cancel()
     }
 

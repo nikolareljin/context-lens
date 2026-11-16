@@ -59,7 +59,18 @@ data class Check(
     val demo: Boolean = false,
 )
 
-data class PipelineCounts(val processed: Int = 0, val filtered: Int = 0, val withheld: Int = 0)
+data class PipelineCounts(
+    val processed: Int = 0,
+    val filtered: Int = 0,
+    val withheld: Int = 0,
+    /** Sentences whose gatekeeper ran in the cloud (Balanced fallback): read off the phone. */
+    val readInCloud: Int = 0,
+    /** Sentences that got a grounded verdict. */
+    val checked: Int = 0,
+) {
+    /** Sentences that only the phone read: the local rules or the on-device model. */
+    val readOnPhone: Int get() = (processed - readInCloud).coerceAtLeast(0)
+}
 
 data class PipelinePrompts(val gatekeeper: Prompt, val verifier: Prompt)
 
@@ -99,6 +110,10 @@ class HybridContextPipeline(
 
     private val _counts = MutableStateFlow(PipelineCounts())
     val counts: StateFlow<PipelineCounts> = _counts.asStateFlow()
+
+    private val _sessionStart = MutableStateFlow(clock())
+    /** When the current session began (last [clear]); the ledger keeps older entries. */
+    val sessionStart: StateFlow<Long> = _sessionStart.asStateFlow()
 
     private val _mode = MutableStateFlow(PrivacyMode.STRICT)
     val mode: StateFlow<PrivacyMode> = _mode.asStateFlow()
@@ -155,6 +170,7 @@ class HybridContextPipeline(
         current?.cancel()
         _checks.value = emptyList()
         _counts.value = PipelineCounts()
+        _sessionStart.value = clock()
     }
 
     private fun put(check: Check) = _checks.update { (listOf(check) + it).take(CHECKS_MAX) }
@@ -202,14 +218,18 @@ class HybridContextPipeline(
             ),
         )
         val start = clock()
-        fun rawText(source: String?, label: String) = ledger.add(
-            EgressEntry(
-                start, EgressKind.RAW_TEXT, "gatekeeper", model.name, prompt, EgressLedger.bytesOf(prompt),
-                source, clock() - start, prompts.gatekeeper.version, label,
-            ),
-        )
+        fun rawText(source: String?, label: String, count: Boolean = true) {
+            ledger.add(
+                EgressEntry(
+                    start, EgressKind.RAW_TEXT, "gatekeeper", model.name, prompt, EgressLedger.bytesOf(prompt),
+                    source, clock() - start, prompts.gatekeeper.version, label,
+                ),
+            )
+            // A call stopped by Clear belongs to the session that just ended.
+            if (count) _counts.update { it.copy(readInCloud = it.readInCloud + 1) }
+        }
         // Balanced can fall back to the cloud, so a call stopped midway may already have been sent.
-        val outcome = call(gateTimeoutMs, onCancel = { if (mode == PrivacyMode.BALANCED) rawText(null, MAYBE_SENT) }) {
+        val outcome = call(gateTimeoutMs, onCancel = { if (mode == PrivacyMode.BALANCED) rawText(null, MAYBE_SENT, count = false) }) {
             model.generate(prompt)
         }
         val latency = clock() - start
@@ -261,6 +281,7 @@ class HybridContextPipeline(
                 models.verifierAnswered(model.name)
                 val card = VerdictRules.card(reply, model.name, latency)
                 update(id) { it.copy(stage = Stage.DONE, card = card) }
+                _counts.update { it.copy(checked = it.checked + 1) }
                 return
             }
             lastLabel = outcome.label

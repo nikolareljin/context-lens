@@ -46,10 +46,12 @@ class DemoRunner(
     private val _running = MutableStateFlow(false)
     val running: StateFlow<Boolean> = _running.asStateFlow()
 
-    @Volatile private var job: Job? = null
+    // start, stop and the end of a run take this lock, so a run that ends late can't clear a newer run's flag.
+    private val lock = Any()
+    private var job: Job? = null
 
     /** Starts from a clean session: earlier sentences, place and topic are cleared first. */
-    fun start() {
+    fun start() = synchronized(lock) {
         stop()
         pipeline.clear()
         session.clear()
@@ -66,7 +68,7 @@ class DemoRunner(
                 }
             } finally {
                 // A stopped run must not mark a newer one as finished.
-                if (job === self) _running.value = false
+                synchronized(lock) { if (job === self) _running.value = false }
             }
         }
         job = run
@@ -74,7 +76,7 @@ class DemoRunner(
     }
 
     /** Stops feeding lines; sentences already submitted finish normally. */
-    fun stop() {
+    fun stop() = synchronized(lock) {
         job?.cancel()
         job = null
         _running.value = false

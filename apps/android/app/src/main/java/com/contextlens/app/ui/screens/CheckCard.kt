@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.contextlens.app.R
 import com.contextlens.app.context.DateResolver
 import com.contextlens.app.domain.Check
+import com.contextlens.app.domain.HybridContextPipeline.Companion.ON_DEVICE
 import com.contextlens.app.domain.Stage
 import com.contextlens.app.domain.Verdict
 import com.contextlens.app.domain.searchUrl
@@ -51,7 +52,8 @@ fun CheckCard(check: Check, today: LocalDate) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             // Stage 1: the sentence, which never leaves the phone in Strict mode.
-            StageLabel(stringResource(R.string.check_stage_phone), Cyan) {
+            val heard = heardLabel(check)
+            StageLabel(stringResource(heard.first), heard.second) {
                 if (check.demo) Tag(stringResource(R.string.check_demo), Slate400)
             }
             Text(check.utterance, style = MaterialTheme.typography.bodyLarge)
@@ -63,7 +65,8 @@ fun CheckCard(check: Check, today: LocalDate) {
             // Stage 2: the clean question, with the references the gatekeeper resolved.
             check.gate?.takeIf { it.result.hasVerifiableClaim }?.let { gate ->
                 HorizontalDivider()
-                StageLabel(stringResource(R.string.check_stage_query), sourceColor(gate.source))
+                val where = if (gate.source == ON_DEVICE) R.string.check_stage_query_device else R.string.check_stage_query_cloud
+                StageLabel(stringResource(where), sourceColor(gate.source))
                 Text(gate.result.sanitizedResolvedQuery, style = MaterialTheme.typography.titleSmall)
                 if (gate.result.resolvedReferences.isNotEmpty()) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -104,6 +107,21 @@ fun CheckCard(check: Check, today: LocalDate) {
                 Link(stringResource(R.string.check_search_this)) { uri.openUri(searchUrl(query)) }
             }
         }
+    }
+}
+
+/**
+ * What the first stage may claim. "Stays on this phone" only when nothing read the
+ * sentence off the phone: the local rules stopped it, or the gatekeeper reported
+ * ON_DEVICE. A gatekeeper reply from the cloud (Balanced fallback) says so.
+ */
+private fun heardLabel(check: Check): Pair<Int, ComposeColor> {
+    val source = check.gate?.source
+    return when {
+        check.stage == Stage.FILTERED || check.stage == Stage.NEEDS_MODEL || source == ON_DEVICE ->
+            R.string.check_stage_phone to Cyan
+        source != null -> R.string.check_stage_sent to sourceColor(source)
+        else -> R.string.check_stage_heard to Slate400
     }
 }
 
