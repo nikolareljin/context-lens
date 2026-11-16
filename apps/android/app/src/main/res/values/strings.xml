@@ -87,6 +87,12 @@
     <string name="diag_not_tested">not tested</string>
     <string name="diag_probe_device">Test on device</string>
     <string name="diag_probe_cloud">Test in cloud</string>
+    <string name="diag_eval_title">Evaluation</string>
+    <string name="diag_eval_hint">Runs the on-device model over the built-in set of made-up test sentences, with the same prompt as Listen. Nothing is sent. Takes a few minutes; keep this screen open.</string>
+    <string name="diag_eval_run">Run evaluation</string>
+    <string name="diag_eval_stop">Stop</string>
+    <string name="diag_eval_copy">Copy results</string>
+    <string name="diag_eval_progress">%1$d of %2$d sentences</string>
     <string name="diag_calls_title">Call log</string>
     <string name="diag_calls_empty">No calls yet.</string>
     <string name="diag_copy_report">Copy report</string>

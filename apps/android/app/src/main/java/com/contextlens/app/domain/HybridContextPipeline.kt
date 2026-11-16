@@ -218,13 +218,7 @@ class HybridContextPipeline(
             return null
         }
         val model = models.gatekeeper(mode)
-        val prompt = prompts.gatekeeper.fill(
-            mapOf(
-                "context" to work.context.preamble(),
-                "hints" to dateHint(work.text, work.context.today),
-                "utterance" to work.text.replace('"', '\''),
-            ),
-        )
+        val prompt = gatekeeperPrompt(prompts.gatekeeper, work.context, work.text)
         val start = clock()
         val promptBytes = EgressLedger.bytesOf(prompt)
         fun rawText(source: String?, label: String, inSession: Boolean = true) {
@@ -357,6 +351,15 @@ fun isCloudLimit(outcome: String): Boolean = cloudLimit.containsMatchIn(outcome)
 fun searchUrl(query: String): String = "https://www.google.com/search?q=" + URLEncoder.encode(query, Charsets.UTF_8.name())
 
 /** A line for the gatekeeper prompt with the date a phrase like "last month" means. */
+/** The gatekeeper prompt for one sentence; the app and the evaluation use the same one. */
+fun gatekeeperPrompt(template: Prompt, context: SessionContext, text: String): String = template.fill(
+    mapOf(
+        "context" to context.preamble(),
+        "hints" to dateHint(text, context.today),
+        "utterance" to text.replace('"', '\''),
+    ),
+)
+
 fun dateHint(text: String, today: LocalDate): String {
     val m = DateResolver.resolve(text, today) ?: return "Date hint: none"
     return "Date hint: \"${m.phrase}\" = ${describeRange(m.start, m.end)}"

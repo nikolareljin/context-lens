@@ -15,7 +15,7 @@
 #   web <cmd>              web companion: install | lint | test | build | dev | check
 #   smoke                  emulator smoke test (ANDROID_AVD, default Pixel_3a_API_30_x86)
 #   docs <build|serve>     documentation site (published to GitHub Pages from main)
-#   eval                   deterministic evaluation suites (valuation, matching) when present
+#   eval                   gatekeeper evaluation: local rules and personal-data check on eval/utterances.yaml
 #   firebase-config        write google-services.json (secret or placeholder)
 #   deploy <target>        rules | functions | hosting | all | apk <file>  (see scripts/deploy.sh)
 #   keystore [path]        create the release keystore outside the repository

@@ -22,6 +22,12 @@ test_android_change_marks_android() {
   assert_contains "$out" "android=true"
   assert_contains "$out" "functions=false"
 }
+test_eval_set_change_marks_android() {
+  repo; commit_file apps/android/gradlew; base="$(git rev-parse HEAD)"
+  commit_file eval/utterances.yaml
+  out="$(bash "$script" "$base" HEAD)"
+  assert_contains "$out" "android=true"
+}
 test_ci_change_marks_present_areas_only() {
   repo; commit_file apps/android/gradlew; base="$(git rev-parse HEAD)"
   commit_file .github/workflows/ci.yml

@@ -56,6 +56,11 @@ class RulesTest {
         assertEquals(setOf(PiiKind.SSN), hits("Is fraud up for 123 45 6789?", "Fraud is up."))
         assertEquals(setOf(PiiKind.ADDRESS), hits("Did rent at 12 elm street rise?", "Rent at 12 elm street rose."))
         assertEquals(setOf(PiiKind.NAME), hits("Did Jenna get the tax refund?", "My friend Jenna got the tax refund."))
+        // A possessive after a family title, and the name inside an email address.
+        assertEquals(setOf(PiiKind.NAME), hits("Did Rosa's house lose value after the zoning law?", "Aunt Rosa's house lost value."))
+        assertEquals(setOf(PiiKind.NAME), hits("Is Sam Rivera's EV credit still 7,500?", "Email sam.rivera@example.com if the EV credit is still 7,500."))
+        // A generic mailbox names nobody.
+        assertEquals(emptySet<PiiKind>(), hits("Is Support for the EV credit ending?", "Write to support@example.com about the EV credit."))
         // The gatekeeper resolved "she" from an earlier sentence.
         assertEquals(
             setOf(PiiKind.NAME),

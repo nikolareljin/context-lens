@@ -155,13 +155,27 @@ object PiiPostScrubber {
 
     /** Single name tokens (first and last names separately). */
     internal fun names(utterance: String): Set<String> =
-        namePatterns.flatMap { p -> p.findAll(utterance.trim()).map { it.groupValues[1] }.toList() }
-            .map { it.split(Regex("\\s+")) }
-            // "The Fed said" is not a First Last.
-            .filterNot { it.first() in notNames || it.any(orgWords::contains) }
-            .flatten()
-            .filter { it.length > 1 }
-            .toSet()
+        (
+            namePatterns.flatMap { p -> p.findAll(utterance.trim()).map { it.groupValues[1] }.toList() }
+                .map { it.split(Regex("\\s+")) }
+                // "The Fed said" is not a First Last.
+                .filterNot { it.first() in notNames || it.any(orgWords::contains) }
+                .flatten()
+                // "Aunt Rosa's house": the name is Rosa.
+                .map { it.removeSuffix("'s").removeSuffix("’s") }
+                .filter { it.length > 1 } + emailNames(utterance)
+            ).toSet()
+
+    /** "sam.rivera@example.com" names Sam Rivera; "info@" and "support@" name nobody. */
+    private fun emailNames(utterance: String): List<String> =
+        email.findAll(utterance).flatMap { m -> m.value.substringBefore('@').split(Regex("[._%+-]+")) }
+            .filter { it.length >= 3 && it.all(Char::isLetter) && it.lowercase() !in mailboxWords }
+            .map { part -> part.lowercase().replaceFirstChar { it.titlecase() } }
+            .toList()
+
+    private val mailboxWords = setOf(
+        "info", "support", "contact", "admin", "sales", "hello", "office", "team", "mail", "noreply", "help", "news", "billing",
+    )
 
     /**
      * Every 13-19 digit window of [m] that passes Luhn, so digits before or after a card
