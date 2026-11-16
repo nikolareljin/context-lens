@@ -61,6 +61,8 @@ class RulesTest {
         assertEquals(setOf(PiiKind.NAME), hits("Is Sam Rivera's EV credit still 7,500?", "Email sam.rivera@example.com if the EV credit is still 7,500."))
         // A generic mailbox names nobody.
         assertEquals(emptySet<PiiKind>(), hits("Is Support for the EV credit ending?", "Write to support@example.com about the EV credit."))
+        assertEquals(emptySet<PiiKind>(), hits("Did the City Council raise bus fares?", "Write to city.council@example.org about the bus fares."))
+        assertEquals(emptySet<PiiKind>(), hits("Did the Springfield Library cut its hours?", "Ask springfield.library@example.org about the hours."))
         // The gatekeeper resolved "she" from an earlier sentence.
         assertEquals(
             setOf(PiiKind.NAME),

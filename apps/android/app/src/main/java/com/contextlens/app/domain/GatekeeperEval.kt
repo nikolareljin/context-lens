@@ -155,29 +155,38 @@ class GatekeeperEval(
             )
         }
 
-        /** Case-insensitive, with "→" read as "->" and spacing inside numbers ignored. */
+        /**
+         * Case-insensitive, with "→" read as "->". Words match whole ("Sam" is not in
+         * "same"); in numbers, spaces and dashes are ignored ("4111111111111111").
+         */
         internal fun contains(haystack: String, needle: String): Boolean {
             fun norm(s: String) = s.lowercase(Locale.US).replace("→", "->").replace(Regex("\\s+"), " ")
             fun digitsOnly(s: String) = s.replace(Regex("[\\s-]"), "")
             val h = norm(haystack)
             val n = norm(needle)
-            if (h.contains(n)) return true
+            if (Regex("(?<![\\p{L}\\p{N}])" + Regex.escape(n) + "(?![\\p{L}\\p{N}])").containsMatchIn(h)) return true
             return n.any(Char::isDigit) && digitsOnly(h).contains(digitsOnly(n))
         }
 
+        /**
+         * A failed call on a labelled claim counts as a missed claim, so failures can't
+         * raise recall. References and expected words are scored on every labelled
+         * claim, and on the questions written for claims that were found.
+         */
         fun summarize(results: List<EvalResult>): EvalSummary {
             val answered = results.filter { it.claim != null }
+            val found = answered.filter { it.claim == true && it.item.claim }
             val latencies = answered.map { it.latencyMs }.sorted()
             return EvalSummary(
                 scored = results.size,
                 failed = results.size - answered.size,
-                truePositives = answered.count { it.claim == true && it.item.claim },
+                truePositives = found.size,
                 falsePositives = answered.count { it.claim == true && !it.item.claim },
-                falseNegatives = answered.count { it.claim == false && it.item.claim },
-                refsFound = answered.sumOf { it.refsFound },
-                refsExpected = answered.sumOf { it.item.refs.size },
-                queryHasFound = answered.filter { it.item.claim }.sumOf { it.queryHasFound },
-                queryHasExpected = answered.filter { it.item.claim }.sumOf { it.item.queryHas.size },
+                falseNegatives = results.count { it.item.claim && it.claim != true },
+                refsFound = results.sumOf { it.refsFound },
+                refsExpected = results.sumOf { it.item.refs.size },
+                queryHasFound = found.sumOf { it.queryHasFound },
+                queryHasExpected = found.sumOf { it.item.queryHas.size },
                 modelLeaks = results.sumOf { it.modelLeaks.size },
                 sentLeaks = results.sumOf { it.sentLeaks.size },
                 medianLatencyMs = latencies.getOrNull(latencies.size / 2),
@@ -193,7 +202,7 @@ class GatekeeperEval(
             appendLine(header)
             appendLine("Prompt $promptVersion · ${s.scored} test sentences · ${s.failed} failed")
             appendLine("Claim precision ${pct(s.precision)} · recall ${pct(s.recall)} (TP ${s.truePositives}, FP ${s.falsePositives}, FN ${s.falseNegatives})")
-            appendLine("References resolved ${s.refsFound}/${s.refsExpected} · expected words in the question ${s.queryHasFound}/${s.queryHasExpected}")
+            appendLine("References resolved ${s.refsFound}/${s.refsExpected} · expected words in the questions for found claims ${s.queryHasFound}/${s.queryHasExpected}")
             appendLine("Personal data: ${s.modelLeaks} left in a question by the model, ${s.sentLeaks} would have been sent")
             appendLine("Median latency ${s.medianLatencyMs?.let { "$it ms" } ?: "n/a"} · sources ${s.sources.entries.joinToString { "${it.key} ${it.value}" }}")
             appendLine()

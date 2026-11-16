@@ -156,7 +156,11 @@ android {
 
     testOptions {
         // The JVM evaluation reads the same file the app packages.
-        unitTests.all { it.systemProperty("contextlens.evalSet", evalSetFile.asFile.absolutePath) }
+        unitTests.all {
+            it.systemProperty("contextlens.evalSet", evalSetFile.asFile.absolutePath)
+            // An edit to the set re-runs the tests instead of reusing a cached result.
+            it.inputs.file(evalSetFile).withPropertyName("evalSet").withPathSensitivity(PathSensitivity.NONE)
+        }
     }
 
     lint {

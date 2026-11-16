@@ -72,6 +72,8 @@ fun DiagnosticsScreen(session: FirebaseSession, models: ModelGateway) {
     var evalProgress by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     var evalReport by remember { mutableStateOf<String?>(null) }
     var evalJob by remember { mutableStateOf<Job?>(null) }
+    // The evaluation uses the on-device model too; other model actions wait until it ends.
+    val modelBusy = busy || evalProgress != null
 
     // First visit: ask the phone once; later visits keep the last answer.
     LaunchedEffect(Unit) { if (model == ModelState.Unknown) models.checkStatus() }
@@ -112,17 +114,17 @@ fun DiagnosticsScreen(session: FirebaseSession, models: ModelGateway) {
                 Text(stringResource(R.string.diag_unavailable_hint), style = MaterialTheme.typography.bodySmall)
             }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { models.checkStatus() }, enabled = !busy) {
+                OutlinedButton(onClick = { models.checkStatus() }, enabled = !modelBusy) {
                     Text(stringResource(R.string.diag_check))
                 }
                 // A download already running (e.g. started before the app restarted) can be followed again.
                 Button(
                     onClick = { models.download() },
-                    enabled = !busy && (model == ModelState.Downloadable || model is ModelState.Downloading),
+                    enabled = !modelBusy && (model == ModelState.Downloadable || model is ModelState.Downloading),
                 ) {
                     Text(stringResource(R.string.diag_download))
                 }
-                OutlinedButton(onClick = { models.warmUp() }, enabled = !busy && model == ModelState.Available) {
+                OutlinedButton(onClick = { models.warmUp() }, enabled = !modelBusy && model == ModelState.Available) {
                     Text(stringResource(R.string.diag_warm_up))
                 }
             }
@@ -133,7 +135,7 @@ fun DiagnosticsScreen(session: FirebaseSession, models: ModelGateway) {
             Text(stringResource(R.string.diag_probe_hint), style = MaterialTheme.typography.bodySmall)
             LabeledValue(stringResource(R.string.diag_cloud_model), cloudModel ?: stringResource(R.string.diag_not_tested))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { models.probeOnDevice() }, enabled = !busy && model == ModelState.Available) {
+                Button(onClick = { models.probeOnDevice() }, enabled = !modelBusy && model == ModelState.Available) {
                     Text(stringResource(R.string.diag_probe_device))
                 }
                 Button(onClick = { models.probeCloud() }, enabled = !busy) {

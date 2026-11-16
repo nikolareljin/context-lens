@@ -350,7 +350,6 @@ fun isCloudLimit(outcome: String): Boolean = cloudLimit.containsMatchIn(outcome)
 /** A Google search for the clean question, opened in the user's own browser; nothing is sent by the app. */
 fun searchUrl(query: String): String = "https://www.google.com/search?q=" + URLEncoder.encode(query, Charsets.UTF_8.name())
 
-/** A line for the gatekeeper prompt with the date a phrase like "last month" means. */
 /** The gatekeeper prompt for one sentence; the app and the evaluation use the same one. */
 fun gatekeeperPrompt(template: Prompt, context: SessionContext, text: String): String = template.fill(
     mapOf(
@@ -360,6 +359,7 @@ fun gatekeeperPrompt(template: Prompt, context: SessionContext, text: String): S
     ),
 )
 
+/** A line for the gatekeeper prompt with the date a phrase like "last month" means. */
 fun dateHint(text: String, today: LocalDate): String {
     val m = DateResolver.resolve(text, today) ?: return "Date hint: none"
     return "Date hint: \"${m.phrase}\" = ${describeRange(m.start, m.end)}"

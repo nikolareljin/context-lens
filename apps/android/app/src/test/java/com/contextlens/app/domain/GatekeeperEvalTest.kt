@@ -81,11 +81,29 @@ class GatekeeperEvalTest {
     }
 
     @Test
+    fun aFailedCallOnAClaimCountsAsMissed() {
+        val claim = items.single { it.id == "fc09" }
+        val talk = items.single { it.id == "st05" }
+        val results = listOf(
+            EvalResult(claim, null, "", emptyList(), null, 20_000, error = "timed out"),
+            GatekeeperEval.score(talk, GatekeeperResult(false, "", emptyList(), "small talk"), "ON_DEVICE", 500),
+        )
+        val s = GatekeeperEval.summarize(results)
+        assertEquals(1, s.falseNegatives)
+        assertEquals(0.0, s.recall!!, 0.0)
+        assertEquals(null, s.precision)
+    }
+
+    @Test
     fun matchingIgnoresCaseArrowsAndNumberSpacing() {
         assertTrue(GatekeeperEval.contains("Here → Springfield", "here -> Springfield"))
         assertTrue(GatekeeperEval.contains("card 4111111111111111 charged", "4111 1111 1111 1111"))
         assertTrue(GatekeeperEval.contains("Is the EV credit still 7,500?", "7,500"))
         assertFalse(GatekeeperEval.contains("Did property tax rise?", "Jenna"))
+        // Whole words only.
+        assertFalse(GatekeeperEval.contains("Is the EV credit still the same 7,500 dollars?", "Sam"))
+        assertFalse(GatekeeperEval.contains("Did the stock market fall?", "Mark"))
+        assertTrue(GatekeeperEval.contains("Ask Mark about it", "Mark"))
     }
 
     @Test

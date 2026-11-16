@@ -6,7 +6,7 @@ The gatekeeper (the step that turns a sentence into a clean search question) is 
 
 | Metric | Meaning | Target |
 |---|---|---|
-| Claim precision and recall | checkable claims found, versus missed or invented | reported |
+| Claim precision and recall | checkable claims found, versus missed or invented; a claim the model failed on (timeout, unreadable reply) counts as missed | reported |
 | References resolved | "here", "last month", "this company" resolved as labelled | reported |
 | Personal data left by the model | planted names, numbers or addresses the model copied into a question | reported |
 | Personal data that would be sent | of those, the ones the personal-data check would not stop | **0** |

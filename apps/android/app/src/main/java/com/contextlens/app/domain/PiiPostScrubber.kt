@@ -166,15 +166,23 @@ object PiiPostScrubber {
                 .filter { it.length > 1 } + emailNames(utterance)
             ).toSet()
 
-    /** "sam.rivera@example.com" names Sam Rivera; "info@" and "support@" name nobody. */
-    private fun emailNames(utterance: String): List<String> =
-        email.findAll(utterance).flatMap { m -> m.value.substringBefore('@').split(Regex("[._%+-]+")) }
-            .filter { it.length >= 3 && it.all(Char::isLetter) && it.lowercase() !in mailboxWords }
+    /**
+     * "sam.rivera@example.com" names Sam Rivera: only a first.last local part counts.
+     * "city.council@" and "press@" name nobody, so "the City Council" stays askable.
+     */
+    private fun emailNames(utterance: String): List<String> = email.findAll(utterance).flatMap { m ->
+        val parts = m.value.substringBefore('@').split(Regex("[._-]+"))
             .map { part -> part.lowercase().replaceFirstChar { it.titlecase() } }
-            .toList()
+        val personal = parts.size == 2 && parts.all { p ->
+            p.length >= 2 && p.all(Char::isLetter) && p !in orgWords && p !in notNames && p.lowercase() !in mailboxWords
+        }
+        if (personal) parts.asSequence() else emptySequence()
+    }.toList()
 
     private val mailboxWords = setOf(
-        "info", "support", "contact", "admin", "sales", "hello", "office", "team", "mail", "noreply", "help", "news", "billing",
+        "info", "support", "contact", "admin", "sales", "hello", "office", "team", "mail", "noreply", "no", "reply", "help",
+        "news", "billing", "press", "media", "jobs", "careers", "events", "orders", "hr", "city", "hall", "library", "parks",
+        "dept", "public", "works", "customer", "service", "services", "school", "town", "county", "state", "police", "fire",
     )
 
     /**
