@@ -4,6 +4,10 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ## [Unreleased]
 
+### Fixed
+
+- The on-device evaluation retries a call Android refused for its usage quota (after 5 s, then 15 s) instead of scoring it as a miss, and its summary lists failure reasons and the ids of missed claims.
+
 ### Added
 
 - Gatekeeper evaluation: 73 made-up sentences in `eval/utterances.yaml`; `./dev eval` checks the local rules, date hints and personal-data check against every one; Diagnostics → Run evaluation scores Gemini Nano on the device (claim precision and recall, references, personal data left and sent, latency) with nothing sent.

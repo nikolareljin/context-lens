@@ -145,5 +145,59 @@ class GatekeeperEvalTest {
         val report = GatekeeperEval.report(results, "test device", "v1")
         assertTrue(report.contains("Claim precision 100% · recall 100%"))
         assertTrue(report.contains("st06 · ERROR timed out"))
+        assertEquals(mapOf("timed out" to 1), s.failures)
+        assertTrue(report.contains("Failures: timed out ×1"))
+    }
+
+    @Test
+    fun aQuotaRefusalIsRetriedAfterAWaitAndOnlyTheLastOneCounts() = runBlocking {
+        val quota = "[ErrorCode 9] Request cannot be processed. Either your app is out of usage quota"
+        var calls = 0
+        val waits = mutableListOf<Long>()
+        val model = object : TextModel {
+            override val name = "fake"
+            override suspend fun generate(prompt: String): ModelReply {
+                calls++
+                val said = prompt.substringAfterLast("Sentence: \"").substringBeforeLast("\"")
+                if (said.startsWith("Python") && calls < 3) throw IllegalStateException(quota)
+                if (said.startsWith("Lightning")) throw IllegalStateException(quota)
+                return ModelReply("{\"claim\": true, \"query\": \"Was Python first released in 1991?\"}", "ON_DEVICE")
+            }
+        }
+        val prompt = Prompt("v1", "{{context}}\n{{hints}}\nSentence: \"{{utterance}}\"")
+        val run = GatekeeperEval(model, prompt, quotaBackoffMs = listOf(5, 15), pause = { waits += it })
+
+        val ok = run.run(items.filter { it.id == "fc09" }).single()
+        assertEquals(3, calls)
+        assertEquals(listOf(5L, 15L), waits)
+        assertEquals(true, ok.claim)
+
+        calls = 0
+        waits.clear()
+        val refused = run.run(items.filter { it.id == "fc11" }).single()
+        assertEquals(3, calls)
+        assertEquals(null, refused.claim)
+        assertTrue(refused.error!!.contains("usage quota"))
+    }
+
+    @Test
+    fun failuresKeepTheExceptionMessageAndMissedClaimsAreListed() {
+        val model = object : TextModel {
+            override val name = "fake"
+            override suspend fun generate(prompt: String): ModelReply {
+                val said = prompt.substringAfterLast("Sentence: \"").substringBeforeLast("\"")
+                if (said.startsWith("Python")) throw IllegalStateException("model busy\nsecond line")
+                return ModelReply("{\"claim\": false, \"query\": \"\"}", "ON_DEVICE")
+            }
+        }
+        val prompt = Prompt("v1", "{{context}}\n{{hints}}\nSentence: \"{{utterance}}\"")
+        val subset = items.filter { it.id in setOf("fc09") } + items.filter { it.scored && it.claim && it.id != "fc09" }.take(1)
+        val results = runBlocking { GatekeeperEval(model, prompt).run(subset) }
+        val s = GatekeeperEval.summarize(results)
+        assertEquals(mapOf("IllegalStateException: model busy" to 1), s.failures)
+        assertEquals(listOf(subset[1].id), s.missed)
+        val report = GatekeeperEval.report(results, "test device", "v1")
+        assertTrue(report.contains("Failures: IllegalStateException: model busy ×1"))
+        assertTrue(report.contains("Missed claims: ${subset[1].id}"))
     }
 }
