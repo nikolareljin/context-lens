@@ -242,6 +242,9 @@ class HybridContextPipeline(
         suspend fun attempt() = call(gateTimeoutMs, onCancel = { if (mode == PrivacyMode.BALANCED) rawText(null, MAYBE_SENT, inSession = false) }) {
             model.generate(prompt)
         }
+        // Each attempt is timed and logged on its own, so the card shows the model's latency
+        // and Diagnostics shows every refusal.
+        var attemptStart = clock()
         var outcome = attempt()
         // Android limits how often one app may call the phone's model. In Strict a refusal
         // never left the phone, so asking again later is safe; Balanced is not retried, since
@@ -249,17 +252,20 @@ class HybridContextPipeline(
         for (wait in quotaBackoffMs) {
             val error = outcome.error
             if (mode != PrivacyMode.STRICT || error == null || !GatekeeperEval.isQuota(error)) break
-            update(work.id) { it.copy(note = "the phone's model is busy; trying again in ${wait / 1000} s") }
+            val retry = "trying again in ${wait / 1000} s"
+            callLog?.add(CallRecord(attemptStart, Tier.ON_DEVICE, "gatekeeper ${model.name}", null, clock() - attemptStart, "${outcome.label}; $retry"))
+            update(work.id) { it.copy(note = "The phone's model is busy; $retry.") }
             pause(wait)
+            attemptStart = clock()
             outcome = attempt()
+            if (outcome.reply != null) update(work.id) { it.copy(note = null) }
         }
-        if (outcome.reply != null) update(work.id) { it.copy(note = null) }
-        val latency = clock() - start
+        val latency = clock() - attemptStart
         val reply = outcome.reply
         val tier = if (reply?.source == ON_DEVICE || (mode == PrivacyMode.STRICT && reply == null)) Tier.ON_DEVICE else Tier.CLOUD
         // Strict without a reply never left the phone (on device only); a Balanced call without one may have.
         if (tier == Tier.ON_DEVICE) count(work.session) { it.copy(readOnPhone = it.readOnPhone + 1) }
-        callLog?.add(CallRecord(start, tier, "gatekeeper ${model.name}", reply?.source, latency, outcome.label))
+        callLog?.add(CallRecord(attemptStart, tier, "gatekeeper ${model.name}", reply?.source, latency, outcome.label))
         if (mode == PrivacyMode.STRICT && reply != null && reply.source != ON_DEVICE) {
             // Strict asked for the phone only; a reply from anywhere else is recorded and not used.
             rawText(reply.source, "${outcome.label}; not on the device in Strict mode")

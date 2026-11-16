@@ -58,13 +58,18 @@ class PipelineTest {
 
     private class Harness(val pipeline: HybridContextPipeline, val session: SessionContextManager, val log: CallLog, val scope: CoroutineScope)
 
-    private fun harness(models: ModelSource, verifyTimeoutMs: Long = 1_000, pauses: MutableList<Long> = mutableListOf()): Harness {
+    private fun harness(
+        models: ModelSource,
+        verifyTimeoutMs: Long = 1_000,
+        pauses: MutableList<Long> = mutableListOf(),
+        pause: suspend (Long) -> Unit = { synchronized(pauses) { pauses += it } },
+    ): Harness {
         val session = SessionContextManager { today }
         val log = CallLog()
         val scope = CoroutineScope(kotlinx.coroutines.Dispatchers.Default + Job())
         val p = HybridContextPipeline(
             scope, session, models, prompts, EgressLedger(), log,
-            verifyTimeoutMs = verifyTimeoutMs, pause = { synchronized(pauses) { pauses += it } },
+            verifyTimeoutMs = verifyTimeoutMs, pause = pause,
         )
         return Harness(p, session, log, scope)
     }
@@ -357,6 +362,11 @@ class PipelineTest {
         assertEquals(listOf(5_000L), pauses)
         assertEquals(null, check.note)
         assertTrue(h.pipeline.ledger.entries.value.none { it.kind == EgressKind.RAW_TEXT })
+        assertEquals(1, h.pipeline.counts.value.readOnPhone)
+        // both gatekeeper attempts are in the call log; the refusal says it will try again
+        val gates = h.log.entries.value.filter { it.model.startsWith("gatekeeper") }
+        assertEquals(2, gates.size)
+        assertEquals(1, gates.count { it.outcome.contains("usage quota") && it.outcome.endsWith("trying again in 5 s") })
         h.scope.cancel()
     }
 
@@ -390,5 +400,25 @@ class PipelineTest {
         assertEquals(1, balanced.prompts.size)
         assertTrue(pauses.isEmpty())
         b.scope.cancel()
+    }
+
+    @Test
+    fun theCardShowsTheWaitAndClearStopsIt() {
+        val strict = busyGate(1)
+        val waiting = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val h = harness(FakeSource(strict, gate(claimJson), listOf(verifier())), pause = { waiting.await() })
+        val id = h.pipeline.submit("They raised bus fares here last month.")!!
+        val card = runBlocking {
+            withTimeout(5_000) { h.pipeline.checks.first { list -> list.any { it.id == id && it.note != null } } }.first { it.id == id }
+        }
+        assertEquals(Stage.GATEKEEPING, card.stage)
+        assertEquals("The phone's model is busy; trying again in 5 s.", card.note)
+        h.pipeline.clear()
+        runBlocking { delay(200) }
+        assertEquals(1, strict.prompts.size)
+        assertTrue(h.pipeline.checks.value.isEmpty())
+        assertTrue(h.pipeline.ledger.entries.value.isEmpty())
+        assertEquals(PipelineCounts(), h.pipeline.counts.value)
+        h.scope.cancel()
     }
 }

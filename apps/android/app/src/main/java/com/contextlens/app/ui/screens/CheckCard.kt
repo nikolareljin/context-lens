@@ -183,7 +183,8 @@ private fun pill(source: String?, latencyMs: Long, model: String): String = "${s
 @Composable
 private fun stageText(check: Check): String = when (check.stage) {
     Stage.FILTERED -> stringResource(R.string.check_filtered, check.note.orEmpty())
-    Stage.GATEKEEPING -> stringResource(R.string.check_gatekeeping)
+    // The note says when the phone's model refused for quota and the call is waiting to retry.
+    Stage.GATEKEEPING -> check.note ?: stringResource(R.string.check_gatekeeping)
     Stage.NO_CLAIM -> stringResource(R.string.check_no_claim, check.gate?.let { pill(it.source, it.latencyMs, it.model) }.orEmpty())
     Stage.NEEDS_MODEL -> stringResource(R.string.check_needs_model)
     Stage.WITHHELD -> stringResource(R.string.check_withheld, check.withheld.joinToString { it.name.lowercase() })
