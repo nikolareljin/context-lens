@@ -69,6 +69,15 @@ class RulesTest {
         assertEquals(setOf(PiiKind.NAME), hits("Is Sam Rivera's EV credit still 7,500?", "Email sam.rivera+fares@example.com about the EV credit."))
         assertEquals(setOf(PiiKind.NAME), hits("Did Rivera get the refund?", "Email j.rivera@example.com about the refund."))
         assertEquals(setOf(PiiKind.NAME), hits("Did Taylor get the refund?", "Email taylor.post@example.com about the refund."))
+        // Spelling from an email is unknown, so case, apostrophes and hyphens don't matter; digits and long names too.
+        assertEquals(setOf(PiiKind.NAME), hits("Did McDonald get the refund?", "Email j.mcdonald@example.com about the refund."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did O'Brien get the refund?", "Email j.obrien@example.com about the refund."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did Rivera get the refund?", "Email sam.rivera92@example.com about the refund."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did Kim get the refund?", "Email kim.sales@example.com about the refund."))
+        assertEquals(setOf(PiiKind.NAME), hits("Did Maria get the refund?", "Email maria.de.la.cruz@example.com about the refund."))
+        assertEquals(emptySet<PiiKind>(), hits("Did LA raise bus fares?", "Email maria.de.la.cruz@example.com about the fares."))
+        assertEquals(emptySet<PiiKind>(), hits("Did the Parks Department close the pool?", "Write to parks.department@example.org about the pool."))
+        assertEquals(emptySet<PiiKind>(), hits("Did Town Hall extend its hours?", "Write to town.hall@example.org about hours."))
         assertEquals(setOf(PiiKind.NAME), hits("Did Kevin O’Brien say revenue grew?", "Kevin O'Brien from accounting said revenue grew."))
         // The gatekeeper resolved "she" from an earlier sentence.
         assertEquals(
@@ -120,7 +129,8 @@ class RulesTest {
             PiiPostScrubber.findIn(query, utterance, public)
 
         assertEquals(setOf(PiiKind.PHONE, PiiKind.NAME), hits("Call Mark at 555-0134 about bus fares?", "Call Mark at 555-0134 about the bus fare numbers."))
-        assertEquals(setOf(PiiKind.EMAIL), hits("Is the EV credit still 7,500? sam.rivera@example.com", "Email me at sam.rivera@example.com if the EV credit is still 7,500."))
+        // The address itself, and the name in it.
+        assertEquals(setOf(PiiKind.EMAIL, PiiKind.NAME), hits("Is the EV credit still 7,500? sam.rivera@example.com", "Email me at sam.rivera@example.com if the EV credit is still 7,500."))
         assertEquals(setOf(PiiKind.CARD), hits("Did the bridge toll rise for card 4111?", "My card 4111 1111 1111 1111 got charged the new toll rate on the bridge."))
         assertEquals(setOf(PiiKind.SSN), hits("Is identity theft up for 123-45-6789?", "My SSN is 123-45-6789, is the identity theft rate really up this year?"))
         assertEquals(setOf(PiiKind.IBAN), hits("New bank fee on DE89 3704 0044 0532 0130 00?", "Tell Priya her account DE89 3704 0044 0532 0130 00 was charged the new bank fee."))

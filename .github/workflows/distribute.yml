@@ -5,7 +5,7 @@ name: distribute
 on:
   push:
     branches: [main]
-    paths: ["apps/android/**", "VERSION"]
+    paths: ["apps/android/**", "eval/**", "VERSION"]
   workflow_dispatch:
 
 concurrency:

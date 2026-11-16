@@ -109,6 +109,7 @@ class GatekeeperEvalTest {
         // Numbers match whole.
         assertFalse(GatekeeperEval.contains("Did 41110 drivers pay the toll?", "4111"))
         assertFalse(GatekeeperEval.contains("Is the credit 17,500 now?", "7,500"))
+        assertTrue(GatekeeperEval.contains("Is the EV tax credit $7500?", "7,500"))
         assertFalse(GatekeeperEval.contains("Did rent at 112 Elm Street rise?", "12 Elm Street"))
     }
 

@@ -158,12 +158,12 @@ class GatekeeperEval(
         /**
          * Case-insensitive, with "→" read as "->" and curly apostrophes as straight ones.
          * Words match whole, plurals allowed ("Sam" is not in "same"; "plastic bag" is in
-         * "plastic bags"). Numbers match whole, ignoring spaces and dashes
+         * "plastic bags"). Numbers match whole, ignoring spaces, dashes and thousands commas
          * ("4111111111111111" has "4111 1111 1111 1111"; "41110" does not have "4111").
          */
         internal fun contains(haystack: String, needle: String): Boolean {
             fun norm(s: String) = s.lowercase(Locale.US).replace("→", "->").replace('’', '\'').replace(Regex("\\s+"), " ")
-            fun digitsOnly(s: String) = s.replace(Regex("[\\s-]"), "")
+            fun digitsOnly(s: String) = s.replace(Regex("(?<=\\d),(?=\\d)|[\\s-]"), "")
             val h = norm(haystack)
             val n = norm(needle)
             if (Regex("(?<![\\p{L}\\p{N}])" + Regex.escape(n) + "(?:s|es|'s)?(?![\\p{L}\\p{N}])").containsMatchIn(h)) return true
