@@ -58,11 +58,19 @@ class PipelineTest {
 
     private class Harness(val pipeline: HybridContextPipeline, val session: SessionContextManager, val log: CallLog, val scope: CoroutineScope)
 
-    private fun harness(models: ModelSource, verifyTimeoutMs: Long = 1_000): Harness {
+    private fun harness(
+        models: ModelSource,
+        verifyTimeoutMs: Long = 1_000,
+        pauses: MutableList<Long> = mutableListOf(),
+        pause: suspend (Long) -> Unit = { synchronized(pauses) { pauses += it } },
+    ): Harness {
         val session = SessionContextManager { today }
         val log = CallLog()
         val scope = CoroutineScope(kotlinx.coroutines.Dispatchers.Default + Job())
-        val p = HybridContextPipeline(scope, session, models, prompts, EgressLedger(), log, verifyTimeoutMs = verifyTimeoutMs)
+        val p = HybridContextPipeline(
+            scope, session, models, prompts, EgressLedger(), log,
+            verifyTimeoutMs = verifyTimeoutMs, pause = pause,
+        )
         return Harness(p, session, log, scope)
     }
 
@@ -328,6 +336,98 @@ class PipelineTest {
             searchUrl(check.gate!!.result.sanitizedResolvedQuery),
         )
         assertTrue(isCloudLimit("HTTP 402 Payment Required") && isCloudLimit("RESOURCE_EXHAUSTED") && !isCloudLimit("timed out"))
+        h.scope.cancel()
+    }
+
+    private val quotaRefusal = "[ErrorCode 9] Request cannot be processed. Either your app is out of usage quota"
+
+    /** Refuses for quota [refusals] times, then answers with [json]. */
+    private fun busyGate(refusals: Int, json: String = claimJson): FakeModel {
+        var calls = 0
+        return FakeModel("gate") {
+            if (calls++ < refusals) throw IllegalStateException(quotaRefusal)
+            ModelReply(json, "ON_DEVICE")
+        }
+    }
+
+    @Test
+    fun strictRetriesTheModelAfterAQuotaRefusal() {
+        val strict = busyGate(1)
+        val models = FakeSource(strict, gate(claimJson), listOf(verifier()))
+        val pauses = mutableListOf<Long>()
+        val h = harness(models, pauses = pauses)
+        val check = h.settle(h.pipeline.submit("They raised bus fares here last month.")!!)
+        assertEquals(Stage.DONE, check.stage)
+        assertEquals(2, strict.prompts.size)
+        assertEquals(listOf(5_000L), pauses)
+        assertEquals(null, check.note)
+        assertTrue(h.pipeline.ledger.entries.value.none { it.kind == EgressKind.RAW_TEXT })
+        assertEquals(1, h.pipeline.counts.value.readOnPhone)
+        // both gatekeeper attempts are in the call log; the refusal says it will try again
+        val gates = h.log.entries.value.filter { it.model.startsWith("gatekeeper") }
+        assertEquals(2, gates.size)
+        assertEquals(1, gates.count { it.outcome.contains("usage quota") && it.outcome.endsWith("trying again in 5 s") })
+        h.scope.cancel()
+    }
+
+    @Test
+    fun strictGivesUpAfterTheLastQuotaRefusal() {
+        val strict = busyGate(3)
+        val models = FakeSource(strict, gate(claimJson), listOf(verifier()))
+        val pauses = mutableListOf<Long>()
+        val h = harness(models, pauses = pauses)
+        val check = h.settle(h.pipeline.submit("They raised bus fares here last month.")!!)
+        assertEquals(Stage.FAILED, check.stage)
+        assertEquals(3, strict.prompts.size)
+        assertEquals(listOf(5_000L, 15_000L), pauses)
+        assertTrue(check.note.orEmpty().contains("usage quota"))
+        h.scope.cancel()
+    }
+
+    @Test
+    fun otherFailuresAndBalancedAreNotRetried() {
+        val broken = FakeModel("gate") { throw IllegalStateException("model not found") }
+        val pauses = mutableListOf<Long>()
+        val h = harness(FakeSource(broken, gate(claimJson), listOf(verifier())), pauses = pauses)
+        assertEquals(Stage.FAILED, h.settle(h.pipeline.submit("They raised bus fares here last month.")!!).stage)
+        assertEquals(1, broken.prompts.size)
+        h.scope.cancel()
+
+        val balanced = busyGate(1)
+        val b = harness(FakeSource(gate(claimJson), balanced, listOf(verifier())), pauses = pauses)
+        b.pipeline.setMode(PrivacyMode.BALANCED)
+        assertEquals(Stage.FAILED, b.settle(b.pipeline.submit("They raised bus fares here last month.")!!).stage)
+        assertEquals(1, balanced.prompts.size)
+        assertTrue(pauses.isEmpty())
+        b.scope.cancel()
+    }
+
+    @Test
+    fun theCardShowsTheWaitAndClearStopsIt() {
+        val strict = busyGate(1)
+        val entered = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val waiting = kotlinx.coroutines.CompletableDeferred<Unit>()
+        // A wait that ignores cancellation: only the pipeline's own check after it can stop the retry.
+        val h = harness(FakeSource(strict, gate(claimJson), listOf(verifier())), pause = {
+            entered.complete(Unit)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { waiting.await() }
+        })
+        val id = h.pipeline.submit("They raised bus fares here last month.")!!
+        val card = runBlocking {
+            withTimeout(5_000) { h.pipeline.checks.first { list -> list.any { it.id == id && it.note != null } } }.first { it.id == id }
+        }
+        assertEquals(Stage.GATEKEEPING, card.stage)
+        assertEquals("The phone's model is busy; trying again in 5 s.", card.note)
+        runBlocking { withTimeout(5_000) { entered.await() } }
+        h.pipeline.clear()
+        // the wait ends after Clear; asking the model again now would be a second prompt
+        waiting.complete(Unit)
+        runBlocking { delay(200) }
+        assertEquals(1, strict.prompts.size)
+        assertEquals(1, h.log.entries.value.count { it.model.startsWith("gatekeeper") })
+        assertTrue(h.pipeline.checks.value.isEmpty())
+        assertTrue(h.pipeline.ledger.entries.value.isEmpty())
+        assertEquals(PipelineCounts(), h.pipeline.counts.value)
         h.scope.cancel()
     }
 }
