@@ -87,6 +87,7 @@ class RulesTest {
         assertEquals(emptySet<PiiKind>(), hits("Did prices rise in 2016 2017 2018 2019 2020?", "Prices rose for five years."))
         assertEquals(emptySet<PiiKind>(), hits("Did Zimbabwe print a 100000000000000 dollar note?", "Zimbabwe printed huge notes."))
         assertEquals(emptySet<PiiKind>(), hits("Is Avogadro's number 602214076000000000000000?", "Avogadro's number is huge."))
+        assertEquals(emptySet<PiiKind>(), hits("Is pi 3.14159265358979323846?", "Pi has many digits."))
         assertEquals(setOf(PiiKind.ADDRESS), hits("Did rent at 42 Maple street rise?", "Rent at 42 Maple street rose."))
         // A friend's name inside the region's name is still a name.
         assertEquals(setOf(PiiKind.NAME), PiiPostScrubber.findIn("Did Ann get the refund?", "My friend Ann got the refund.", listOf("Annapolis, Maryland")))

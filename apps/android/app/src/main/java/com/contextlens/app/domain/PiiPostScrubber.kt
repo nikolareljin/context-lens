@@ -11,8 +11,8 @@ enum class PiiKind { EMAIL, PHONE, CARD, IBAN, SSN, ADDRESS, NAME }
 object PiiPostScrubber {
     private val email = Regex("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}")
     private val ssn = Regex("\\b\\d{3}([ -])\\d{2}\\1\\d{4}\\b")
-    /** A whole run of digits; [cardWindows] finds the card inside it. */
-    private val card = Regex("\\b(?:\\d[ -]?){12,40}\\d\\b")
+    /** A whole run of digits, not the decimals of a number ("3.14159265358979"); [cardWindows] finds the card inside it. */
+    private val card = Regex("(?<!\\d[.,])\\b(?:\\d[ -]?){12,40}\\d\\b")
     private val iban = Regex("\\b[A-Z]{2}\\d{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,4})?\\b")
     /**
      * North American numbers with separators, and any "+" number of 7 to 15 digits. The
