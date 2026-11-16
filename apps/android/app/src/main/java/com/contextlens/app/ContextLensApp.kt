@@ -6,6 +6,7 @@ import com.contextlens.app.ai.FirebaseModelSource
 import com.contextlens.app.ai.ModelGateway
 import com.contextlens.app.ai.loadPrompts
 import com.contextlens.app.context.SessionContextManager
+import com.contextlens.app.domain.DemoRunner
 import com.contextlens.app.domain.EgressLedger
 import com.contextlens.app.domain.HybridContextPipeline
 import com.contextlens.app.firebase.AppCheckProviders
@@ -46,6 +47,9 @@ class ContextLensApp : Application() {
             callLog = models.log,
         )
     }
+
+    /** App-wide, so the demo keeps running while the Ledger is open. */
+    val demo: DemoRunner by lazy { DemoRunner(appScope, pipeline, sessionContext) }
 
     override fun onCreate() {
         super.onCreate()

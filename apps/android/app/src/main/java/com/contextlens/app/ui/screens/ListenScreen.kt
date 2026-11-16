@@ -10,16 +10,21 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -42,14 +47,16 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import com.contextlens.app.R
 import com.contextlens.app.context.RegionLocator
 import com.contextlens.app.context.SessionContextManager
+import com.contextlens.app.domain.DemoRunner
 import com.contextlens.app.domain.HybridContextPipeline
 import com.contextlens.app.domain.PrivacyMode
+import com.contextlens.app.domain.totals
 import com.contextlens.app.speech.ListenState
 import com.contextlens.app.speech.SpeechListener
 import kotlinx.coroutines.launch
 
 @Composable
-fun ListenScreen(session: SessionContextManager, pipeline: HybridContextPipeline) {
+fun ListenScreen(session: SessionContextManager, pipeline: HybridContextPipeline, demo: DemoRunner) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val ctx by session.state.collectAsState()
@@ -59,6 +66,9 @@ fun ListenScreen(session: SessionContextManager, pipeline: HybridContextPipeline
     val partial by speech.partial.collectAsState()
     val checks by pipeline.checks.collectAsState()
     val mode by pipeline.mode.collectAsState()
+    val counts by pipeline.counts.collectAsState()
+    val entries by pipeline.ledger.entries.collectAsState()
+    val demoRunning by demo.running.collectAsState()
     // Not saveable: typed speech must not reach saved instance state on disk.
     var typed by remember { mutableStateOf("") }
     var micDenied by remember { mutableStateOf(false) }
@@ -94,8 +104,19 @@ fun ListenScreen(session: SessionContextManager, pipeline: HybridContextPipeline
     }
 
     ScreenColumn(stringResource(R.string.nav_listen)) {
-        // Context bar: what turns a sentence into a checkable question.
+        // Context bar: what turns a sentence into a checkable question, and the privacy mode.
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Strict keeps raw speech on the phone; Balanced may fall back to the cloud.
+            FilterChip(
+                selected = mode == PrivacyMode.STRICT,
+                onClick = { pipeline.setMode(if (mode == PrivacyMode.STRICT) PrivacyMode.BALANCED else PrivacyMode.STRICT) },
+                label = { Text(stringResource(if (mode == PrivacyMode.STRICT) R.string.mode_strict_chip else R.string.mode_balanced_chip)) },
+                leadingIcon = if (mode == PrivacyMode.STRICT) {
+                    { Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(FilterChipDefaults.IconSize)) }
+                } else {
+                    null
+                },
+            )
             AssistChip(onClick = {}, label = { Text(ctx.today.toString()) })
             val region = ctx.region
             if (region != null) {
@@ -124,8 +145,14 @@ fun ListenScreen(session: SessionContextManager, pipeline: HybridContextPipeline
                 )
             }
         }
+        Text(
+            stringResource(if (mode == PrivacyMode.STRICT) R.string.mode_strict else R.string.mode_balanced),
+            style = MaterialTheme.typography.bodySmall,
+        )
         regionMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         Text(stringResource(R.string.listen_area_hint), style = MaterialTheme.typography.bodySmall)
+
+        PrivacyCounters(counts, entries.totals())
 
         // Microphone: on-device recognition only.
         Card(Modifier.fillMaxWidth()) {
@@ -139,6 +166,7 @@ fun ListenScreen(session: SessionContextManager, pipeline: HybridContextPipeline
                     Button(onClick = {
                         val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
                             PackageManager.PERMISSION_GRANTED
+                        demo.stop()
                         if (granted) speech.start() else micPermission.launch(Manifest.permission.RECORD_AUDIO)
                     }) { Text(stringResource(R.string.listen_start)) }
                     if (micDenied) {
@@ -170,21 +198,19 @@ fun ListenScreen(session: SessionContextManager, pipeline: HybridContextPipeline
             OutlinedButton(onClick = { session.pin(typed); typed = "" }, enabled = typed.isNotBlank()) {
                 Text(stringResource(R.string.listen_pin))
             }
-            OutlinedButton(onClick = { speech.stop(); pipeline.clear(); session.clear() }) {
+            OutlinedButton(onClick = { speech.stop(); demo.stop(); pipeline.clear(); session.clear() }) {
                 Text(stringResource(R.string.listen_clear))
             }
         }
 
-        // Privacy mode: Strict keeps raw speech on the phone; Balanced may fall back to the cloud.
+        // Demo script: a fixed conversation through the real pipeline, for takes and for trying it silently.
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Switch(
-                checked = mode == PrivacyMode.STRICT,
-                onCheckedChange = { pipeline.setMode(if (it) PrivacyMode.STRICT else PrivacyMode.BALANCED) },
-            )
-            Text(
-                stringResource(if (mode == PrivacyMode.STRICT) R.string.mode_strict else R.string.mode_balanced),
-                style = MaterialTheme.typography.bodyMedium,
-            )
+            if (demoRunning) {
+                OutlinedButton(onClick = { demo.stop() }) { Text(stringResource(R.string.demo_stop)) }
+            } else {
+                OutlinedButton(onClick = { speech.stop(); demo.start() }) { Text(stringResource(R.string.demo_start)) }
+            }
+            Text(stringResource(R.string.demo_hint), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
         }
 
         // Each sentence and what happened to it.

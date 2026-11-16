@@ -24,6 +24,7 @@ import androidx.navigation.compose.rememberNavController
 import com.contextlens.app.R
 import com.contextlens.app.ai.ModelGateway
 import com.contextlens.app.context.SessionContextManager
+import com.contextlens.app.domain.DemoRunner
 import com.contextlens.app.domain.HybridContextPipeline
 import com.contextlens.app.firebase.FirebaseSession
 import com.contextlens.app.ui.screens.DiagnosticsScreen
@@ -42,6 +43,7 @@ fun AppNav(
     models: ModelGateway,
     sessionContext: SessionContextManager,
     pipeline: HybridContextPipeline,
+    demo: DemoRunner,
 ) {
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
@@ -67,7 +69,7 @@ fun AppNav(
         },
     ) { padding ->
         NavHost(nav, startDestination = Destination.LISTEN.route, modifier = Modifier.padding(padding)) {
-            composable(Destination.LISTEN.route) { ListenScreen(sessionContext, pipeline) }
+            composable(Destination.LISTEN.route) { ListenScreen(sessionContext, pipeline, demo) }
             composable(Destination.LEDGER.route) { LedgerScreen(pipeline) }
             composable(Destination.DIAGNOSTICS.route) { DiagnosticsScreen(session, models) }
         }

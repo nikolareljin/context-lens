@@ -19,6 +19,7 @@ class MainActivity : ComponentActivity() {
                     models = app.models,
                     sessionContext = app.sessionContext,
                     pipeline = app.pipeline,
+                    demo = app.demo,
                 )
             }
         }

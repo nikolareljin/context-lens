@@ -55,6 +55,8 @@ data class Check(
     val card: FactCard? = null,
     val withheld: Set<PiiKind> = emptySet(),
     val note: String? = null,
+    /** Fed by the demo script, not spoken or typed; the card says so. */
+    val demo: Boolean = false,
 )
 
 data class PipelineCounts(val processed: Int = 0, val filtered: Int = 0, val withheld: Int = 0)
@@ -123,8 +125,8 @@ class HybridContextPipeline(
         _mode.value = mode
     }
 
-    /** Takes one finished sentence (spoken or typed). Returns its id, or null for blank text. */
-    fun submit(text: String): Long? {
+    /** Takes one finished sentence (spoken, typed or from the demo script). Returns its id, or null for blank text. */
+    fun submit(text: String, demo: Boolean = false): Long? {
         val clean = text.trim().replace(Regex("\\s+"), " ")
         if (clean.isEmpty()) return null
         // The context as it was before this sentence: "recent" means the sentences before it.
@@ -134,11 +136,11 @@ class HybridContextPipeline(
         _counts.update { it.copy(processed = it.processed + 1) }
         when (val decision = Tier0Filter.check(clean)) {
             is Tier0Filter.Decision.Drop -> {
-                put(Check(id, clean, clock(), Stage.FILTERED, note = decision.reason))
+                put(Check(id, clean, clock(), Stage.FILTERED, note = decision.reason, demo = demo))
                 _counts.update { it.copy(filtered = it.filtered + 1) }
             }
             Tier0Filter.Decision.Pass -> {
-                put(Check(id, clean, clock(), Stage.GATEKEEPING))
+                put(Check(id, clean, clock(), Stage.GATEKEEPING, demo = demo))
                 queue.trySend(Work(id, clean, context, _mode.value))
             }
         }
