@@ -198,8 +198,8 @@ object PiiPostScrubber {
         val joined = local.split(Regex("[._]+")).map { it.trimEnd(Char::isDigit) }
             .filter { '-' in it }.map { it.replace("-", "") }
         val mailbox = parts.isEmpty() ||
-            // "no-reply@", "no-reply-aws@", "do_not_reply.billing@": a reply prefix, whatever follows.
-            (1..parts.size).any { parts.take(it).joinToString("") in replyAddresses } ||
+            // "no-reply@", "no-reply-aws@", "payments-noreply@": a reply word anywhere in the address.
+            parts.indices.any { i -> (i + 1..parts.size).any { j -> parts.subList(i, j).joinToString("") in replyAddresses } } ||
             (parts.size == 1 && parts[0] in singleRoles) ||
             parts.first() in mailboxStarts ||
             parts.last() in officeEnds
@@ -219,7 +219,7 @@ object PiiPostScrubber {
         "notifications", "alerts", "webmaster", "postmaster", "registrar",
     )
 
-    /** "no-reply", "do_not_reply" and the like at the start of an address, whatever the separators. */
+    /** "no-reply", "do_not_reply" and the like anywhere in an address, whatever the separators. */
     private val replyAddresses = setOf("noreply", "donotreply", "donotrespond", "noresponse", "replies")
 
     /** Role words that are also surnames: a mailbox only when they are the whole address ("jobs@", "parks@"). */
