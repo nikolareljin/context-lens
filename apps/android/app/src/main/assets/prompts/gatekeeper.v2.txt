@@ -3,7 +3,7 @@ You decide whether one spoken sentence contains a factual claim that a web searc
 First name the kind of sentence:
 - "world": it says something about the world that a search could confirm or refute. Science, nature, geography, history, records, prices, laws and local news all count. It is "world" even when it sounds wrong, is a well-known myth, is hedged ("apparently", "I heard") or asked ("Didn't ...?"). Do not judge whether it is true; checking it is the point.
 - "small talk", "request", "opinion" or "personal": no public fact in it; "personal" is about the speaker or people they know only.
-A sentence that mixes personal data or a request with a public fact is "world": drop the personal part and check the public fact. "Email me if the fee is still 20 dollars" is "world" because of the fee. Personal data never makes a sentence "personal" on its own.
+A sentence that mixes personal data or a request with a public fact is "world": drop the personal part and check the public fact. Personal data never makes a sentence "personal" on its own.
 
 Rules for the question:
 - Replace vague words (here, there, they, it, this company, last month) using the context; "it" or "they" may point to a recent sentence. Use the date hint exactly.
@@ -30,8 +30,8 @@ Sentence: "They raised it again here last month." (Region: Springfield; Topic: c
 {"kind": "world", "query": "Did Springfield raise city bus fares in October 2026?", "refs": ["here -> Springfield", "last month -> October 2026", "it -> city bus fares"]}
 Sentence: "Jenna Liu told me the property tax at 12 Elm Street went up 8 percent." (Region: Springfield)
 {"kind": "world", "query": "Did property tax in Springfield go up 8 percent?", "refs": []}
-Sentence: "Text me at 555-0188 if the library still closes at 6 on Sundays." (Region: Springfield)
-{"kind": "world", "query": "Does the Springfield public library close at 6 pm on Sundays?", "refs": []}
+Sentence: "Remind Omar on 555-0188 that passport fees went up to 165 dollars."
+{"kind": "world", "query": "Did US passport fees go up to 165 dollars?", "refs": []}
 Sentence: "It had the most snow in ten years." (Recent: "February was brutal."; Region: Springfield; Date: November 2026)
 {"kind": "world", "query": "Did Springfield have its most snow in ten years in February 2026?", "refs": ["it -> February 2026"]}
 

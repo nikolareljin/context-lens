@@ -39,8 +39,10 @@ class GatekeeperEvalTest {
     @Test
     fun everyPromptExampleIsATrainSentence() {
         val train = items.filter { it.split == "train" }.map { it.text }.toSet()
-        File("src/main/assets/prompts").listFiles { f -> f.name.startsWith("gatekeeper.") }!!.forEach { file ->
-            val examples = Regex("^Sentence: \"(.+?)\"", RegexOption.MULTILINE).findAll(file.readText())
+        val prompts = File("src/main/assets/prompts").listFiles { f -> f.name.startsWith("gatekeeper.") }.orEmpty()
+        assertTrue(prompts.size >= 2)
+        prompts.forEach { file ->
+            val examples = Regex("^Sentence: \"(.+?)\"(?: \\(|$)", RegexOption.MULTILINE).findAll(file.readText())
                 .map { it.groupValues[1] }.filter { it != "{{utterance}}" }.toList()
             assertTrue(file.name, examples.isNotEmpty())
             assertEquals(file.name, emptyList<String>(), examples.filterNot { it in train })

@@ -190,10 +190,10 @@ items:
     forbid: ["Rosa", "7 Birch Court"]
   - id: pii11
     split: train
-    text: "Text me at 555-0188 if the library still closes at 6 on Sundays."
+    text: "Remind Omar on 555-0188 that passport fees went up to 165 dollars."
     claim: true
-    forbid: ["555-0188"]
-    query_has: ["library"]
+    forbid: ["555-0188", "Omar"]
+    query_has: ["passport", "165"]
 
   # --- borderline (numbers in non-claims, questions, hedges) ---
   - {id: bl01, split: train, text: "I need like 20 minutes to finish this.", claim: false}

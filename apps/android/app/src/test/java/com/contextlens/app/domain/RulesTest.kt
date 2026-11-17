@@ -204,6 +204,15 @@ class RulesTest {
         assertEquals(GatekeeperResult(true, "Is Mount Everest in Peru?", emptyList(), null), world)
         assertEquals(null, GatekeeperParser.parse("{\"kind\": \"world\", \"query\": \"\"}"))
         assertEquals(null, GatekeeperParser.parse("{\"query\": \"x\"}"))
+        // the kind decides over a stray flag; an empty v1 reason does not hide it
+        val myth = GatekeeperParser.parse("{\"kind\": \"world\", \"claim\": false, \"query\": \"Are bats blind?\"}")
+        assertEquals(true, myth?.hasVerifiableClaim)
+        assertEquals("request", GatekeeperParser.parse("{\"kind\": \" Request \", \"query\": \"\", \"reason\": \"\"}")?.filterReason)
+        assertEquals(true, GatekeeperParser.parse("{\"kind\": \"World.\", \"query\": \"Is it?\"}")?.hasVerifiableClaim)
+        assertEquals(true, GatekeeperParser.parse("{\"kind\": \"world fact\", \"query\": \"Is it?\"}")?.hasVerifiableClaim)
+        // the template's list echoed back, or a kind it does not know, is not a valid reply
+        assertEquals(null, GatekeeperParser.parse("{\"kind\": \"world, small talk, request, opinion or personal\", \"query\": \"x\"}"))
+        assertEquals(null, GatekeeperParser.parse("{\"kind\": \"joke\", \"query\": \"\"}"))
     }
 
     @Test

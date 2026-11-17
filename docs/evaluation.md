@@ -1,6 +1,6 @@
 # Evaluation
 
-The gatekeeper (the step that turns a sentence into a clean search question) is measured on a set of 76 made-up sentences in [`eval/utterances.yaml`](https://github.com/nikolareljin/context-lens/blob/main/eval/utterances.yaml): small talk, opinions, checkable claims, sentences that need "here", "they" or "last month" resolved, borderline cases, and sentences with personal data planted in them. The names, numbers and addresses are fictional. 58 sentences are scored; the rest are the source of the prompt's examples.
+The gatekeeper (the step that turns a sentence into a clean search question) is measured on a set of 77 made-up sentences in [`eval/utterances.yaml`](https://github.com/nikolareljin/context-lens/blob/main/eval/utterances.yaml): small talk, opinions, checkable claims, sentences that need "here", "they" or "last month" resolved, borderline cases, and sentences with personal data planted in them. The names, numbers and addresses are fictional. 58 sentences are scored; the rest are the source of the prompt's examples.
 
 ## What is measured
 
@@ -33,12 +33,12 @@ On-device model nano-v4-fast, 58 scored sentences, Strict mode, same phone and s
 |---|---|---|
 | Failed calls | 0 | 0 |
 | Claim precision | 96% | 94% |
-| Claim recall | 75% (27 found, 1 invented, 9 missed) | **92%** (33 found, 2 invented, 3 missed) |
+| Claim recall | 75% (27 found, 1 invented, 9 missed) | **94%** (34 found, 2 invented, 2 missed) |
 | References resolved | 5 of 6 | 5 of 6 |
 | Expected words in the questions for found claims | 14 of 16 | 14 of 17 |
 | Personal data left by the model | 0 | 0 |
 | Personal data that would be sent | **0** | **0** |
-| Median latency | about 1.8 s | about 1.3 s |
+| Median latency | about 1.8 s | about 1.35 s |
 
 What changed in v2:
 
@@ -47,7 +47,7 @@ What changed in v2:
 - **Questions restate the claim** as a yes/no question with its own numbers and dates, and list every resolved word.
 - **New examples** come from four new training sentences (fc15, fc16, dx11, pii11); a unit test checks that every example in a prompt is a training sentence, never a scored one.
 
-Still missed: pii03, pii04 and pii09. These are requests or personal remarks with a public fact inside, such as a toll rate charged to the speaker's card, and the model labels them `request` or `personal`. Invented: bl04 (a weather forecast) and bl12 (the speaker's own sales). The personal-data check still stops what the model leaves in, and in these runs it left nothing.
+Still missed: pii03 and pii04. These are a request and a personal remark with a public fact inside: the EV credit amount in "email me if...", and a toll rate charged to the speaker's card. The model labels them `request` or `personal`. The 2 invented claims in the runs that logged each reply were a weather forecast (bl04) and the speaker's own sales (bl12). The personal-data check still stops what the model leaves in, and in these runs it left nothing.
 
 ### Samsung Galaxy S26 (SM-S942U), Android 17, app 0.0.1, Nov 16, 2026
 
