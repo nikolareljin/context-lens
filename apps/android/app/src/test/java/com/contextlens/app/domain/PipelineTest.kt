@@ -373,6 +373,9 @@ class PipelineTest {
         assertTrue(h.pipeline.ledger.entries.value.isEmpty())
         assertEquals(0, h.pipeline.counts.value.checked)
         assertTrue(h.log.entries.value.none { it.tier == Tier.CLOUD })
+        // no call was made, so the card can say nothing was sent
+        assertEquals(null, check.note)
+        assertFalse(check.sentToCloud)
         h.scope.cancel()
     }
 
@@ -388,6 +391,8 @@ class PipelineTest {
         assertTrue(second.prompts.isEmpty())
         // the first call may have left before the network went, so it stays in the ledger
         assertEquals(listOf(EgressKind.CLEAN_QUERY), h.pipeline.ledger.entries.value.map { it.kind })
+        // the note tells the card a request may have left, matching the ledger
+        assertTrue(check.note!!.contains("Unable to resolve host"))
         h.scope.cancel()
     }
 

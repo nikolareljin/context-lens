@@ -190,7 +190,8 @@ private fun stageText(check: Check): String = when (check.stage) {
     Stage.WITHHELD -> stringResource(R.string.check_withheld, check.withheld.joinToString { it.name.lowercase() })
     Stage.VERIFYING -> stringResource(R.string.check_verifying)
     Stage.CLOUD_UNAVAILABLE -> stringResource(R.string.check_cloud_unavailable)
-    Stage.OFFLINE -> stringResource(R.string.check_offline)
+    // A note means a call was made before the network went; sentToCloud means the cloud read the sentence.
+    Stage.OFFLINE -> stringResource(if (check.note != null || check.sentToCloud) R.string.check_offline_lost else R.string.check_offline)
     Stage.DONE -> stringResource(R.string.check_done)
     Stage.FAILED -> stringResource(R.string.check_failed, check.note.orEmpty())
 }
