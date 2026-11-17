@@ -174,7 +174,8 @@ class ModelGateway(
     }
 
     fun probeOnDevice() = launchExclusive {
-        probe(Tier.ON_DEVICE, CLOUD_MODEL_CANDIDATES.first()) { onDevice }
+        // logged under the on-device model's own name; the cloud name would mislead
+        probe(Tier.ON_DEVICE, _onDeviceName.value ?: "on-device model") { onDevice }
     }
 
     /** Tries each cloud candidate until one answers. */

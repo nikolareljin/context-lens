@@ -44,6 +44,7 @@
     <string name="check_withheld">Question withheld: it still contained personal data (%1$s). Nothing was sent.</string>
     <string name="check_verifying">Checking with Google Search…</string>
     <string name="check_cloud_unavailable">Cloud check unavailable right now (quota or billing limit). The question was written on this phone; you can search it yourself.</string>
+    <string name="check_offline">Not checked in the cloud: this phone is offline. The question was written on this phone and nothing was sent; you can search it when you are back online.</string>
     <string name="check_search_this">Search this in your browser</string>
     <string name="check_done">Checked</string>
     <string name="check_failed">Not checked: %1$s</string>

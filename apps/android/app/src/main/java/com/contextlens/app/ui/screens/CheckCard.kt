@@ -103,7 +103,7 @@ fun CheckCard(check: Check, today: LocalDate) {
             if (check.stage != Stage.DONE) {
                 Text(stageText(check), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
             }
-            if (check.stage == Stage.CLOUD_UNAVAILABLE) {
+            if (check.stage == Stage.CLOUD_UNAVAILABLE || check.stage == Stage.OFFLINE) {
                 val query = check.gate?.result?.sanitizedResolvedQuery.orEmpty()
                 Link(stringResource(R.string.check_search_this)) { uri.openUri(searchUrl(query)) }
             }
@@ -190,6 +190,7 @@ private fun stageText(check: Check): String = when (check.stage) {
     Stage.WITHHELD -> stringResource(R.string.check_withheld, check.withheld.joinToString { it.name.lowercase() })
     Stage.VERIFYING -> stringResource(R.string.check_verifying)
     Stage.CLOUD_UNAVAILABLE -> stringResource(R.string.check_cloud_unavailable)
+    Stage.OFFLINE -> stringResource(R.string.check_offline)
     Stage.DONE -> stringResource(R.string.check_done)
     Stage.FAILED -> stringResource(R.string.check_failed, check.note.orEmpty())
 }

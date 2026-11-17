@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- to skip the cloud step when there is no network, so nothing is tried or counted as sent -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- speech is turned into text on the phone; audio is never recorded or sent -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- coarse only: matched to the nearest city on the phone, on request -->

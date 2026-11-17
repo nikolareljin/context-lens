@@ -66,18 +66,19 @@ class PipelineTest {
         verifyTimeoutMs: Long = 1_000,
         pauses: MutableList<Long> = mutableListOf(),
         pause: suspend (Long) -> Unit = { synchronized(pauses) { pauses += it } },
+        online: () -> Boolean = { true },
     ): Harness {
         val session = SessionContextManager { today }
         val log = CallLog()
         val scope = CoroutineScope(kotlinx.coroutines.Dispatchers.Default + Job())
         val p = HybridContextPipeline(
             scope, session, models, prompts, EgressLedger(), log,
-            verifyTimeoutMs = verifyTimeoutMs, pause = pause,
+            verifyTimeoutMs = verifyTimeoutMs, pause = pause, online = online,
         )
         return Harness(p, session, log, scope)
     }
 
-    private val terminal = setOf(Stage.CLOUD_UNAVAILABLE, Stage.FILTERED, Stage.NO_CLAIM, Stage.NEEDS_MODEL, Stage.WITHHELD, Stage.DONE, Stage.FAILED)
+    private val terminal = setOf(Stage.CLOUD_UNAVAILABLE, Stage.OFFLINE, Stage.FILTERED, Stage.NO_CLAIM, Stage.NEEDS_MODEL, Stage.WITHHELD, Stage.DONE, Stage.FAILED)
 
     private fun Harness.settle(id: Long): Check = runBlocking {
         withTimeout(5_000) { pipeline.checks.first { list -> list.any { it.id == id && it.stage in terminal } } }
@@ -358,6 +359,54 @@ class PipelineTest {
         )
         assertTrue(isCloudLimit("HTTP 402 Payment Required") && isCloudLimit("RESOURCE_EXHAUSTED") && !isCloudLimit("timed out"))
         h.scope.cancel()
+    }
+
+    @Test
+    fun offlineSkipsTheCloudAndRecordsNothingAsSent() {
+        val models = FakeSource(gate(claimJson), gate(claimJson), listOf(verifier("lite"), verifier("flash")))
+        val h = harness(models, online = { false })
+        val check = h.settle(h.pipeline.submit("Python was first released in 1991.")!!)
+        assertEquals(Stage.OFFLINE, check.stage)
+        // the clean question was still written on the phone and can be searched later
+        assertEquals("Did Springfield raise bus fares in October 2026?", check.gate!!.result.sanitizedResolvedQuery)
+        assertTrue(models.verifiers.all { it.prompts.isEmpty() })
+        assertTrue(h.pipeline.ledger.entries.value.isEmpty())
+        assertEquals(0, h.pipeline.counts.value.checked)
+        assertTrue(h.log.entries.value.none { it.tier == Tier.CLOUD })
+        h.scope.cancel()
+    }
+
+    @Test
+    fun aNetworkLostDuringTheCallStopsBeforeTheNextModel() {
+        var up = true
+        val dropped = FakeModel("lite") { up = false; throw java.io.IOException("Unable to resolve host") }
+        val second = verifier("flash")
+        val models = FakeSource(gate(claimJson), gate(claimJson), listOf(dropped, second))
+        val h = harness(models, online = { up })
+        val check = h.settle(h.pipeline.submit("Python was first released in 1991.")!!)
+        assertEquals(Stage.OFFLINE, check.stage)
+        assertTrue(second.prompts.isEmpty())
+        // the first call may have left before the network went, so it stays in the ledger
+        assertEquals(listOf(EgressKind.CLEAN_QUERY), h.pipeline.ledger.entries.value.map { it.kind })
+        h.scope.cancel()
+    }
+
+    @Test
+    fun aReplyFromThePhoneIsNamedAfterTheOnDeviceModel() {
+        val noClaim = "{\"claim\": false, \"query\": \"\", \"refs\": [], \"reason\": \"opinion\"}"
+        val models = FakeSource(gate(noClaim), gate(noClaim), listOf(verifier()), onDevice = "nano-v4-fast")
+        val h = harness(models)
+        val check = h.settle(h.pipeline.submit("I think electric cars are just better.")!!)
+        assertEquals(Stage.NO_CLAIM, check.stage)
+        assertEquals("nano-v4-fast", check.gate!!.model)
+        // a cloud reply keeps the cloud model's name
+        val cloud = FakeSource(gate(noClaim, source = "IN_CLOUD"), gate(noClaim, source = "IN_CLOUD"), listOf(verifier()), onDevice = "nano-v4-fast")
+        val h2 = harness(cloud)
+        h2.pipeline.setMode(PrivacyMode.BALANCED)
+        val c2 = h2.settle(h2.pipeline.submit("I think electric cars are just better.")!!)
+        assertEquals("gate", c2.gate!!.model)
+        h.scope.cancel()
+        h2.scope.cancel()
     }
 
     private val quotaRefusal = "[ErrorCode 9] Request cannot be processed. Either your app is out of usage quota"

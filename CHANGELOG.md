@@ -10,6 +10,8 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ### Fixed
 
+- Offline (airplane mode), the cloud step is skipped: the card says the phone is offline and offers a search of the clean question, nothing is tried or recorded as sent, and a call that loses the network stops before trying the next model. Before, both cloud models were tried and failed with "Something unexpected happened", and the ledger counted the question as sent.
+- Cards and the Diagnostics call log name the on-device model for answers computed on the phone, instead of the cloud fallback model.
 - Listening in Strict mode asks the phone's model again when Android refuses a sentence for its usage quota (after 5 s, then 15 s), with the wait shown on the card; Balanced mode is not retried, since that call may already have gone to the cloud.
 - The on-device evaluation retries a call Android refused for its usage quota (after 5 s, then 15 s) instead of scoring it as a miss, and its summary lists failure reasons and the ids of claims answered "no claim".
 

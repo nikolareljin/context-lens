@@ -41,6 +41,8 @@ enum class Stage {
     VERIFYING,
     /** The cloud refused for quota or billing; the clean question can still be searched by the user. */
     CLOUD_UNAVAILABLE,
+    /** No network: the clean question was not sent; it can still be searched later. */
+    OFFLINE,
     DONE,
     FAILED,
 }
@@ -114,6 +116,8 @@ class HybridContextPipeline(
     /** Waits before asking the phone's model again after it refused for its usage quota (Strict). */
     private val quotaBackoffMs: List<Long> = QUOTA_BACKOFF_MS,
     private val pause: suspend (Long) -> Unit = { delay(it) },
+    /** False when the phone has no network; the cloud step is then skipped and nothing is sent. */
+    private val online: () -> Boolean = { true },
 ) {
     private val _checks = MutableStateFlow<List<Check>>(emptyList())
     /** Newest first, at most [CHECKS_MAX]. */
@@ -294,13 +298,19 @@ class HybridContextPipeline(
             update(work.id) { it.copy(stage = Stage.FAILED, note = "gatekeeper reply was not valid") }
             return null
         }
-        return GateInfo(result, model.name, reply.source, latency)
+        // A reply from the phone is named after the on-device model, not the cloud fallback.
+        return GateInfo(result, if (reply.source == ON_DEVICE) onDeviceLabel() else model.name, reply.source, latency)
     }
 
     private suspend fun verify(id: Long, session: Long, query: String) {
         val prompt = prompts.verifier.fill(mapOf("query" to query))
         val bytes = EgressLedger.bytesOf(prompt)
         var lastLabel = "no cloud model configured"
+        // Without a network nothing can leave the phone, so nothing is tried or recorded as sent.
+        if (!online()) {
+            update(id) { it.copy(stage = Stage.OFFLINE) }
+            return
+        }
         for (model in models.verifiers()) {
             val start = clock()
             val sent = { label: String, reply: ModelReply? ->
@@ -327,6 +337,11 @@ class HybridContextPipeline(
             // Quota and billing are per project: the next model would be refused the same way.
             if (isCloudLimit(outcome.label)) {
                 update(id) { it.copy(stage = Stage.CLOUD_UNAVAILABLE, note = outcome.label) }
+                return
+            }
+            // The network went away during the call: the next model would fail the same way.
+            if (!online()) {
+                update(id) { it.copy(stage = Stage.OFFLINE, note = outcome.label) }
                 return
             }
         }

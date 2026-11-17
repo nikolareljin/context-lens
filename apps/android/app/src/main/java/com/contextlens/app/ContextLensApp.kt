@@ -1,6 +1,8 @@
 package com.contextlens.app
 
 import android.app.Application
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.util.Log
 import com.contextlens.app.ai.FirebaseModelSource
 import com.contextlens.app.ai.ModelGateway
@@ -45,7 +47,15 @@ class ContextLensApp : Application() {
             prompts = loadPrompts(assets),
             ledger = ledger,
             callLog = models.log,
+            online = ::hasNetwork,
         )
+    }
+
+    /** True when the phone has a network that can reach the internet (airplane mode: false). */
+    private fun hasNetwork(): Boolean {
+        val cm = getSystemService(ConnectivityManager::class.java) ?: return true
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     /** App-wide, so the demo keeps running while the Ledger is open. */
