@@ -33,7 +33,7 @@ A dated record of the work done during the hackathon. Each entry lists what was 
 
 - `apps/web`: React 19, TypeScript, Vite, Tailwind, served at `https://nikolareljin.github.io/context-lens/`; the docs moved to `/context-lens/docs/`. One Pages workflow builds both into one artifact.
 - The page explains the three stages, offers the signed APK (button and QR code) and says when the build has no Firebase configuration; the live demo is the next step.
-- Firebase web configuration comes from repository variables at build time, never from the repository; `docs/web-setup.md` lists them with the console and Chrome steps.
+- Firebase web configuration comes from build-time values, never from the repository; `docs/web-setup.md` lists them with the console and Chrome steps. (Since Nov 17 the published site is built without any.)
 - `./dev web` (install, lint, test, build, dev, check) uses the local npm on Node 20+ or a `node:22` container.
 - The Search Console ownership file is served from the site root.
 - Verified: type check, 6 unit tests and the production build in `node:22`; the assembled site (app plus docs) built locally.

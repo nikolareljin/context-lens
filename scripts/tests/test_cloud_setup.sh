@@ -92,7 +92,7 @@ printf "%s %s %s=%s\n" "$1" "$2" "$3" "$(cat)" >> '"$PWD"'/gh-calls'
   calls="$(cat gh-calls)"
   assert_contains "$calls" "variable set FIREBASE_PROJECT_ID=demo-proj"
   assert_contains "$calls" "secret set FIREBASE_ANDROID_APP_ID=1:9:android:x"
-  [[ "$calls" != *VITE_* && "$calls" != *GOOGLE_SERVICES* ]] || fail "Firebase configuration sent to GitHub: $calls"
+  assert_eq "$(wc -l < gh-calls | tr -d ' ')" 2
   [[ "$out" != *v-API_KEY* ]] || fail "a value was printed: $out"
 }
 test_phone_token_is_registered_but_never_printed() {

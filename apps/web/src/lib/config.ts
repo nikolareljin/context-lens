@@ -1,6 +1,5 @@
-// Public web configuration, injected at build time from repository variables (VITE_FIREBASE_*).
-// Firebase web config values identify the project; they are not secrets, but they are still kept
-// out of the repository so forks and pull requests build an app that reaches no project.
+// Web configuration, read at build time from VITE_FIREBASE_* in apps/web/.env.local for local
+// builds. The published site is built without any, so visitors never reach the maintainer's project.
 
 export interface FirebaseWebConfig {
   apiKey: string;

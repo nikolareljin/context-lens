@@ -31,7 +31,7 @@ Run this in a terminal; it asks questions and opens browser pages:
 | `appcheck` | Registers Play Integrity (Android) and reCAPTCHA Enterprise (web). `--enforce` also enforces App Check on AI Logic. |
 | `github` | Sets the App Distribution target (project ID and Android app ID) on the repository. The Firebase configuration never goes to GitHub: public builds carry none. |
 
-The configuration goes to git-ignored files and GitHub. None of it is printed.
+The configuration goes to git-ignored files; GitHub gets only the App Distribution target. None of it is printed.
 
 Two steps stay in the console because they have no API: starting AI Logic, and enabling the Google provider. The script opens the exact page and waits for you.
 

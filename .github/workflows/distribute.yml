@@ -37,7 +37,6 @@ jobs:
           node-version-file: .nvmrc
       - name: signed build
         env:
-          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
           ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -45,7 +44,8 @@ jobs:
         run: |
           export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/release.jks"
           printf '%s' "$ANDROID_KEYSTORE_B64" | base64 -d > "$ANDROID_KEYSTORE_PATH"
-          bash scripts/firebase-config.sh
+          # Like every CI build, tester builds carry no Firebase project.
+          bash scripts/firebase-config.sh --placeholder
           bash scripts/android.sh apk release
           rm -f "$ANDROID_KEYSTORE_PATH"
       # keyless when the workload identity provider is configured, else the service-account key

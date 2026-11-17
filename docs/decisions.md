@@ -16,7 +16,7 @@ CI debug APKs, release APKs and the published site are built with the placeholde
 
 ## 2026-11-14: secrets only from the environment
 
-`google-services.json`, signing keys and deploy credentials are git-ignored. CI writes them from repository secrets at job start; pull requests without access to secrets build against a placeholder Firebase configuration that cannot reach any project.
+`google-services.json`, signing keys and deploy credentials are git-ignored. CI writes the signing and deploy credentials from repository secrets at job start. (Superseded on 2026-11-17 for the Firebase configuration: CI builds always use the placeholder, which cannot reach any project.)
 
 ## 2026-11-14: Strict mode is the default
 
