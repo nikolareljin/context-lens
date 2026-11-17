@@ -15,7 +15,7 @@
 #   recaptcha   a score-based reCAPTCHA Enterprise key for the Pages domain and localhost
 #   appcheck    register Play Integrity (Android) and reCAPTCHA Enterprise (web);
 #               --enforce also enforces App Check on AI Logic
-#   github      copy the configuration into this repository's Actions variables and secrets
+#   github      set the App Distribution target (never the Firebase configuration) on this repository
 #   status      what is done and what is left
 #
 #   --yes       answer yes to every question (installs, GitHub writes)
@@ -327,22 +327,15 @@ step_appcheck() {
 # ---- github --------------------------------------------------------------
 step_github() {
   local repo; repo="$(github_repo)"
-  [[ -f "$GSJ" ]] || die "no google-services.json: run ./dev cloud android"
-  confirm "Write the Firebase configuration to the Actions variables and secrets of $repo?" \
+  # Only the App Distribution target goes to GitHub. The Firebase configuration (google-services.json,
+  # the web config) stays on this machine: public builds (CI artifacts, releases, the site) carry none.
+  confirm "Write the App Distribution target to the Actions variables and secrets of $repo?" \
     || { log "skipped"; return 0; }
   local gh; gh="$(gh_bin)"
-  local name value
-  for name in VITE_FIREBASE_API_KEY VITE_FIREBASE_AUTH_DOMAIN VITE_FIREBASE_PROJECT_ID \
-      VITE_FIREBASE_APP_ID VITE_FIREBASE_MESSAGING_SENDER_ID VITE_RECAPTCHA_SITE_KEY; do
-    value="$(env_get "$TL_WEB_ENV" "$name")"
-    [[ -n "$value" ]] || die "$name is missing: run ./dev cloud web and recaptcha"
-    printf '%s' "$value" | "$gh" variable set "$name" --repo "$repo" >/dev/null
-  done
   printf '%s' "$(project_id)" | "$gh" variable set FIREBASE_PROJECT_ID --repo "$repo" >/dev/null
-  base64 -w0 "$GSJ" | "$gh" secret set GOOGLE_SERVICES_JSON_B64 --repo "$repo" >/dev/null
   env_get "$TL_ENV_FILE" FIREBASE_ANDROID_APP_ID | tr -d '\n' \
     | "$gh" secret set FIREBASE_ANDROID_APP_ID --repo "$repo" >/dev/null
-  done_msg "GitHub: 7 variables and 2 secrets set on $repo (the next Pages deploy picks them up)"
+  done_msg "GitHub: FIREBASE_PROJECT_ID and FIREBASE_ANDROID_APP_ID set on $repo; no Firebase configuration"
 }
 
 # ---- status --------------------------------------------------------------

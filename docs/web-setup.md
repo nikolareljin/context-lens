@@ -13,7 +13,7 @@ The web companion is published at the root of this site; these docs live under `
 
 ## Build configuration
 
-The values go into repository **variables** (not secrets; web config is public once deployed, but it stays out of the repository so forks build an unconfigured app):
+The published site is built without any Firebase project, so visitors never use the maintainer's project. To run the live demo against your own project, put these values in `apps/web/.env.local` (git-ignored) and build or serve locally; never set them as repository variables, since anything built into a public page is readable by everyone:
 
 | Variable | From |
 |---|---|
@@ -23,8 +23,6 @@ The values go into repository **variables** (not secrets; web config is public o
 | `VITE_FIREBASE_APP_ID` | `appId` |
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | `messagingSenderId` |
 | `VITE_RECAPTCHA_SITE_KEY` | the reCAPTCHA Enterprise site key |
-
-For a local build, put the same names in `apps/web/.env.local` (git-ignored).
 
 ## Gemini Nano in Chrome
 

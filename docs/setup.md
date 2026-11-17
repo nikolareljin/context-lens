@@ -29,7 +29,7 @@ Run this in a terminal; it asks questions and opens browser pages:
 | `auth` | Opens **Authentication** so you can enable Google sign-in: Google creates that provider's OAuth client, and there is no API for it. Then turns on anonymous sign-in and adds `<owner>.github.io` to the authorized domains. |
 | `recaptcha` | Creates a score-based reCAPTCHA Enterprise key for `<owner>.github.io` and `localhost`. |
 | `appcheck` | Registers Play Integrity (Android) and reCAPTCHA Enterprise (web). `--enforce` also enforces App Check on AI Logic. |
-| `github` | Copies the web configuration and the project ID into the repository's Actions variables, and `google-services.json` and the Android app ID into its secrets. |
+| `github` | Sets the App Distribution target (project ID and Android app ID) on the repository. The Firebase configuration never goes to GitHub: public builds carry none. |
 
 The configuration goes to git-ignored files and GitHub. None of it is printed.
 

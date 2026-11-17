@@ -4,6 +4,10 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ## [Unreleased]
 
+### Security
+
+- Public builds carry no Firebase project: CI debug APKs, release APKs and the published site use the placeholder configuration, and `./dev cloud github` no longer copies the Firebase configuration to the repository. The 0.1.0 APK was withdrawn because it carried the project configuration, and the project's API keys were replaced.
+
 ## [0.1.0] - 2026-11-17
 
 The first release: the complete loop on Android, from speech on the phone to a grounded fact card, with the privacy firewall, diagnostics and the evaluation.

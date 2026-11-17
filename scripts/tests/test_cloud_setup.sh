@@ -78,7 +78,7 @@ echo "{\"apiKey\":\"AIzaFAKE\",\"authDomain\":\"demo-proj.firebaseapp.com\",\"pr
   assert_contains "$(cat headers)" "Authorization: Bearer SECRET-ACCESS"
   [[ "$out" != *AIzaFAKE* && "$out" != *SECRET-ACCESS* ]] || fail "a value was printed: $out"
 }
-test_github_step_sets_variables_and_secrets_from_stdin() {
+test_github_step_sets_only_the_distribution_target() {
   sandbox
   echo FIREBASE_PROJECT_ID=demo-proj > dot.env; echo FIREBASE_ANDROID_APP_ID=1:9:android:x >> dot.env
   echo '{"project_info":{}}' > android/app/google-services.json
@@ -90,11 +90,9 @@ printf "%s %s %s=%s\n" "$1" "$2" "$3" "$(cat)" >> '"$PWD"'/gh-calls'
   export GH="$PWD/gh"
   out="$(bash "$cloud" github 2>&1)" || fail "github step failed: $out"
   calls="$(cat gh-calls)"
-  assert_contains "$calls" "variable set VITE_FIREBASE_API_KEY=v-API_KEY"
-  assert_contains "$calls" "variable set VITE_RECAPTCHA_SITE_KEY=site-key"
   assert_contains "$calls" "variable set FIREBASE_PROJECT_ID=demo-proj"
-  assert_contains "$calls" "secret set GOOGLE_SERVICES_JSON_B64=$(base64 -w0 android/app/google-services.json)"
   assert_contains "$calls" "secret set FIREBASE_ANDROID_APP_ID=1:9:android:x"
+  [[ "$calls" != *VITE_* && "$calls" != *GOOGLE_SERVICES* ]] || fail "Firebase configuration sent to GitHub: $calls"
   [[ "$out" != *v-API_KEY* ]] || fail "a value was printed: $out"
 }
 test_phone_token_is_registered_but_never_printed() {

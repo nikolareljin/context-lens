@@ -39,4 +39,4 @@ Every release is signed with the same key, so a newer APK installs over an older
 
 ## What works without setup
 
-The phone side needs no account and no network: speech, the local rules, Gemini Nano writing the clean question, the personal-data check and the ledger. The grounded cloud check uses this project's Firebase backend; when it is unavailable or the phone is offline, each card offers a search of its clean question in the browser instead, and nothing is sent.
+The phone side needs no account and no network: speech, the local rules, Gemini Nano writing the clean question, the personal-data check and the ledger. Released APKs carry no Firebase project, so nobody uses the maintainer's backend. The grounded cloud check needs a Firebase project of your own (a setting to connect one is coming in the next release); until then, or when the phone is offline, each card offers a search of its clean question in the browser instead, and nothing is sent.

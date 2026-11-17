@@ -10,6 +10,10 @@ Matches the Android and Firebase ecosystem and the hackathon's recommendation.
 
 `./dev` wraps every build, test, release and deploy step; the workflows call the same scripts, so a green local run predicts a green CI run.
 
+## 2026-11-17: public builds carry no Firebase project
+
+CI debug APKs, release APKs and the published site are built with the placeholder configuration, so nobody who downloads them uses the maintainer's Firebase project or its quota. The grounded cloud check runs on a project the user connects; the maintainer's own builds use a `google-services.json` that stays on the build machine. The 0.1.0 APK and earlier CI builds did carry the project configuration; those files were removed and the project's API keys replaced, so the old keys no longer work.
+
 ## 2026-11-14: secrets only from the environment
 
 `google-services.json`, signing keys and deploy credentials are git-ignored. CI writes them from repository secrets at job start; pull requests without access to secrets build against a placeholder Firebase configuration that cannot reach any project.

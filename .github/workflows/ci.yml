@@ -47,11 +47,9 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v6
-      # forks and Dependabot have no secrets: they build against the placeholder configuration
+      # Public builds never carry a real Firebase project: the debug APK below is downloadable.
       - name: firebase configuration
-        env:
-          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
-        run: bash scripts/firebase-config.sh
+        run: bash scripts/firebase-config.sh --placeholder
       - run: bash scripts/android.sh lint
       - run: bash scripts/android.sh test
       - run: bash scripts/android.sh build

@@ -48,16 +48,16 @@ jobs:
       - name: signed build
         if: steps.app.outputs.present == 'true'
         env:
-          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
           ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          [[ -n "$GOOGLE_SERVICES_JSON_B64" && -n "$ANDROID_KEYSTORE_B64" ]] || { echo "release secrets are not configured" >&2; exit 1; }
+          [[ -n "$ANDROID_KEYSTORE_B64" ]] || { echo "release signing secrets are not configured" >&2; exit 1; }
           export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/release.jks"
           printf '%s' "$ANDROID_KEYSTORE_B64" | base64 -d > "$ANDROID_KEYSTORE_PATH"
-          bash scripts/firebase-config.sh
+          # Released APKs carry no Firebase project; users connect their own in the app.
+          bash scripts/firebase-config.sh --placeholder
           bash scripts/android.sh apk release
           mkdir -p dist
           cp apps/android/app/build/outputs/apk/release/app-release.apk "dist/contextlens-${TAG}.apk"
