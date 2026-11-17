@@ -18,6 +18,7 @@ export default function App() {
           <span className="text-2xl font-bold tracking-tight">ContextLens</span>
         </a>
         <nav className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-300">
+          <a className="hover:text-device" href={`${DOCS}download/`}>Download</a>
           <a className="hover:text-device" href={DOCS}>Docs</a>
           <a className="hover:text-device" href={`${DOCS}setup/`}>Setup</a>
           <a className="hover:text-device" href={`${DOCS}privacy/`}>Privacy</a>

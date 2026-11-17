@@ -33,5 +33,10 @@ The script finds `adb`, or downloads Google's platform-tools (about 10 MB) into 
 
 Android 8.0 (API 26) or newer. The on-device gatekeeper needs a phone with Gemini Nano support (for example recent Pixel and Galaxy flagships). On other phones Strict mode filters with local rules only, and Balanced mode can use the cloud.
 
-!!! note "Before the first release"
-    No release has been published yet, so the code and the fixed address answer "not found" until 0.1.0. Until then, each CI run that builds the app keeps a debug APK as a workflow artifact for 14 days (Actions tab, signed-in GitHub users).
+## Updates
+
+Every release is signed with the same key, so a newer APK installs over an older one and keeps the app's settings. A debug APK from a CI run is signed with a different key: uninstall it before installing a release.
+
+## What works without setup
+
+The phone side needs no account and no network: speech, the local rules, Gemini Nano writing the clean question, the personal-data check and the ledger. The grounded cloud check uses this project's Firebase backend; when it is unavailable or the phone is offline, each card offers a search of its clean question in the browser instead, and nothing is sent.

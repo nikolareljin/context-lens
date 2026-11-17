@@ -11,7 +11,7 @@ title: ContextLens
 <div class="tl-badges"><span>Android</span><span>Firebase AI Logic</span><span>Gemini Nano on device</span><span>Grounding with Google Search</span><span>App Check</span></div>
 
 !!! info "Status"
-    In development for the [Firebase Hybrid AI Hackathon 2026](https://firebasehybridaihackathon.devpost.com/). What exists today, and when it was built, is in the [progress log](implementation-progress.md).
+    Built for the [Firebase Hybrid AI Hackathon 2026](https://firebasehybridaihackathon.devpost.com/). Release 0.1.0 is the complete loop on Android: [download it](download.md). What exists today, and when it was built, is in the [progress log](implementation-progress.md); the on-device results are in [Evaluation](evaluation.md).
 
 ## The problem
 
@@ -37,7 +37,7 @@ Each card shows the source Firebase AI Logic reported for that request (on devic
 
 ## Get it
 
-In Chrome: the [web companion](../) runs the same three stages in the browser.
+On Android: the signed APK from the newest release. In Chrome: the [web companion](../) is next; it will run the same three stages in the browser.
 
 <div class="cl-qr" markdown>
 <img src="assets/apk-qr.svg" alt="QR code that downloads the newest ContextLens APK">

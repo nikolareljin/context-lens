@@ -45,3 +45,26 @@ A dated record of the work done during the hackathon. Each entry lists what was 
 - Cards in three stages: what was heard (marked "stays on this phone" only when the local rules or the on-device model read it), the clean question with resolved references and the reported inference source, and the grounded check with a verdict badge, sources and Google's Search Suggestions. Where a sentence stopped is shown under the last stage it reached.
 - Demo script: a fixed conversation in a fictional Springfield goes through the real pipeline; cards are marked "Demo input".
 - Verified: unit tests (demo script, runner start, stop and restart), lint; on the S26 the demo filtered four small-talk lines with no model call, wrote both questions on the device (`ON_DEVICE`, Gemini Nano, about 2 s), dropped the name and number from the phone-number line, and sent 0 B of raw text. The cloud check is refused until billing is on, and the card offers the search link instead.
+
+## 2026-11-15: hybrid pipeline and evaluation
+
+- Tier 0 rules, the on-device gatekeeper (Strict: phone only; Balanced: may fall back to the cloud), the personal-data check on every clean question, the grounded cloud check with Google's Search Suggestions, and the egress ledger with the exact text of every request that left the phone.
+- When the cloud refuses for quota or billing, the card offers a browser search of the clean question instead.
+- Evaluation: 77 made-up sentences in `eval/utterances.yaml`; `./dev eval` checks the local rules against all of them, and Diagnostics → Run evaluation scores Gemini Nano on the phone with nothing sent.
+- Verified: unit tests, lint; on the S26 the questions were written on the device with 0 B of raw text sent.
+
+## 2026-11-16: leak checks, quota retries, prompt v2
+
+- CI and `./dev scan` run gitleaks, foxguard and a personal-data check before anything is published.
+- Calls Android refuses for its usage quota are retried after 5 s and 15 s, in the evaluation and when listening in Strict mode.
+- Gatekeeper prompt v2: the model names the kind of sentence, and myths, false statements and general facts count as claims.
+- Verified on the S26 (58 scored sentences, Strict): claim recall 75% → 94%, precision 96% → 94%, no personal data left in any question, median about 1.35 s. Details in [Evaluation](evaluation.md).
+
+## 2026-11-16: offline
+
+- With no network, the cloud step is skipped: the card says the phone is offline, offers a browser search, and nothing is tried or recorded as sent.
+- Verified in airplane mode on the S26: the on-device evaluation ran 58 of 58 sentences with none failed, the demo cards showed the offline message, and the ledger read "No request has left this phone."
+
+## 2026-11-17: release 0.1.0
+
+- The first signed release with the APK at the fixed download address; the download page and home page point to it.

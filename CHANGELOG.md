@@ -4,6 +4,10 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-17
+
+The first release: the complete loop on Android, from speech on the phone to a grounded fact card, with the privacy firewall, diagnostics and the evaluation.
+
 ### Changed
 
 - Gatekeeper prompt v2: the on-device model names the kind of sentence (`world`, small talk, request, opinion, personal) and the app treats a `world` sentence as a claim; myths, false statements and general knowledge count as claims, and the question restates the claim as a yes/no question. On the S26, claim recall went from 75% to 94% (precision 96% to 94%), with no personal data left in any question and a median of about 1.35 s instead of 1.8 s.
@@ -14,6 +18,9 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 - Cards and the Diagnostics call log name the on-device model for answers computed on the phone, instead of the cloud fallback model.
 - Listening in Strict mode asks the phone's model again when Android refuses a sentence for its usage quota (after 5 s, then 15 s), with the wait shown on the card; Balanced mode is not retried, since that call may already have gone to the cloud.
 - The on-device evaluation retries a call Android refused for its usage quota (after 5 s, then 15 s) instead of scoring it as a miss, and its summary lists failure reasons and the ids of claims answered "no claim".
+- The personal-data check now recognizes a name after a family title with a possessive ("Aunt Rosa's house") and the name in an email address ("sam.rivera@…").
+- The ledger counted refused cloud requests as not sent; it now reads "Clean questions answered" with the bytes that were sent.
+- Docs pages lead back to the web app: the header logo and a first "App" entry in the navigation; the app header links Setup as well as Docs and Privacy.
 
 ### Added
 
@@ -29,10 +36,3 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 - Logo, adaptive launcher icon with a themed variant, hero image and social card; app and site palette from the logo.
 - Android app foundation: Compose Material 3, Firebase AI Logic with the on-device artifact, App Check per build type, anonymous sign-in, Listen, Ledger and Diagnostics destinations.
 - Repository tooling: `./dev` command, build/test/docs/release/deploy scripts, CI, documentation site on GitHub Pages, release pull requests with automatic tags, signed release workflow.
-
-### Fixed
-
-- Diagnostics call log: a gatekeeper call that ran on the phone is named after the on-device model, not the cloud fallback model.
-- The personal-data check now recognizes a name after a family title with a possessive ("Aunt Rosa's house") and the name in an email address ("sam.rivera@…").
-- The ledger counted refused cloud requests as not sent; it now reads "Clean questions answered" with the bytes that were sent.
-- Docs pages lead back to the web app: the header logo and a first "App" entry in the navigation; the app header links Setup as well as Docs and Privacy.
