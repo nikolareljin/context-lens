@@ -117,5 +117,5 @@ class FirebaseModelSource(private val gateway: ModelGateway) : ModelSource {
 fun loadPrompts(assets: AssetManager): PipelinePrompts {
     fun load(name: String, version: String) =
         Prompt(version, assets.open("prompts/$name.$version.txt").bufferedReader().use { it.readText() })
-    return PipelinePrompts(gatekeeper = load("gatekeeper", "v1"), verifier = load("verifier", "v1"))
+    return PipelinePrompts(gatekeeper = load("gatekeeper", "v2"), verifier = load("verifier", "v1"))
 }

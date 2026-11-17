@@ -23,14 +23,16 @@ object GatekeeperParser {
         if (text == null) return null
         val block = firstObject(text) ?: return null
         val obj = runCatching { Json.parseToJsonElement(block) }.getOrNull() as? JsonObject ?: return null
-        val claim = obj.flag("claim", "hasVerifiableClaim") ?: return null
+        // prompt v2 names the kind of sentence and leaves the claim flag to the app: a claim is a "world" sentence
+        val kind = obj.string("kind").trim().lowercase().ifEmpty { null }
+        val claim = obj.flag("claim", "hasVerifiableClaim") ?: kind?.let { it == "world" } ?: return null
         val query = obj.string("query", "sanitizedResolvedQuery").oneLine()
         if (claim && query.isEmpty()) return null
         val refs = (obj["refs"] ?: obj["resolvedReferences"]).let { it as? JsonArray }.orEmpty()
             .mapNotNull { (it as? JsonPrimitive)?.contentOrNull?.oneLine()?.take(REF_MAX) }
             .filter { it.isNotEmpty() }
             .take(REFS_MAX)
-        val reason = obj.string("reason", "filterReason").oneLine().ifEmpty { null }
+        val reason = obj.string("reason", "filterReason", "kind").oneLine().ifEmpty { null }
         return GatekeeperResult(
             hasVerifiableClaim = claim,
             sanitizedResolvedQuery = if (claim) query.take(QUERY_MAX) else "",

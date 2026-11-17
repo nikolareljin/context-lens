@@ -35,6 +35,18 @@ class GatekeeperEvalTest {
         assertEquals("city bus fares", dx01.context.pinnedTopic)
     }
 
+    /** The prompt's examples are train sentences, so the scored ones never teach the model their answer. */
+    @Test
+    fun everyPromptExampleIsATrainSentence() {
+        val train = items.filter { it.split == "train" }.map { it.text }.toSet()
+        File("src/main/assets/prompts").listFiles { f -> f.name.startsWith("gatekeeper.") }!!.forEach { file ->
+            val examples = Regex("^Sentence: \"(.+?)\"", RegexOption.MULTILINE).findAll(file.readText())
+                .map { it.groupValues[1] }.filter { it != "{{utterance}}" }.toList()
+            assertTrue(file.name, examples.isNotEmpty())
+            assertEquals(file.name, emptyList<String>(), examples.filterNot { it in train })
+        }
+    }
+
     @Test
     fun theLocalRulesNeverDropALabelledClaim() {
         val dropped = items.filter { it.claim && Tier0Filter.check(it.text) is Tier0Filter.Decision.Drop }

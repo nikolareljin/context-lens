@@ -196,6 +196,14 @@ class RulesTest {
 
         val spec = GatekeeperParser.parse("{\"hasVerifiableClaim\": \"false\", \"sanitizedResolvedQuery\": \"x\", \"filterReason\": \"small talk\"}")
         assertEquals(GatekeeperResult(false, "", emptyList(), "small talk"), spec)
+
+        // prompt v2: no claim flag; a "world" sentence is a claim, any other kind is the reason it is not
+        val v2 = GatekeeperParser.parse("{\"kind\": \"request\", \"query\": \"\", \"refs\": []}")
+        assertEquals(GatekeeperResult(false, "", emptyList(), "request"), v2)
+        val world = GatekeeperParser.parse("{\"kind\": \" World \", \"query\": \"Is Mount Everest in Peru?\", \"refs\": []}")
+        assertEquals(GatekeeperResult(true, "Is Mount Everest in Peru?", emptyList(), null), world)
+        assertEquals(null, GatekeeperParser.parse("{\"kind\": \"world\", \"query\": \"\"}"))
+        assertEquals(null, GatekeeperParser.parse("{\"query\": \"x\"}"))
     }
 
     @Test
@@ -264,8 +272,10 @@ class RulesTest {
     @Test
     fun promptAssetsHaveTheirPlaceholders() {
         val dir = File("src/main/assets/prompts")
-        val gate = dir.resolve("gatekeeper.v1.txt").readText()
-        listOf("{{context}}", "{{hints}}", "{{utterance}}").forEach { assertTrue(it, gate.contains(it)) }
+        listOf("v1", "v2").forEach { version ->
+            val gate = dir.resolve("gatekeeper.$version.txt").readText()
+            listOf("{{context}}", "{{hints}}", "{{utterance}}").forEach { assertTrue("$version $it", gate.contains(it)) }
+        }
         val verify = dir.resolve("verifier.v1.txt").readText()
         assertTrue(verify.contains("{{query}}"))
         val filled = Prompt("v1", verify).fill(mapOf("query" to "Q?"))

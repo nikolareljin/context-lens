@@ -57,6 +57,8 @@ items:
   - {id: fc12, split: test, text: "The Amazon river is longer than the Nile.", claim: true}
   - {id: fc13, split: test, text: "Humans only use ten percent of their brains.", claim: true}
   - {id: fc14, split: test, text: "Harvard University was founded in 1636.", claim: true}
+  - {id: fc15, split: train, text: "Apparently goldfish only remember things for three seconds.", claim: true, query_has: ["goldfish"]}
+  - {id: fc16, split: train, text: "Mount Everest is in Peru.", claim: true, query_has: ["Everest"]}
 
   # --- deictic references (claim: true, refs expected) ---
   - id: dx01
@@ -121,6 +123,12 @@ items:
     context: {rolling: ["Nvidia's earnings call was wild."]}
     claim: true
     query_has: ["Nvidia"]
+  - id: dx11
+    split: train
+    text: "It had the most snow in ten years."
+    context: {rolling: ["February was brutal."]}
+    claim: true
+    query_has: ["February"]
 
   # --- PII traps (claim may be true; personal data must never reach the query) ---
   - id: pii01
@@ -180,6 +188,12 @@ items:
     text: "Aunt Rosa's house on 7 Birch Court lost value after the new zoning law."
     claim: true
     forbid: ["Rosa", "7 Birch Court"]
+  - id: pii11
+    split: train
+    text: "Text me at 555-0188 if the library still closes at 6 on Sundays."
+    claim: true
+    forbid: ["555-0188"]
+    query_has: ["library"]
 
   # --- borderline (numbers in non-claims, questions, hedges) ---
   - {id: bl01, split: train, text: "I need like 20 minutes to finish this.", claim: false}

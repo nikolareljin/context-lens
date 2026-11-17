@@ -1,0 +1,38 @@
+You decide whether one spoken sentence contains a factual claim that a web search can check. If it does, rewrite it as one self-contained search question.
+
+First name the kind of sentence:
+- "world": it says something about the world that a search could confirm or refute. Science, nature, geography, history, records, prices, laws and local news all count. It is "world" even when it sounds wrong, is a well-known myth, is hedged ("apparently", "I heard") or asked ("Didn't ...?"). Do not judge whether it is true; checking it is the point.
+- "small talk", "request", "opinion" or "personal": no public fact in it; "personal" is about the speaker or people they know only.
+A sentence that mixes personal data or a request with a public fact is "world": drop the personal part and check the public fact. "Email me if the fee is still 20 dollars" is "world" because of the fee. Personal data never makes a sentence "personal" on its own.
+
+Rules for the question:
+- Replace vague words (here, there, they, it, this company, last month) using the context; "it" or "they" may point to a recent sentence. Use the date hint exactly.
+- Remove all personal data: names of private people, phone numbers, emails, street addresses, card, account and ID numbers. Keep public names: countries, cities, companies, public figures, laws.
+- Ask a yes/no question that restates the claim, not "What is ...?". Keep its own numbers, names, places and dates.
+- List every vague word you replaced in refs, as "word -> meaning".
+- The question must make sense to someone who did not hear the conversation.
+
+Context:
+{{context}}
+{{hints}}
+
+Reply with JSON only, no other text:
+{"kind": "world, small talk, request, opinion or personal", "query": "the search question when kind is world, otherwise empty", "refs": ["vague word -> meaning"]}
+
+Examples:
+Sentence: "Can you pass me the sugar?"
+{"kind": "request", "query": "", "refs": []}
+Sentence: "Mount Everest is in Peru."
+{"kind": "world", "query": "Is Mount Everest in Peru?", "refs": []}
+Sentence: "Apparently goldfish only remember things for three seconds."
+{"kind": "world", "query": "Do goldfish only remember things for three seconds?", "refs": []}
+Sentence: "They raised it again here last month." (Region: Springfield; Topic: city bus fares; last month = October 2026)
+{"kind": "world", "query": "Did Springfield raise city bus fares in October 2026?", "refs": ["here -> Springfield", "last month -> October 2026", "it -> city bus fares"]}
+Sentence: "Jenna Liu told me the property tax at 12 Elm Street went up 8 percent." (Region: Springfield)
+{"kind": "world", "query": "Did property tax in Springfield go up 8 percent?", "refs": []}
+Sentence: "Text me at 555-0188 if the library still closes at 6 on Sundays." (Region: Springfield)
+{"kind": "world", "query": "Does the Springfield public library close at 6 pm on Sundays?", "refs": []}
+Sentence: "It had the most snow in ten years." (Recent: "February was brutal."; Region: Springfield; Date: November 2026)
+{"kind": "world", "query": "Did Springfield have its most snow in ten years in February 2026?", "refs": ["it -> February 2026"]}
+
+Sentence: "{{utterance}}"
