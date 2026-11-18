@@ -4,6 +4,11 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ## [Unreleased]
 
+### Added
+
+- Settings → **Cloud check: your Firebase project**: import a `google-services.json` or type its project ID, app ID and API key, and the grounded check runs in that project, on its owner's quota and bill. The values stay in the app's private storage. [Setup guide](https://nikolareljin.github.io/context-lens/docs/own-project/).
+- Without a connected project the app is phone-only: the gatekeeper runs on the device even in Balanced mode, the cloud step is skipped with a card that says so and offers a search, the Diagnostics cloud test is off, and no anonymous sign-in is attempted. Crash reports are sent only from builds with a built-in project, never to a user's project.
+
 ### Security
 
 - Public builds carry no Firebase project: CI debug APKs, release APKs and the published site use the placeholder configuration, and `./dev cloud github` no longer copies the Firebase configuration to the repository. The 0.1.0 APK was withdrawn because it carried the project configuration, and the project's API keys were replaced.

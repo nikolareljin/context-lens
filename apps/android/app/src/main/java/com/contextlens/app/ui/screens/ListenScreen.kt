@@ -65,7 +65,10 @@ fun ListenScreen(session: SessionContextManager, pipeline: HybridContextPipeline
     val listen by speech.state.collectAsState()
     val partial by speech.partial.collectAsState()
     val checks by pipeline.checks.collectAsState()
-    val mode by pipeline.mode.collectAsState()
+    val chosenMode by pipeline.mode.collectAsState()
+    // Without a Firebase project nothing can leave the phone, so the app is in Strict mode.
+    val connected = pipeline.cloudConnected
+    val mode = if (connected) chosenMode else PrivacyMode.STRICT
     val counts by pipeline.counts.collectAsState()
     val demoRunning by demo.running.collectAsState()
     // Not saveable: typed speech must not reach saved instance state on disk.
@@ -111,6 +114,7 @@ fun ListenScreen(session: SessionContextManager, pipeline: HybridContextPipeline
             // Strict keeps raw speech on the phone; Balanced may fall back to the cloud.
             FilterChip(
                 selected = mode == PrivacyMode.STRICT,
+                enabled = connected,
                 onClick = { pipeline.setMode(if (mode == PrivacyMode.STRICT) PrivacyMode.BALANCED else PrivacyMode.STRICT) },
                 // A fixed label with an on/off state, so "selected" always means Strict is on.
                 label = { Text(stringResource(R.string.mode_strict_chip)) },
@@ -149,7 +153,13 @@ fun ListenScreen(session: SessionContextManager, pipeline: HybridContextPipeline
             }
         }
         Text(
-            stringResource(if (mode == PrivacyMode.STRICT) R.string.mode_strict else R.string.mode_balanced),
+            stringResource(
+                when {
+                    !connected -> R.string.mode_phone_only
+                    mode == PrivacyMode.STRICT -> R.string.mode_strict
+                    else -> R.string.mode_balanced
+                },
+            ),
             style = MaterialTheme.typography.bodySmall,
         )
         regionMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }

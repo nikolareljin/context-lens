@@ -11,6 +11,8 @@ import kotlinx.coroutines.tasks.await
 /** Anonymous sign-in state, shown on the diagnostics screen. */
 sealed interface AuthState {
     data object SigningIn : AuthState
+    /** No Firebase project is connected, so there is nothing to sign in to. */
+    data object NotConnected : AuthState
     data class SignedIn(val anonymous: Boolean) : AuthState
     data class Failed(val reason: String) : AuthState
 }
@@ -22,6 +24,10 @@ sealed interface AuthState {
 class FirebaseSession {
     private val _auth = MutableStateFlow<AuthState>(AuthState.SigningIn)
     val auth: StateFlow<AuthState> = _auth.asStateFlow()
+
+    fun notConnected() {
+        _auth.value = AuthState.NotConnected
+    }
 
     suspend fun ensureSignedIn() {
         val current = Firebase.auth.currentUser

@@ -67,18 +67,19 @@ class PipelineTest {
         pauses: MutableList<Long> = mutableListOf(),
         pause: suspend (Long) -> Unit = { synchronized(pauses) { pauses += it } },
         online: () -> Boolean = { true },
+        cloudProject: () -> Boolean = { true },
     ): Harness {
         val session = SessionContextManager { today }
         val log = CallLog()
         val scope = CoroutineScope(kotlinx.coroutines.Dispatchers.Default + Job())
         val p = HybridContextPipeline(
             scope, session, models, prompts, EgressLedger(), log,
-            verifyTimeoutMs = verifyTimeoutMs, pause = pause, online = online,
+            verifyTimeoutMs = verifyTimeoutMs, pause = pause, online = online, cloudProject = cloudProject,
         )
         return Harness(p, session, log, scope)
     }
 
-    private val terminal = setOf(Stage.CLOUD_UNAVAILABLE, Stage.OFFLINE, Stage.FILTERED, Stage.NO_CLAIM, Stage.NEEDS_MODEL, Stage.WITHHELD, Stage.DONE, Stage.FAILED)
+    private val terminal = setOf(Stage.CLOUD_UNAVAILABLE, Stage.OFFLINE, Stage.NO_PROJECT, Stage.FILTERED, Stage.NO_CLAIM, Stage.NEEDS_MODEL, Stage.WITHHELD, Stage.DONE, Stage.FAILED)
 
     private fun Harness.settle(id: Long): Check = runBlocking {
         withTimeout(5_000) { pipeline.checks.first { list -> list.any { it.id == id && it.stage in terminal } } }
@@ -358,6 +359,24 @@ class PipelineTest {
             searchUrl(check.gate!!.result.sanitizedResolvedQuery),
         )
         assertTrue(isCloudLimit("HTTP 402 Payment Required") && isCloudLimit("RESOURCE_EXHAUSTED") && !isCloudLimit("timed out"))
+        h.scope.cancel()
+    }
+
+    @Test
+    fun withoutAProjectNothingIsSentEvenInBalanced() {
+        val balancedGate = gate(claimJson, source = "IN_CLOUD")
+        val models = FakeSource(gate(claimJson), balancedGate, listOf(verifier("lite"), verifier("flash")))
+        val h = harness(models, cloudProject = { false })
+        h.pipeline.setMode(PrivacyMode.BALANCED)
+        val check = h.settle(h.pipeline.submit("Python was first released in 1991.")!!)
+        assertEquals(Stage.NO_PROJECT, check.stage)
+        // the question was written by the phone's gatekeeper, not the Balanced one
+        assertTrue(balancedGate.prompts.isEmpty())
+        assertEquals("Did Springfield raise bus fares in October 2026?", check.gate!!.result.sanitizedResolvedQuery)
+        assertTrue(models.verifiers.all { it.prompts.isEmpty() })
+        assertTrue(h.pipeline.ledger.entries.value.isEmpty())
+        assertFalse(check.sentToCloud)
+        assertFalse(h.pipeline.cloudConnected)
         h.scope.cancel()
     }
 

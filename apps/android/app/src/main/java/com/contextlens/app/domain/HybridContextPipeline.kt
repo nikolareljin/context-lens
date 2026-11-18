@@ -43,6 +43,8 @@ enum class Stage {
     CLOUD_UNAVAILABLE,
     /** No network: the clean question was not sent; it can still be searched later. */
     OFFLINE,
+    /** No Firebase project is connected: the cloud step is off and nothing was sent. */
+    NO_PROJECT,
     DONE,
     FAILED,
 }
@@ -118,6 +120,11 @@ class HybridContextPipeline(
     private val pause: suspend (Long) -> Unit = { delay(it) },
     /** False when the phone has no network; the cloud step is then skipped and nothing is sent. */
     private val online: () -> Boolean = { true },
+    /**
+     * False when no Firebase project is connected. The gatekeeper then runs on the phone
+     * only, whatever the mode, and the cloud step is skipped, so nothing is sent.
+     */
+    private val cloudProject: () -> Boolean = { true },
 ) {
     private val _checks = MutableStateFlow<List<Check>>(emptyList())
     /** Newest first, at most [CHECKS_MAX]. */
@@ -148,6 +155,9 @@ class HybridContextPipeline(
             }
         }
     }
+
+    /** True when a Firebase project is connected, so the cloud step can run. */
+    val cloudConnected: Boolean get() = cloudProject()
 
     fun setMode(mode: PrivacyMode) {
         _mode.value = mode
@@ -199,7 +209,7 @@ class HybridContextPipeline(
     private suspend fun process(work: Work) {
         try {
             // Switching to Strict also covers sentences queued before the switch.
-            val mode = if (_mode.value == PrivacyMode.STRICT) PrivacyMode.STRICT else work.mode
+            val mode = if (_mode.value == PrivacyMode.STRICT || !cloudProject()) PrivacyMode.STRICT else work.mode
             val gate = gatekeep(work, mode) ?: return
             if (!gate.result.hasVerifiableClaim) {
                 // Counters first, so they are up to date whenever a card shows its final stage.
@@ -306,6 +316,10 @@ class HybridContextPipeline(
         val prompt = prompts.verifier.fill(mapOf("query" to query))
         val bytes = EgressLedger.bytesOf(prompt)
         var lastLabel = "no cloud model configured"
+        if (!cloudProject()) {
+            update(id) { it.copy(stage = Stage.NO_PROJECT) }
+            return
+        }
         // Without a network nothing can leave the phone, so nothing is tried or recorded as sent.
         if (!online()) {
             update(id) { it.copy(stage = Stage.OFFLINE) }

@@ -12,11 +12,14 @@ import com.contextlens.app.domain.DemoRunner
 import com.contextlens.app.domain.EgressLedger
 import com.contextlens.app.domain.HybridContextPipeline
 import com.contextlens.app.firebase.AppCheckProviders
+import com.contextlens.app.firebase.CloudProjectStore
+import com.contextlens.app.firebase.CloudSetup
+import com.contextlens.app.firebase.CloudSource
+import com.contextlens.app.firebase.CloudState
 import com.contextlens.app.firebase.FirebaseSession
 import com.google.firebase.Firebase
 import com.google.firebase.appcheck.appCheck
 import com.google.firebase.crashlytics.crashlytics
-import com.google.firebase.initialize
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -26,6 +29,11 @@ import kotlinx.coroutines.launch
 class ContextLensApp : Application() {
     /** Process-wide objects; small enough that a container class is all the wiring needed. */
     val session = FirebaseSession()
+    /** The user's Firebase project, if they connected one in Settings. */
+    val cloudStore: CloudProjectStore by lazy { CloudProjectStore(this) }
+    /** The project Firebase was initialized with in onCreate; changes apply after a restart. */
+    lateinit var cloud: CloudState
+        private set
     /** The listening session's context: in memory only, gone with the process. */
     val sessionContext = SessionContextManager()
     // Last line of defense: an unexpected error in a background task is logged, not a crash.
@@ -48,6 +56,7 @@ class ContextLensApp : Application() {
             ledger = ledger,
             callLog = models.log,
             online = ::hasNetwork,
+            cloudProject = { cloud.ready },
         )
     }
 
@@ -63,11 +72,11 @@ class ContextLensApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        Firebase.initialize(this)
+        cloud = CloudSetup.initialize(this, cloudStore)
         // App Check before any Firebase AI Logic call, so every cloud request carries a token.
         Firebase.appCheck.installAppCheckProviderFactory(AppCheckProviders.factory())
-        // Crash reports from release builds only.
-        Firebase.crashlytics.isCrashlyticsCollectionEnabled = !BuildConfig.DEBUG
-        appScope.launch { session.ensureSignedIn() }
+        // Crash reports from release builds with the built-in project only; never to a user's project.
+        Firebase.crashlytics.isCrashlyticsCollectionEnabled = !BuildConfig.DEBUG && cloud.source == CloudSource.BUILT_IN
+        if (cloud.ready) appScope.launch { session.ensureSignedIn() } else session.notConnected()
     }
 }

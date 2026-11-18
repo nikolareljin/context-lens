@@ -4,6 +4,7 @@
     <string name="nav_listen">Listen</string>
     <string name="nav_ledger">Ledger</string>
     <string name="nav_diagnostics">Diagnostics</string>
+    <string name="nav_settings">Settings</string>
     <string name="listen_empty">Sentences you say or type appear here, with what happened to each one.</string>
     <string name="listen_area_set">Set my area</string>
     <string name="listen_area_locating">Finding area…</string>
@@ -36,6 +37,7 @@
     <string name="check_demo">Demo input</string>
     <string name="ledger_title">Egress ledger</string>
     <string name="mode_strict">Strict: sentences are read only by the model on this phone. Without it, nothing is checked.</string>
+    <string name="mode_phone_only">Phone only: no Firebase project is connected, so nothing leaves this phone. To check claims with Google Search, connect your own project in Settings.</string>
     <string name="mode_balanced">Balanced: if this phone can\'t run the model, the sentence is sent to cloud Gemini.</string>
     <string name="check_filtered">Not a claim (local rules: %1$s). No model was called.</string>
     <string name="check_gatekeeping">Reading the sentence…</string>
@@ -46,6 +48,7 @@
     <string name="check_cloud_unavailable">Cloud check unavailable right now (quota or billing limit). The question was written on this phone; you can search it yourself.</string>
     <string name="check_offline">Not checked in the cloud: this phone is offline. The question was written on this phone and nothing was sent; you can search it when you are back online.</string>
     <string name="check_offline_lost">Not checked in the cloud: the network was lost during the check. A request may have left before that; the Ledger lists it. You can search the question when you are back online.</string>
+    <string name="check_no_project">Not checked in the cloud: no Firebase project is connected (Settings). The question was written on this phone and nothing was sent; you can search it yourself.</string>
     <string name="check_search_this">Search this in your browser</string>
     <string name="check_done">Checked</string>
     <string name="check_failed">Not checked: %1$s</string>
@@ -70,6 +73,7 @@
     <string name="diag_app_check">App Check</string>
     <string name="diag_auth">Sign-in</string>
     <string name="auth_signing_in">Signing in…</string>
+    <string name="auth_not_connected">No Firebase project connected</string>
     <string name="auth_anonymous">Anonymous</string>
     <string name="auth_signed_in">Signed in</string>
     <string name="auth_failed">Failed: %1$s</string>
@@ -98,4 +102,22 @@
     <string name="diag_calls_title">Call log</string>
     <string name="diag_calls_empty">No calls yet.</string>
     <string name="diag_copy_report">Copy report</string>
+    <string name="diag_cloud_needs_project">The cloud test needs a Firebase project: connect yours in Settings.</string>
+    <string name="settings_cloud_title">Cloud check: your Firebase project</string>
+    <string name="settings_cloud_status">Status</string>
+    <string name="settings_cloud_none">Not connected. Everything stays on this phone.</string>
+    <string name="settings_cloud_connected">Connected: %1$s</string>
+    <string name="settings_cloud_built_in">Built into this build: %1$s</string>
+    <string name="settings_cloud_hint">The grounded check runs Gemini with Google Search through Firebase AI Logic in your own Firebase project, on your quota and your bill. ContextLens has no server and no shared project. The values are kept on this phone only.</string>
+    <string name="settings_cloud_guide">How to set up a project</string>
+    <string name="settings_import">Import google-services.json</string>
+    <string name="settings_import_done">Values read from the file. Check them, then save.</string>
+    <string name="settings_import_failed">That file has no Android app for ContextLens (package com.contextlens.app). Add one to your project and download its google-services.json again.</string>
+    <string name="settings_project_id">Project ID</string>
+    <string name="settings_app_id">App ID (1:…:android:…)</string>
+    <string name="settings_api_key">API key (AIza…)</string>
+    <string name="settings_invalid">The marked values don\'t look like a Firebase Android app\'s. Copy them from your project\'s google-services.json.</string>
+    <string name="settings_save">Save and restart</string>
+    <string name="settings_disconnect">Disconnect and restart</string>
+    <string name="settings_restart_hint">The app restarts to use the new project. The current session (sentences, Ledger) is cleared.</string>
 </resources>

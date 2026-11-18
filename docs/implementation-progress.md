@@ -68,3 +68,9 @@ A dated record of the work done during the hackathon. Each entry lists what was 
 ## 2026-11-17: release 0.1.0
 
 - The first signed release with the APK at the fixed download address; the download page and home page point to it.
+
+## 2026-11-17: connect your own Firebase project
+
+- Settings takes a `google-services.json` or its three values, and the cloud check runs in that project. Without one the app is phone-only: the gatekeeper stays on the device in both modes and the card offers a search.
+- Firebase is initialized by the app instead of the automatic initializer, so the connected project replaces the placeholder that public builds carry.
+- Verified: unit tests (parser, validation, nothing sent without a project) and lint. On the S26 a build with the placeholder showed "Phone only" and the demo cards said no project was connected, with nothing sent; after connecting a project in Settings the app restarted, signed in anonymously and the cloud test answered IN_CLOUD in about 1.1 s.

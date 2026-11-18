@@ -20,6 +20,8 @@ class MainActivity : ComponentActivity() {
                     sessionContext = app.sessionContext,
                     pipeline = app.pipeline,
                     demo = app.demo,
+                    cloud = app.cloud,
+                    cloudStore = app.cloudStore,
                 )
             }
         }

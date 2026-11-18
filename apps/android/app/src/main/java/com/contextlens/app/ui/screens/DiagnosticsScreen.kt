@@ -56,7 +56,7 @@ private fun Section(content: @Composable () -> Unit) {
 }
 
 @Composable
-fun DiagnosticsScreen(session: FirebaseSession, models: ModelGateway) {
+fun DiagnosticsScreen(session: FirebaseSession, models: ModelGateway, cloudReady: Boolean) {
     val auth by session.auth.collectAsState()
     val model by models.state.collectAsState()
     val modelName by models.onDeviceName.collectAsState()
@@ -81,6 +81,7 @@ fun DiagnosticsScreen(session: FirebaseSession, models: ModelGateway) {
     val device = "${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
     val signIn = when (val a = auth) {
         AuthState.SigningIn -> stringResource(R.string.auth_signing_in)
+        AuthState.NotConnected -> stringResource(R.string.auth_not_connected)
         is AuthState.SignedIn -> stringResource(if (a.anonymous) R.string.auth_anonymous else R.string.auth_signed_in)
         is AuthState.Failed -> stringResource(R.string.auth_failed, a.reason)
     }
@@ -138,10 +139,11 @@ fun DiagnosticsScreen(session: FirebaseSession, models: ModelGateway) {
                 Button(onClick = { models.probeOnDevice() }, enabled = !modelBusy && model == ModelState.Available) {
                     Text(stringResource(R.string.diag_probe_device))
                 }
-                Button(onClick = { models.probeCloud() }, enabled = !busy) {
+                Button(onClick = { models.probeCloud() }, enabled = !busy && cloudReady) {
                     Text(stringResource(R.string.diag_probe_cloud))
                 }
             }
+            if (!cloudReady) Text(stringResource(R.string.diag_cloud_needs_project), style = MaterialTheme.typography.bodySmall)
         }
 
         Section {

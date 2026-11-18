@@ -64,6 +64,7 @@ nav:
   - App: https://nikolareljin.github.io/context-lens/
   - Docs home: index.md
   - Download: download.md
+  - Your Firebase project: own-project.md
   - Web companion setup: web-setup.md
   - Setup: setup.md
   - Privacy firewall: privacy.md

@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -26,15 +27,19 @@ import com.contextlens.app.ai.ModelGateway
 import com.contextlens.app.context.SessionContextManager
 import com.contextlens.app.domain.DemoRunner
 import com.contextlens.app.domain.HybridContextPipeline
+import com.contextlens.app.firebase.CloudProjectStore
+import com.contextlens.app.firebase.CloudState
 import com.contextlens.app.firebase.FirebaseSession
 import com.contextlens.app.ui.screens.DiagnosticsScreen
 import com.contextlens.app.ui.screens.LedgerScreen
 import com.contextlens.app.ui.screens.ListenScreen
+import com.contextlens.app.ui.screens.SettingsScreen
 
 enum class Destination(val route: String, @StringRes val label: Int, val icon: ImageVector) {
     LISTEN("listen", R.string.nav_listen, Icons.Filled.PlayArrow),
     LEDGER("ledger", R.string.nav_ledger, Icons.AutoMirrored.Filled.List),
     DIAGNOSTICS("diagnostics", R.string.nav_diagnostics, Icons.Filled.Info),
+    SETTINGS("settings", R.string.nav_settings, Icons.Filled.Settings),
 }
 
 @Composable
@@ -44,6 +49,8 @@ fun AppNav(
     sessionContext: SessionContextManager,
     pipeline: HybridContextPipeline,
     demo: DemoRunner,
+    cloud: CloudState,
+    cloudStore: CloudProjectStore,
 ) {
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
@@ -71,7 +78,8 @@ fun AppNav(
         NavHost(nav, startDestination = Destination.LISTEN.route, modifier = Modifier.padding(padding)) {
             composable(Destination.LISTEN.route) { ListenScreen(sessionContext, pipeline, demo) }
             composable(Destination.LEDGER.route) { LedgerScreen(pipeline) }
-            composable(Destination.DIAGNOSTICS.route) { DiagnosticsScreen(session, models) }
+            composable(Destination.DIAGNOSTICS.route) { DiagnosticsScreen(session, models, cloud.ready) }
+            composable(Destination.SETTINGS.route) { SettingsScreen(cloud, cloudStore) }
         }
     }
 }

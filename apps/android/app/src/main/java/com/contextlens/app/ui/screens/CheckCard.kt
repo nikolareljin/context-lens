@@ -103,7 +103,7 @@ fun CheckCard(check: Check, today: LocalDate) {
             if (check.stage != Stage.DONE) {
                 Text(stageText(check), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
             }
-            if (check.stage == Stage.CLOUD_UNAVAILABLE || check.stage == Stage.OFFLINE) {
+            if (check.stage == Stage.CLOUD_UNAVAILABLE || check.stage == Stage.OFFLINE || check.stage == Stage.NO_PROJECT) {
                 val query = check.gate?.result?.sanitizedResolvedQuery.orEmpty()
                 Link(stringResource(R.string.check_search_this)) { uri.openUri(searchUrl(query)) }
             }
@@ -192,6 +192,7 @@ private fun stageText(check: Check): String = when (check.stage) {
     Stage.CLOUD_UNAVAILABLE -> stringResource(R.string.check_cloud_unavailable)
     // A note means a call was made before the network went; sentToCloud means the cloud read the sentence.
     Stage.OFFLINE -> stringResource(if (check.note != null || check.sentToCloud) R.string.check_offline_lost else R.string.check_offline)
+    Stage.NO_PROJECT -> stringResource(R.string.check_no_project)
     Stage.DONE -> stringResource(R.string.check_done)
     Stage.FAILED -> stringResource(R.string.check_failed, check.note.orEmpty())
 }

@@ -27,6 +27,8 @@ Two privacy modes:
 - **Strict** (default when the phone supports Gemini Nano): the gatekeeper runs only on the device. If the model is not available, nothing is sent and only the local rules filter.
 - **Balanced** (opt in): the gatekeeper prefers the device and may fall back to the cloud. The app says so before you turn it on.
 
+The app has no shared backend. The cloud check runs in a Firebase project you connect in Settings, on your own quota and bill; without one, everything stays on the phone. See [Connect your own Firebase project](https://nikolareljin.github.io/context-lens/docs/own-project/).
+
 ## Platforms
 
 | Platform | State |
