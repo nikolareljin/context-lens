@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -36,6 +37,12 @@ import com.contextlens.app.firebase.CloudSetup
 import com.contextlens.app.firebase.CloudSource
 import com.contextlens.app.firebase.CloudState
 
+/** Saves the marked fields by name, so a rotation keeps them. */
+private val problemsSaver = Saver<Set<CloudProjectProblem>, ArrayList<String>>(
+    save = { set -> ArrayList(set.map { it.name }) },
+    restore = { names -> names.map { CloudProjectProblem.valueOf(it) }.toSet() },
+)
+
 /** Step-by-step guide for creating a project for the cloud check. */
 private const val OWN_PROJECT_GUIDE = "https://nikolareljin.github.io/context-lens/docs/own-project/"
 
@@ -51,8 +58,9 @@ fun SettingsScreen(cloud: CloudState, store: CloudProjectStore) {
     var projectId by rememberSaveable { mutableStateOf(saved?.projectId.orEmpty()) }
     var appId by rememberSaveable { mutableStateOf(saved?.appId.orEmpty()) }
     var apiKey by rememberSaveable { mutableStateOf(saved?.apiKey.orEmpty()) }
-    var problems by remember { mutableStateOf(emptySet<CloudProjectProblem>()) }
-    var message by remember { mutableStateOf<String?>(null) }
+    // Saveable too, so a rotation keeps the marks and the last message.
+    var problems by rememberSaveable(stateSaver = problemsSaver) { mutableStateOf(emptySet<CloudProjectProblem>()) }
+    var message by rememberSaveable { mutableStateOf<String?>(null) }
     val importFailed = stringResource(R.string.settings_import_failed)
     val importDone = stringResource(R.string.settings_import_done)
     val reopen = stringResource(R.string.settings_reopen)

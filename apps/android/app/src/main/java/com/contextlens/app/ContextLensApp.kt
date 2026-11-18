@@ -4,6 +4,7 @@ import android.app.Application
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.util.Log
+import androidx.core.content.edit
 import com.contextlens.app.ai.FirebaseModelSource
 import com.contextlens.app.ai.ModelGateway
 import com.contextlens.app.ai.loadPrompts
@@ -72,6 +73,12 @@ class ContextLensApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // Crashlytics keeps the last value set in code and prefers it to the manifest's "off".
+        // Cleared before Firebase starts, so an upgrade from a build that turned it on sends
+        // nothing at startup; it is turned on again below only where it belongs.
+        getSharedPreferences("com.google.firebase.crashlytics", MODE_PRIVATE).edit(commit = true) {
+            remove("firebase_crashlytics_collection_enabled")
+        }
         cloud = CloudSetup.initialize(this, cloudStore)
         // App Check before any Firebase AI Logic call, so every cloud request carries a token.
         Firebase.appCheck.installAppCheckProviderFactory(AppCheckProviders.factory())
