@@ -79,3 +79,8 @@ A dated record of the work done during the hackathon. Each entry lists what was 
 
 - `scripts/connect-qr.sh` writes a QR image and a text code outside any git checkout. Settings scans it (Google's code scanner, no camera permission) or pastes it, names the project and connects only after the user confirms. Nothing goes through a browser, so the key stays out of browser history and system logs.
 - Verified: unit tests (code parsing), script tests (key never printed; no output in the repository, through a symlink, in another checkout or to a symlinked file). On the S26 with a made-up code: Paste showed the project and the current one, Cancel changed nothing, and the clipboard was cleared.
+
+## 2026-11-18: release 0.1.1
+
+- The first APK at the download address since 0.1.0 was withdrawn: phone-only out of the box, with your own Firebase project connected in Settings (file, values or a connect code).
+

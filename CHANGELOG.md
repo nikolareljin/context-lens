@@ -4,6 +4,10 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-18
+
+The app has no shared backend: out of the box it works on the phone alone, and the grounded cloud check runs in a Firebase project you connect in Settings. Replaces the withdrawn 0.1.0 APK.
+
 ### Added
 
 - Settings → **Cloud check: your Firebase project**: import a `google-services.json` or type its project ID, app ID and API key, and the grounded check runs in that project, on its owner's quota and bill. The values stay in the app's private storage. [Setup guide](https://nikolareljin.github.io/context-lens/docs/own-project/).
