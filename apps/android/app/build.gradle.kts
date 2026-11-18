@@ -206,6 +206,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.kotlinx.serialization.json)
+    // Google's code scanner runs in Play services: no camera permission, and the image stays on the phone.
+    implementation(libs.play.services.code.scanner)
     implementation(libs.snakeyaml.engine)
 
     testImplementation(libs.junit)

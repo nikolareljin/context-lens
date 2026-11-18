@@ -119,8 +119,16 @@
     <string name="settings_invalid">The marked values don\'t look like a Firebase Android app\'s. Copy them from your project\'s google-services.json.</string>
     <string name="settings_save">Save and restart</string>
     <string name="settings_disconnect">Disconnect and restart</string>
-    <string name="settings_link_ready">A connect link filled in project %1$s. Nothing changes until you tap Save and restart.</string>
-    <string name="settings_link_invalid">The connect link was incomplete or malformed, so nothing was filled in. Ask for a new QR code.</string>
+    <string name="settings_code_hint">Got a connect code from someone who set up a project for you? Scan it or paste it here.</string>
+    <string name="settings_scan_code">Scan connect code</string>
+    <string name="settings_paste_code">Paste connect code</string>
+    <string name="settings_code_invalid">That is not a ContextLens connect code, or it is incomplete. Nothing was changed.</string>
+    <string name="settings_scan_unavailable">The code scanner is not available on this phone. Paste the code instead.</string>
+    <string name="settings_code_confirm_title">Connect to %1$s?</string>
+    <string name="settings_code_confirm_text">Cloud checks will run in the Firebase project %1$s, and the clean questions will be sent to whoever owns it. Connect only with a code from someone you trust.\n\nNow: %2$s.</string>
+    <string name="settings_code_confirm_none">no project</string>
+    <string name="settings_code_connect">Connect and restart</string>
+    <string name="settings_code_cancel">Cancel</string>
     <string name="settings_reopen">Saved. Close ContextLens and open it again to use the change.</string>
     <string name="settings_restart_hint">The app restarts to use the new project. The current session (sentences, Ledger) is cleared.</string>
 </resources>

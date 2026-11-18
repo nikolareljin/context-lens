@@ -7,6 +7,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import java.net.URLDecoder
 
 /**
  * The Firebase project the cloud step runs on: the user's own, entered in Settings.
@@ -49,27 +50,33 @@ object CloudProjects {
         if (!apiKeyPattern.matches(project.apiKey)) add(CloudProjectProblem.API_KEY)
     }
 
+    /** The start of a connect code: `contextlens-connect:1?project=…&app=…&key=…`. */
+    const val CONNECT_PREFIX = "contextlens-connect:1?"
+
     /**
-     * The project from a connect link's parameters (contextlens://connect?project=…&app=…&key=…,
-     * opened from the site's connect page). Null when a value is missing or malformed. The link
-     * only fills in Settings; nothing changes until the user saves.
+     * The project in a connect code, scanned or pasted inside the app (scripts/connect-qr.sh
+     * makes one). Null when it is not a connect code or a value is missing or malformed.
      */
-    fun fromConnectParams(params: Map<String, String>): CloudProject? {
+    fun fromConnectCode(text: String): CloudProject? {
+        val code = text.trim()
+        if (!code.startsWith(CONNECT_PREFIX)) return null
+        val params = code.removePrefix(CONNECT_PREFIX).split('&').mapNotNull { part ->
+            val i = part.indexOf('=')
+            if (i <= 0) {
+                null
+            } else {
+                runCatching { part.substring(0, i) to URLDecoder.decode(part.substring(i + 1), "UTF-8") }.getOrNull()
+            }
+        }.toMap()
         val project = clean(
             CloudProject(
-                projectId = params[CONNECT_PROJECT] ?: return null,
-                appId = params[CONNECT_APP] ?: return null,
-                apiKey = params[CONNECT_KEY] ?: return null,
+                projectId = params["project"] ?: return null,
+                appId = params["app"] ?: return null,
+                apiKey = params["key"] ?: return null,
             ),
         )
         return project.takeIf { problems(it).isEmpty() }
     }
-
-    const val CONNECT_SCHEME = "contextlens"
-    const val CONNECT_HOST = "connect"
-    const val CONNECT_PROJECT = "project"
-    const val CONNECT_APP = "app"
-    const val CONNECT_KEY = "key"
 
     /** Trims what a copy and paste tends to add around each value. */
     fun clean(project: CloudProject): CloudProject = CloudProject(

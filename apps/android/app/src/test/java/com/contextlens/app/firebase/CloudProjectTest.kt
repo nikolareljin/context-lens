@@ -61,12 +61,17 @@ class CloudProjectTest {
     }
 
     @Test
-    fun aConnectLinkGivesTheProjectOnlyWhenEveryValueIsValid() {
-        val params = mapOf("project" to "my-own-project", "app" to "1:555000000000:android:0123456789abcdef", "key" to key)
-        assertEquals(project, CloudProjects.fromConnectParams(params))
-        assertNull(CloudProjects.fromConnectParams(params - "key"))
-        assertNull(CloudProjects.fromConnectParams(params + ("project" to "placeholder-project")))
-        assertNull(CloudProjects.fromConnectParams(params + ("app" to "1:555000000000:web:0123")))
-        assertNull(CloudProjects.fromConnectParams(emptyMap()))
+    fun aConnectCodeGivesTheProjectOnlyWhenEveryValueIsValid() {
+        val app = "1%3A555000000000%3Aandroid%3A0123456789abcdef"
+        val code = "contextlens-connect:1?project=my-own-project&app=$app&key=$key"
+        assertEquals(project, CloudProjects.fromConnectCode(code))
+        // pasted text often carries spaces or a line break around it
+        assertEquals(project, CloudProjects.fromConnectCode("  $code\n"))
+        assertNull(CloudProjects.fromConnectCode("contextlens-connect:1?project=my-own-project&app=$app"))
+        assertNull(CloudProjects.fromConnectCode("contextlens-connect:1?project=placeholder-project&app=$app&key=$key"))
+        assertNull(CloudProjects.fromConnectCode("contextlens-connect:2?project=my-own-project&app=$app&key=$key"))
+        assertNull(CloudProjects.fromConnectCode("https://example.com/?project=my-own-project&app=$app&key=$key"))
+        assertNull(CloudProjects.fromConnectCode("contextlens-connect:1?project=my-own-project&app=%zz&key=$key"))
+        assertNull(CloudProjects.fromConnectCode(""))
     }
 }

@@ -48,15 +48,17 @@ The key then answers only the released ContextLens app. A key restriction can be
 
 **Disconnect and restart** in Settings removes the values; the app is then phone-only again.
 
-### Or connect with a QR code
+### Or connect with a connect code
 
-To let testers use your project without setting one up, make a QR code on your computer:
+To let testers use your project without setting one up, make a connect code on your computer:
 
 ```bash
-scripts/connect-qr.sh path/to/google-services.json   # writes ~/.config/context-lens/connect-qr.png
+scripts/connect-qr.sh path/to/google-services.json   # writes ~/.config/context-lens/connect-qr.png and connect-code.txt
 ```
 
-Scanning it opens the site's connect page, which hands the values to the app; ContextLens opens Settings with them filled in and connects only after **Save and restart**. The values travel in the link's fragment (after `#`), which the browser never sends to the site. The QR code carries your API key, so share it only privately, and delete or rotate that key when testing ends.
+The tester opens ContextLens → Settings and taps **Scan connect code** (Google's code scanner; the app needs no camera permission) or copies the text code and taps **Paste connect code**. The app names the project and connects only after **Connect and restart**; a pasted code is cleared from the clipboard. Nothing goes through a browser.
+
+The code carries your API key. Share it only privately, and delete or rotate that key when testing ends. The script refuses to write it into a git checkout.
 
 ## What goes to your project
 

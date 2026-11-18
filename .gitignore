@@ -35,3 +35,7 @@ ui-debug.log
 *.iml
 .vscode/
 .DS_Store
+
+# connect codes carry an API key (scripts/connect-qr.sh writes them outside the repository)
+connect-qr*.png
+connect-code*.txt

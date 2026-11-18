@@ -75,8 +75,7 @@ A dated record of the work done during the hackathon. Each entry lists what was 
 - Firebase is initialized by the app instead of the automatic initializer, so the connected project replaces the placeholder that public builds carry.
 - Verified: unit tests (parser, validation, nothing sent without a project) and lint. On the S26 a build with the placeholder showed "Phone only" and the demo cards said no project was connected, with nothing sent; after connecting a project in Settings the app restarted, signed in anonymously and the cloud test answered IN_CLOUD in about 1.1 s.
 
-## 2026-11-18: connect with a QR code
+## 2026-11-18: connect with a code
 
-- A QR code made with `scripts/connect-qr.sh` opens the site's connect page, which turns the values in the link's fragment into a `contextlens://connect` link; the app fills in Settings and connects only after Save and restart.
-- Verified: unit tests (link parsing), web tests for the connect page (valid, malformed, values cleared from the address bar), script tests (key never printed, no output inside the repository). On the S26, with made-up values: a link from another tab, with Settings open, on a cold start, and a malformed link all showed the right message, and nothing was saved.
-
+- `scripts/connect-qr.sh` writes a QR image and a text code outside any git checkout. Settings scans it (Google's code scanner, no camera permission) or pastes it, names the project and connects only after the user confirms. Nothing goes through a browser, so the key stays out of browser history and system logs.
+- Verified: unit tests (code parsing), script tests (key never printed; no output in the repository, through a symlink, in another checkout or to a symlinked file). On the S26 with a made-up code: Paste showed the project and the current one, Cancel changed nothing, and the clipboard was cleared.

@@ -13,33 +13,44 @@ config() {
    "api_key": [{"current_key": "$key"}]}]}
 JSON
 }
-# A stand-in for segno that writes the link it was given, so the test can read it.
-stub_segno() {
-  mkdir -p bin
-  printf '#!/usr/bin/env bash\nwhile [[ $# -gt 1 ]]; do [[ $1 == --output ]] && out=$2; shift; done\nprintf "%%s" "$1" > "$out"\n' > bin/segno
-  chmod +x bin/segno
-  export PATH="$PWD/bin:$PATH"
+# Stands in for segno's Python: writes the code it read on stdin to the image path.
+stub_python() {
+  printf '#!/usr/bin/env bash\ncat > "$3"\n' > fakepy
+  chmod +x fakepy
+  export CONNECT_QR_PYTHON="$PWD/fakepy"
 }
 
-test_link_carries_the_values_in_the_fragment() {
-  config; stub_segno
-  bash "$script" gs.json "$PWD/qr.png" >/dev/null 2>&1 || fail "script failed"
-  link="$(cat qr.png)"
-  assert_contains "$link" "https://nikolareljin.github.io/context-lens/connect/#project=my-own-project&app=1%3A555000000000%3Aandroid%3A0123456789abcdef&key=AIza"
-  assert_eq "$(stat -c %a qr.png)" 600
+test_code_is_written_as_image_and_text() {
+  config; stub_python
+  bash "$script" gs.json "$PWD/out" >/dev/null 2>&1 || fail "script failed"
+  assert_contains "$(cat out/connect-code.txt)" "contextlens-connect:1?project=my-own-project&app=1%3A555000000000%3Aandroid%3A0123456789abcdef&key=AIza"
+  assert_eq "$(cat out/connect-qr.png)" "$(tr -d '\n' < out/connect-code.txt)"
+  assert_eq "$(stat -c %a out/connect-qr.png)$(stat -c %a out/connect-code.txt)" 600600
 }
 test_key_is_never_printed() {
-  config; stub_segno
-  out="$(bash "$script" gs.json "$PWD/qr.png" 2>&1)"
+  config; stub_python
+  out="$(bash "$script" gs.json "$PWD/out" 2>&1)"
   [[ "$out" != *AIza* ]] || fail "the key was printed"
 }
-test_refuses_to_write_inside_the_repository() {
-  config; stub_segno
-  assert_status 1 bash "$script" gs.json "$TL_ROOT/qr.png"
-  [[ ! -e "$TL_ROOT/qr.png" ]] || { rm -f "$TL_ROOT/qr.png"; fail "QR written inside the repository"; }
+test_refuses_the_repository_and_its_symlinks() {
+  config; stub_python
+  assert_status 1 bash "$script" gs.json "$TL_ROOT/apps"
+  ln -s "$TL_ROOT/apps" link
+  assert_status 1 bash "$script" gs.json "$PWD/link"
+  [[ ! -e "$TL_ROOT/apps/connect-qr.png" ]] || { rm -f "$TL_ROOT/apps/connect-qr.png" "$TL_ROOT/apps/connect-code.txt"; fail "written inside the repository"; }
+}
+test_refuses_any_git_checkout() {
+  config; stub_python
+  git init -q other
+  assert_status 1 bash "$script" gs.json "$PWD/other"
+}
+test_refuses_a_symlinked_output_file() {
+  config; stub_python
+  mkdir out && ln -s "$PWD/elsewhere.txt" out/connect-code.txt
+  assert_status 1 bash "$script" gs.json "$PWD/out"
 }
 test_placeholder_is_refused() {
-  config placeholder-project; stub_segno
-  assert_status 1 bash "$script" gs.json "$PWD/qr.png"
+  config placeholder-project; stub_python
+  assert_status 1 bash "$script" gs.json "$PWD/out"
 }
 run_tests

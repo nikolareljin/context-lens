@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
@@ -16,8 +17,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,10 +24,13 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import android.content.ClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.contextlens.app.R
 import com.contextlens.app.firebase.CloudProject
@@ -38,8 +40,9 @@ import com.contextlens.app.firebase.CloudProjects
 import com.contextlens.app.firebase.CloudSetup
 import com.contextlens.app.firebase.CloudSource
 import com.contextlens.app.firebase.CloudState
-import com.contextlens.app.firebase.ConnectRequest
-import com.contextlens.app.firebase.ConnectRequests
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 
 /** Saves the marked fields by name, so a rotation keeps them. */
 private val problemsSaver = Saver<Set<CloudProjectProblem>, ArrayList<String>>(
@@ -54,7 +57,7 @@ private const val OWN_PROJECT_GUIDE = "https://nikolareljin.github.io/context-le
 private const val MAX_CONFIG_BYTES = 64 * 1024
 
 @Composable
-fun SettingsScreen(cloud: CloudState, store: CloudProjectStore, connectRequests: ConnectRequests) {
+fun SettingsScreen(cloud: CloudState, store: CloudProjectStore) {
     val context = LocalContext.current
     val uri = LocalUriHandler.current
     val saved = remember { store.load() }
@@ -68,23 +71,21 @@ fun SettingsScreen(cloud: CloudState, store: CloudProjectStore, connectRequests:
     val importFailed = stringResource(R.string.settings_import_failed)
     val importDone = stringResource(R.string.settings_import_done)
     val reopen = stringResource(R.string.settings_reopen)
-    val linkInvalid = stringResource(R.string.settings_link_invalid)
-    val linkTemplate = stringResource(R.string.settings_link_ready)
-    val pending by connectRequests.pending.collectAsState()
+    val codeInvalid = stringResource(R.string.settings_code_invalid)
+    val scanUnavailable = stringResource(R.string.settings_scan_unavailable)
+    // A project from a connect code, waiting for the user to confirm. Not saveable: the key
+    // is not written to the saved state for a dialog.
+    var offer by remember { mutableStateOf<CloudProject?>(null) }
 
-    // A connect link only fills in the fields; the user reads the project name and saves.
-    LaunchedEffect(pending) {
-        when (val request = connectRequests.consume()) {
-            is ConnectRequest.Valid -> {
-                projectId = request.project.projectId
-                appId = request.project.appId
-                apiKey = request.project.apiKey
-                problems = emptySet()
-                message = linkTemplate.format(request.project.projectId)
-            }
-            ConnectRequest.Invalid -> message = linkInvalid
-            null -> Unit
-        }
+    /** A scanned or pasted connect code: asks before anything changes. */
+    fun takeCode(text: String?) {
+        val project = text?.let { CloudProjects.fromConnectCode(it) }
+        if (project == null) message = codeInvalid else offer = project
+    }
+
+    fun connect(project: CloudProject) {
+        store.save(project)
+        if (!CloudSetup.restart(context)) message = reopen
     }
 
     val importFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { picked ->
@@ -107,6 +108,29 @@ fun SettingsScreen(cloud: CloudState, store: CloudProjectStore, connectRequests:
         }
     }
 
+    offer?.let { project ->
+        AlertDialog(
+            onDismissRequest = { offer = null },
+            title = { Text(stringResource(R.string.settings_code_confirm_title, project.projectId)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.settings_code_confirm_text,
+                        project.projectId,
+                        cloud.projectId ?: stringResource(R.string.settings_code_confirm_none),
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    offer = null
+                    connect(project)
+                }) { Text(stringResource(R.string.settings_code_connect)) }
+            },
+            dismissButton = { TextButton(onClick = { offer = null }) { Text(stringResource(R.string.settings_code_cancel)) } },
+        )
+    }
+
     ScreenColumn(stringResource(R.string.nav_settings)) {
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -123,9 +147,27 @@ fun SettingsScreen(cloud: CloudState, store: CloudProjectStore, connectRequests:
                 TextButton(onClick = { runCatching { uri.openUri(OWN_PROJECT_GUIDE) } }) {
                     Text(stringResource(R.string.settings_cloud_guide))
                 }
-                OutlinedButton(onClick = {
-                    importFile.launch(arrayOf("application/json", "application/octet-stream", "text/plain"))
-                }) { Text(stringResource(R.string.settings_import)) }
+                Text(stringResource(R.string.settings_code_hint), style = MaterialTheme.typography.bodySmall)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = {
+                        // Google's scanner runs in Play services; the code goes only to this app.
+                        val options = GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()
+                        GmsBarcodeScanning.getClient(context, options).startScan()
+                            .addOnSuccessListener { takeCode(it.rawValue) }
+                            .addOnFailureListener { message = scanUnavailable }
+                    }) { Text(stringResource(R.string.settings_scan_code)) }
+                    OutlinedButton(onClick = {
+                        val clipboard = context.getSystemService(ClipboardManager::class.java)
+                        val text = clipboard?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString()
+                        val project = text?.let { CloudProjects.fromConnectCode(it) }
+                        // The code carries a key: it does not stay on the clipboard once read.
+                        if (project != null) runCatching { clipboard.clearPrimaryClip() }
+                        takeCode(text)
+                    }) { Text(stringResource(R.string.settings_paste_code)) }
+                    OutlinedButton(onClick = {
+                        importFile.launch(arrayOf("application/json", "application/octet-stream", "text/plain"))
+                    }) { Text(stringResource(R.string.settings_import)) }
+                }
                 Field(stringResource(R.string.settings_project_id), projectId, CloudProjectProblem.PROJECT_ID in problems) {
                     projectId = it
                     problems = problems - CloudProjectProblem.PROJECT_ID
@@ -134,7 +176,7 @@ fun SettingsScreen(cloud: CloudState, store: CloudProjectStore, connectRequests:
                     appId = it
                     problems = problems - CloudProjectProblem.APP_ID
                 }
-                Field(stringResource(R.string.settings_api_key), apiKey, CloudProjectProblem.API_KEY in problems) {
+                Field(stringResource(R.string.settings_api_key), apiKey, CloudProjectProblem.API_KEY in problems, secret = true) {
                     apiKey = it
                     problems = problems - CloudProjectProblem.API_KEY
                 }
@@ -169,13 +211,15 @@ fun SettingsScreen(cloud: CloudState, store: CloudProjectStore, connectRequests:
 }
 
 @Composable
-private fun Field(label: String, value: String, invalid: Boolean, onChange: (String) -> Unit) {
+private fun Field(label: String, value: String, invalid: Boolean, secret: Boolean = false, onChange: (String) -> Unit) {
     OutlinedTextField(
         value = value,
         onValueChange = onChange,
         label = { Text(label) },
         isError = invalid,
         singleLine = true,
+        // The key is not shown on screen (screenshots, the recents preview).
+        visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
         modifier = Modifier.fillMaxWidth(),
     )

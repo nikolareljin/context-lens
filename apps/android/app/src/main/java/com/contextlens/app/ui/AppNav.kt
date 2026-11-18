@@ -13,8 +13,6 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -31,7 +29,6 @@ import com.contextlens.app.domain.DemoRunner
 import com.contextlens.app.domain.HybridContextPipeline
 import com.contextlens.app.firebase.CloudProjectStore
 import com.contextlens.app.firebase.CloudState
-import com.contextlens.app.firebase.ConnectRequests
 import com.contextlens.app.firebase.FirebaseSession
 import com.contextlens.app.ui.screens.DiagnosticsScreen
 import com.contextlens.app.ui.screens.LedgerScreen
@@ -54,20 +51,8 @@ fun AppNav(
     demo: DemoRunner,
     cloud: CloudState,
     cloudStore: CloudProjectStore,
-    connectRequests: ConnectRequests,
 ) {
     val nav = rememberNavController()
-    val connect by connectRequests.pending.collectAsState()
-    // A connect link opens Settings, where the user sees the project and decides.
-    LaunchedEffect(connect) {
-        // Already on Settings: it takes the link itself; navigating again would rebuild it and lose the values.
-        if (connect != null && nav.currentDestination?.route != Destination.SETTINGS.route) {
-            nav.navigate(Destination.SETTINGS.route) {
-                popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-                launchSingleTop = true
-            }
-        }
-    }
     val backStack by nav.currentBackStackEntryAsState()
     val current = backStack?.destination?.route
     Scaffold(
@@ -94,7 +79,7 @@ fun AppNav(
             composable(Destination.LISTEN.route) { ListenScreen(sessionContext, pipeline, demo) }
             composable(Destination.LEDGER.route) { LedgerScreen(pipeline) }
             composable(Destination.DIAGNOSTICS.route) { DiagnosticsScreen(session, models, cloud.ready) }
-            composable(Destination.SETTINGS.route) { SettingsScreen(cloud, cloudStore, connectRequests) }
+            composable(Destination.SETTINGS.route) { SettingsScreen(cloud, cloudStore) }
         }
     }
 }
