@@ -5,7 +5,8 @@ script="$TL_ROOT/scripts/connect-qr.sh"
 
 # Made-up values in the shape of a real project's; not a working key.
 config() {
-  local key="AIza$(printf 'x%.0s' {1..35})"
+  local key
+  key="AIza$(printf 'x%.0s' {1..35})"
   cat > gs.json <<JSON
 {"project_info": {"project_number": "555000000000", "project_id": "${1:-my-own-project}"},
  "client": [{"client_info": {"mobilesdk_app_id": "1:555000000000:android:0123456789abcdef",
@@ -15,6 +16,7 @@ JSON
 }
 # Stands in for segno's Python: writes the code it read on stdin to the image path.
 stub_python() {
+  # shellcheck disable=SC2016  # $3 belongs to the stub, not to this shell
   printf '#!/usr/bin/env bash\ncat > "$3"\n' > fakepy
   chmod +x fakepy
   export CONNECT_QR_PYTHON="$PWD/fakepy"
