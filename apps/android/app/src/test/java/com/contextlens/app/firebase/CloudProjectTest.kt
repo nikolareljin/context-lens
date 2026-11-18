@@ -59,4 +59,14 @@ class CloudProjectTest {
         val pasted = CloudProject(" \"my-own-project\" ", "1:555000000000:android:0123456789abcdef\n", " $key")
         assertEquals(project, CloudProjects.clean(pasted))
     }
+
+    @Test
+    fun aConnectLinkGivesTheProjectOnlyWhenEveryValueIsValid() {
+        val params = mapOf("project" to "my-own-project", "app" to "1:555000000000:android:0123456789abcdef", "key" to key)
+        assertEquals(project, CloudProjects.fromConnectParams(params))
+        assertNull(CloudProjects.fromConnectParams(params - "key"))
+        assertNull(CloudProjects.fromConnectParams(params + ("project" to "placeholder-project")))
+        assertNull(CloudProjects.fromConnectParams(params + ("app" to "1:555000000000:web:0123")))
+        assertNull(CloudProjects.fromConnectParams(emptyMap()))
+    }
 }

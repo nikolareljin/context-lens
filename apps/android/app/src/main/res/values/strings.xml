@@ -119,6 +119,8 @@
     <string name="settings_invalid">The marked values don\'t look like a Firebase Android app\'s. Copy them from your project\'s google-services.json.</string>
     <string name="settings_save">Save and restart</string>
     <string name="settings_disconnect">Disconnect and restart</string>
+    <string name="settings_link_ready">A connect link filled in project %1$s. Nothing changes until you tap Save and restart.</string>
+    <string name="settings_link_invalid">The connect link was incomplete or malformed, so nothing was filled in. Ask for a new QR code.</string>
     <string name="settings_reopen">Saved. Close ContextLens and open it again to use the change.</string>
     <string name="settings_restart_hint">The app restarts to use the new project. The current session (sentences, Ledger) is cleared.</string>
 </resources>

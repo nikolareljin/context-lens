@@ -49,6 +49,28 @@ object CloudProjects {
         if (!apiKeyPattern.matches(project.apiKey)) add(CloudProjectProblem.API_KEY)
     }
 
+    /**
+     * The project from a connect link's parameters (contextlens://connect?project=…&app=…&key=…,
+     * opened from the site's connect page). Null when a value is missing or malformed. The link
+     * only fills in Settings; nothing changes until the user saves.
+     */
+    fun fromConnectParams(params: Map<String, String>): CloudProject? {
+        val project = clean(
+            CloudProject(
+                projectId = params[CONNECT_PROJECT] ?: return null,
+                appId = params[CONNECT_APP] ?: return null,
+                apiKey = params[CONNECT_KEY] ?: return null,
+            ),
+        )
+        return project.takeIf { problems(it).isEmpty() }
+    }
+
+    const val CONNECT_SCHEME = "contextlens"
+    const val CONNECT_HOST = "connect"
+    const val CONNECT_PROJECT = "project"
+    const val CONNECT_APP = "app"
+    const val CONNECT_KEY = "key"
+
     /** Trims what a copy and paste tends to add around each value. */
     fun clean(project: CloudProject): CloudProject = CloudProject(
         projectId = project.projectId.trim().trim('"'),

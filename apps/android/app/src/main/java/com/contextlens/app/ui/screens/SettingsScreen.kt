@@ -16,6 +16,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +38,8 @@ import com.contextlens.app.firebase.CloudProjects
 import com.contextlens.app.firebase.CloudSetup
 import com.contextlens.app.firebase.CloudSource
 import com.contextlens.app.firebase.CloudState
+import com.contextlens.app.firebase.ConnectRequest
+import com.contextlens.app.firebase.ConnectRequests
 
 /** Saves the marked fields by name, so a rotation keeps them. */
 private val problemsSaver = Saver<Set<CloudProjectProblem>, ArrayList<String>>(
@@ -50,7 +54,7 @@ private const val OWN_PROJECT_GUIDE = "https://nikolareljin.github.io/context-le
 private const val MAX_CONFIG_BYTES = 64 * 1024
 
 @Composable
-fun SettingsScreen(cloud: CloudState, store: CloudProjectStore) {
+fun SettingsScreen(cloud: CloudState, store: CloudProjectStore, connectRequests: ConnectRequests) {
     val context = LocalContext.current
     val uri = LocalUriHandler.current
     val saved = remember { store.load() }
@@ -64,6 +68,24 @@ fun SettingsScreen(cloud: CloudState, store: CloudProjectStore) {
     val importFailed = stringResource(R.string.settings_import_failed)
     val importDone = stringResource(R.string.settings_import_done)
     val reopen = stringResource(R.string.settings_reopen)
+    val linkInvalid = stringResource(R.string.settings_link_invalid)
+    val linkTemplate = stringResource(R.string.settings_link_ready)
+    val pending by connectRequests.pending.collectAsState()
+
+    // A connect link only fills in the fields; the user reads the project name and saves.
+    LaunchedEffect(pending) {
+        when (val request = connectRequests.consume()) {
+            is ConnectRequest.Valid -> {
+                projectId = request.project.projectId
+                appId = request.project.appId
+                apiKey = request.project.apiKey
+                problems = emptySet()
+                message = linkTemplate.format(request.project.projectId)
+            }
+            ConnectRequest.Invalid -> message = linkInvalid
+            null -> Unit
+        }
+    }
 
     val importFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { picked ->
         if (picked == null) return@rememberLauncherForActivityResult

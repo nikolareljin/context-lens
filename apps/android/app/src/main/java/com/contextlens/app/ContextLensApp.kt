@@ -15,6 +15,7 @@ import com.contextlens.app.domain.HybridContextPipeline
 import com.contextlens.app.firebase.AppCheckProviders
 import com.contextlens.app.firebase.CloudProjectStore
 import com.contextlens.app.firebase.CloudSetup
+import com.contextlens.app.firebase.ConnectRequests
 import com.contextlens.app.firebase.CloudSource
 import com.contextlens.app.firebase.CloudState
 import com.contextlens.app.firebase.FirebaseSession
@@ -32,6 +33,8 @@ class ContextLensApp : Application() {
     val session = FirebaseSession()
     /** The user's Firebase project, if they connected one in Settings. */
     val cloudStore: CloudProjectStore by lazy { CloudProjectStore(this) }
+    /** A connect link waiting for Settings to show it. */
+    val connectRequests = ConnectRequests()
     /** The project Firebase was initialized with in onCreate; changes apply after a restart. */
     lateinit var cloud: CloudState
         private set

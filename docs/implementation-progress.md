@@ -74,3 +74,9 @@ A dated record of the work done during the hackathon. Each entry lists what was 
 - Settings takes a `google-services.json` or its three values, and the cloud check runs in that project. Without one the app is phone-only: the gatekeeper stays on the device in both modes and the card offers a search.
 - Firebase is initialized by the app instead of the automatic initializer, so the connected project replaces the placeholder that public builds carry.
 - Verified: unit tests (parser, validation, nothing sent without a project) and lint. On the S26 a build with the placeholder showed "Phone only" and the demo cards said no project was connected, with nothing sent; after connecting a project in Settings the app restarted, signed in anonymously and the cloud test answered IN_CLOUD in about 1.1 s.
+
+## 2026-11-18: connect with a QR code
+
+- A QR code made with `scripts/connect-qr.sh` opens the site's connect page, which turns the values in the link's fragment into a `contextlens://connect` link; the app fills in Settings and connects only after Save and restart.
+- Verified: unit tests (link parsing), web tests for the connect page (valid, malformed, values cleared from the address bar), script tests (key never printed, no output inside the repository). On the S26, with made-up values: a link from another tab, with Settings open, on a cold start, and a malformed link all showed the right message, and nothing was saved.
+

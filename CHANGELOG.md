@@ -7,6 +7,7 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 ### Added
 
 - Settings → **Cloud check: your Firebase project**: import a `google-services.json` or type its project ID, app ID and API key, and the grounded check runs in that project, on its owner's quota and bill. The values stay in the app's private storage. [Setup guide](https://nikolareljin.github.io/context-lens/docs/own-project/).
+- Connect with a QR code: `scripts/connect-qr.sh` makes, outside the repository, a QR code whose link opens the site's connect page and then ContextLens with the project filled in; the app connects only after **Save and restart**. The values travel in the link's fragment, which is never sent to the site.
 - Without a connected project the app is phone-only: the gatekeeper runs on the device even in Balanced mode, the cloud step is skipped with a card that says so and offers a search, the Diagnostics cloud test is off, and no anonymous sign-in is attempted. Crash reports are sent only from builds with a built-in project, never to a user's project.
 
 ### Security
