@@ -119,5 +119,6 @@
     <string name="settings_invalid">The marked values don\'t look like a Firebase Android app\'s. Copy them from your project\'s google-services.json.</string>
     <string name="settings_save">Save and restart</string>
     <string name="settings_disconnect">Disconnect and restart</string>
+    <string name="settings_reopen">Saved. Close ContextLens and open it again to use the change.</string>
     <string name="settings_restart_hint">The app restarts to use the new project. The current session (sentences, Ledger) is cleared.</string>
 </resources>

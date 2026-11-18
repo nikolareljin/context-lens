@@ -47,6 +47,8 @@ class ModelGateway(
     private val scope: CoroutineScope,
     val log: CallLog = CallLog(),
     private val clock: () -> Long = System::currentTimeMillis,
+    /** False when no Firebase project is connected: cloud probes are not made. */
+    private val cloudReady: () -> Boolean = { true },
 ) {
     private val _state = MutableStateFlow<ModelState>(ModelState.Unknown)
     val state: StateFlow<ModelState> = _state.asStateFlow()
@@ -180,6 +182,7 @@ class ModelGateway(
 
     /** Tries each cloud candidate until one answers. */
     fun probeCloud() = launchExclusive {
+        if (!cloudReady()) return@launchExclusive
         val names = listOfNotNull(_cloudModel.value) + CLOUD_MODEL_CANDIDATES.filter { it != _cloudModel.value }
         for (name in names) {
             if (probe(Tier.CLOUD, name) { model(InferenceMode.ONLY_IN_CLOUD, name) }) {

@@ -42,7 +42,7 @@ class ContextLensApp : Application() {
             CoroutineExceptionHandler { _, e -> Log.e("ContextLens", "background task failed", e) },
     )
     /** Created on first use, after Firebase and App Check are initialized in onCreate. */
-    val models: ModelGateway by lazy { ModelGateway(appScope) }
+    val models: ModelGateway by lazy { ModelGateway(appScope, cloudReady = { cloud.ready }) }
 
     /** Every request that leaves the phone; in memory only. */
     val ledger = EgressLedger()

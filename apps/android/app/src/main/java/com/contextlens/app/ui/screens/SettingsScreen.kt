@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -46,13 +47,15 @@ fun SettingsScreen(cloud: CloudState, store: CloudProjectStore) {
     val context = LocalContext.current
     val uri = LocalUriHandler.current
     val saved = remember { store.load() }
-    var projectId by remember { mutableStateOf(saved?.projectId.orEmpty()) }
-    var appId by remember { mutableStateOf(saved?.appId.orEmpty()) }
-    var apiKey by remember { mutableStateOf(saved?.apiKey.orEmpty()) }
+    // Saveable, so a rotation keeps what was typed or imported.
+    var projectId by rememberSaveable { mutableStateOf(saved?.projectId.orEmpty()) }
+    var appId by rememberSaveable { mutableStateOf(saved?.appId.orEmpty()) }
+    var apiKey by rememberSaveable { mutableStateOf(saved?.apiKey.orEmpty()) }
     var problems by remember { mutableStateOf(emptySet<CloudProjectProblem>()) }
     var message by remember { mutableStateOf<String?>(null) }
     val importFailed = stringResource(R.string.settings_import_failed)
     val importDone = stringResource(R.string.settings_import_done)
+    val reopen = stringResource(R.string.settings_reopen)
 
     val importFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { picked ->
         if (picked == null) return@rememberLauncherForActivityResult
@@ -93,9 +96,18 @@ fun SettingsScreen(cloud: CloudState, store: CloudProjectStore) {
                 OutlinedButton(onClick = {
                     importFile.launch(arrayOf("application/json", "application/octet-stream", "text/plain"))
                 }) { Text(stringResource(R.string.settings_import)) }
-                Field(stringResource(R.string.settings_project_id), projectId, CloudProjectProblem.PROJECT_ID in problems) { projectId = it }
-                Field(stringResource(R.string.settings_app_id), appId, CloudProjectProblem.APP_ID in problems) { appId = it }
-                Field(stringResource(R.string.settings_api_key), apiKey, CloudProjectProblem.API_KEY in problems) { apiKey = it }
+                Field(stringResource(R.string.settings_project_id), projectId, CloudProjectProblem.PROJECT_ID in problems) {
+                    projectId = it
+                    problems = problems - CloudProjectProblem.PROJECT_ID
+                }
+                Field(stringResource(R.string.settings_app_id), appId, CloudProjectProblem.APP_ID in problems) {
+                    appId = it
+                    problems = problems - CloudProjectProblem.APP_ID
+                }
+                Field(stringResource(R.string.settings_api_key), apiKey, CloudProjectProblem.API_KEY in problems) {
+                    apiKey = it
+                    problems = problems - CloudProjectProblem.API_KEY
+                }
                 if (problems.isNotEmpty()) {
                     Text(
                         stringResource(R.string.settings_invalid),
@@ -110,13 +122,13 @@ fun SettingsScreen(cloud: CloudState, store: CloudProjectStore) {
                         problems = CloudProjects.problems(project)
                         if (problems.isEmpty()) {
                             store.save(project)
-                            CloudSetup.restart(context)
+                            if (!CloudSetup.restart(context)) message = reopen
                         }
                     }) { Text(stringResource(R.string.settings_save)) }
                     if (saved != null || cloud.source == CloudSource.CONNECTED) {
                         OutlinedButton(onClick = {
                             store.clear()
-                            CloudSetup.restart(context)
+                            if (!CloudSetup.restart(context)) message = reopen
                         }) { Text(stringResource(R.string.settings_disconnect)) }
                     }
                 }

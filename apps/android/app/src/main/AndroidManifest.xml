@@ -13,10 +13,16 @@
     <application
         android:name=".ContextLensApp"
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.ContextLens">
+        <!-- Off until ContextLensApp turns it on (release builds with a built-in project), so a first launch sends nothing. -->
+        <meta-data
+            android:name="firebase_crashlytics_collection_enabled"
+            android:value="false" />
         <!-- Firebase is initialized in ContextLensApp, with the project the user connected in Settings. -->
         <provider
             android:name="com.google.firebase.provider.FirebaseInitProvider"

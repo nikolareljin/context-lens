@@ -43,11 +43,14 @@ The key then answers only the released ContextLens app. A key restriction can be
     - **Project ID**: `project_info.project_id`
     - **App ID**: `client_info.mobilesdk_app_id` of the `com.contextlens.app` client (`1:…:android:…`)
     - **API key**: `api_key[0].current_key` of that client (`AIza…`)
-3. Tap **Save and restart**. The values stay on the phone, in the app's private storage, and are not backed up.
+3. Tap **Save and restart**. The values stay on the phone, in the app's private storage, and are not backed up or copied to a new phone.
 4. Check it: Diagnostics → **Test in cloud**. The call log shows the model that answered.
 
 **Disconnect and restart** in Settings removes the values; the app is then phone-only again.
 
 ## What goes to your project
 
-Only what the [privacy firewall](privacy.md) lets out: the clean question for each checkable claim, and in Balanced mode the sentence when the phone can't run the model. The [Ledger](privacy.md) lists every request word for word.
+- The anonymous sign-in of the install and App Check tokens, with no name, email or speech.
+- What the [privacy firewall](privacy.md) lets out: the clean question for each checkable claim, and in Balanced mode the sentence when the phone can't run the model. The Ledger lists each of these requests word for word.
+
+Crash reports are never sent to a connected project.

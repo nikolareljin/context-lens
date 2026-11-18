@@ -11,7 +11,7 @@ data class CloudState(val source: CloudSource, val projectId: String?) {
     val ready: Boolean get() = source != CloudSource.NONE
 }
 
-/** The user's project, kept in the app's private storage (not backed up: allowBackup is off). */
+/** The user's project, in the app's private storage; excluded from backup and device transfer (data_extraction_rules.xml). */
 class CloudProjectStore(context: Context) {
     private val prefs = context.getSharedPreferences("cloud_project", Context.MODE_PRIVATE)
 
@@ -53,15 +53,23 @@ object CloudSetup {
             FirebaseApp.initializeApp(context, options(own))
             return CloudState(CloudSource.CONNECTED, own.projectId)
         }
-        val builtIn = FirebaseOptions.fromResource(context)
-        if (builtIn != null) FirebaseApp.initializeApp(context, builtIn)
-        val projectId = builtIn?.projectId
-        return if (CloudProjects.isPlaceholder(projectId)) {
+        // Every build has the resource (the google-services plugin requires the file); the
+        // fallback keeps App Check and Crashlytics, which need a default app, from crashing.
+        val builtIn = FirebaseOptions.fromResource(context) ?: placeholderOptions()
+        FirebaseApp.initializeApp(context, builtIn)
+        return if (CloudProjects.isPlaceholder(builtIn.projectId)) {
             CloudState(CloudSource.NONE, null)
         } else {
-            CloudState(CloudSource.BUILT_IN, projectId)
+            CloudState(CloudSource.BUILT_IN, builtIn.projectId)
         }
     }
+
+    /** The values of scripts/ci/google-services.placeholder.json: no project can be reached with them. */
+    private fun placeholderOptions(): FirebaseOptions = FirebaseOptions.Builder()
+        .setProjectId(CloudProjects.PLACEHOLDER_PROJECT_ID)
+        .setApplicationId("1:000000000000:android:0000000000000000")
+        .setApiKey("placeholder-not-a-key")
+        .build()
 
     private fun options(project: CloudProject): FirebaseOptions = FirebaseOptions.Builder()
         .setProjectId(project.projectId)
@@ -71,10 +79,14 @@ object CloudSetup {
         .setGcmSenderId(project.appId.split(':')[1])
         .build()
 
-    /** Starts the app again, so Firebase initializes with the new project. */
-    fun restart(context: Context) {
-        val launch = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return
+    /**
+     * Starts the app again, so Firebase initializes with the new project. Returns false
+     * when the app can't find its own launcher entry; the user then reopens it.
+     */
+    fun restart(context: Context): Boolean {
+        val launch = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return false
         context.startActivity(Intent.makeRestartActivityTask(launch.component))
         Runtime.getRuntime().exit(0)
+        return true
     }
 }
