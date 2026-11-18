@@ -12,6 +12,7 @@ TL_TAG=connect-qr
 # shellcheck source=lib/common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 need python3 "to read the configuration"
+need git "to check that the output is outside any git checkout"
 
 src="${1:-}"
 [[ -n "$src" && -f "$src" ]] || die "usage: scripts/connect-qr.sh <google-services.json> [out-dir]"
@@ -24,6 +25,7 @@ root="$(cd "$TL_ROOT" && pwd -P)"
 if git -C "$dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   die "the code carries a key: $dir is inside a git checkout"
 fi
+warn "keep $dir out of dotfile backups and repositories (e.g. a bare dotfiles repo): the files carry the API key"
 png="$dir/connect-qr.png"; txt="$dir/connect-code.txt"
 for f in "$png" "$txt"; do [[ ! -L "$f" ]] || die "$f is a symbolic link"; done
 
@@ -49,9 +51,10 @@ PY
 py="${CONNECT_QR_PYTHON:-}"
 if [[ -z "$py" ]]; then
   venv="$HOME/.cache/context-lens/segno-1.6.6"
-  if [[ ! -x "$venv/bin/python" ]]; then
+  if ! "$venv/bin/python" -c 'import segno' >/dev/null 2>&1; then
+    rm -rf "$venv"
     python3 -m venv "$venv" >/dev/null
-    "$venv/bin/pip" install --quiet "segno==1.6.6"
+    "$venv/bin/pip" install --quiet "segno==1.6.6" || { rm -rf "$venv"; die "could not install segno 1.6.6"; }
   fi
   py="$venv/bin/python"
 fi

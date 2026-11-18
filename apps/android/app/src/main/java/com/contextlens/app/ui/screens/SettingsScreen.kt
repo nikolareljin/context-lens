@@ -24,7 +24,9 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import android.content.ClipData
 import android.content.ClipboardManager
+import android.os.Build
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
@@ -159,9 +161,9 @@ fun SettingsScreen(cloud: CloudState, store: CloudProjectStore) {
                     OutlinedButton(onClick = {
                         val clipboard = context.getSystemService(ClipboardManager::class.java)
                         val text = clipboard?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString()
-                        val project = text?.let { CloudProjects.fromConnectCode(it) }
-                        // The code carries a key: it does not stay on the clipboard once read.
-                        if (project != null) runCatching { clipboard.clearPrimaryClip() }
+                        // Anything that looks like a code carries a key: it does not stay on the clipboard,
+                        // valid or not. (A keyboard's own clipboard history is out of the app's reach.)
+                        if (clipboard != null && text?.contains(CloudProjects.CONNECT_PREFIX) == true) clearClipboard(clipboard)
                         takeCode(text)
                     }) { Text(stringResource(R.string.settings_paste_code)) }
                     OutlinedButton(onClick = {
@@ -220,9 +222,18 @@ private fun Field(label: String, value: String, invalid: Boolean, secret: Boolea
         singleLine = true,
         // The key is not shown on screen (screenshots, the recents preview).
         visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
+        // A password keyboard does not learn or suggest the key.
+        keyboardOptions = KeyboardOptions(keyboardType = if (secret) KeyboardType.Password else KeyboardType.Ascii, autoCorrectEnabled = false),
         modifier = Modifier.fillMaxWidth(),
     )
+}
+
+/** Empties the clipboard; clearPrimaryClip needs Android 9, so older phones get an empty clip. */
+private fun clearClipboard(clipboard: ClipboardManager) {
+    runCatching {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) clipboard.clearPrimaryClip()
+        else clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
+    }
 }
 
 /** Reads at most [limit] bytes (InputStream.readNBytes needs API 33). */

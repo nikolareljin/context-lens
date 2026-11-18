@@ -123,7 +123,7 @@
     <string name="settings_scan_code">Scan connect code</string>
     <string name="settings_paste_code">Paste connect code</string>
     <string name="settings_code_invalid">That is not a ContextLens connect code, or it is incomplete. Nothing was changed.</string>
-    <string name="settings_scan_unavailable">The code scanner is not available on this phone. Paste the code instead.</string>
+    <string name="settings_scan_unavailable">The code scanner did not start; it may still be downloading. Try again in a moment, or paste the code instead.</string>
     <string name="settings_code_confirm_title">Connect to %1$s?</string>
     <string name="settings_code_confirm_text">Cloud checks will run in the Firebase project %1$s, and the clean questions will be sent to whoever owns it. Connect only with a code from someone you trust.\n\nNow: %2$s.</string>
     <string name="settings_code_confirm_none">no project</string>

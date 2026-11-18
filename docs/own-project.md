@@ -56,7 +56,7 @@ To let testers use your project without setting one up, make a connect code on y
 scripts/connect-qr.sh path/to/google-services.json   # writes ~/.config/context-lens/connect-qr.png and connect-code.txt
 ```
 
-The tester opens ContextLens → Settings and taps **Scan connect code** (Google's code scanner; the app needs no camera permission) or copies the text code and taps **Paste connect code**. The app names the project and connects only after **Connect and restart**; a pasted code is cleared from the clipboard. Nothing goes through a browser.
+The tester opens ContextLens → Settings and taps **Scan connect code** (Google's code scanner; the app needs no camera permission) or copies the text code and taps **Paste connect code**. The app names the project and connects only after **Connect and restart**. Nothing goes through a browser. Scanning is the better choice: after a paste the app clears the clipboard, but a keyboard's clipboard history or clipboard sync may keep its own copy, which the tester can delete there.
 
 The code carries your API key. Share it only privately, and delete or rotate that key when testing ends. The script refuses to write it into a git checkout.
 
