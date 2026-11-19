@@ -37,4 +37,12 @@ describe("GroundingParser", () => {
     expect(domain("https://example.com/a b")).toBe("");
     expect(domain("https://192.0.2.1/x")).toBe("192.0.2.1");
   });
+
+  it("reads hosts the way java.net.URI does for IPv4 and IPv6 literals", () => {
+    const hostOf = (uri: string) => GroundingParser.parse([{ uri, title: null, domain: null }], [], null).citations[0]?.domain ?? "";
+    expect(hostOf("https://001.2.3.4/")).toBe("001.2.3.4");
+    expect(hostOf("https://[::1]/")).toBe("[::1]");
+    expect(hostOf("https://[zz]/")).toBe("");
+    expect(hostOf("https://[1:2:3:4:5:6:7:8:9]/")).toBe("");
+  });
 });

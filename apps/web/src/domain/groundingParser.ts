@@ -38,7 +38,29 @@ function nonEmpty(text: string | null): string | null {
 const illegal = /[\x00-\x20\x7F"<>\\^`{|}]|%(?![0-9A-Fa-f]{2})/;
 const label = "[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?";
 const hostname = new RegExp(`^(?:${label}\\.)*[A-Za-z](?:[A-Za-z0-9-]*[A-Za-z0-9])?\\.?$`);
-const ipv4 = /^(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)$/;
+// java.net.URI takes leading zeros in an IPv4 octet ("001.2.3.4").
+const octet = "(?:25[0-5]|2[0-4]\\d|[01]?\\d?\\d)";
+const ipv4 = new RegExp(`^(?:${octet}\\.){3}${octet}$`);
+
+/** A valid IPv6 literal, as java.net.URI checks it: 8 groups, or fewer with one "::", optionally ending in IPv4. */
+function isIpv6(text: string): boolean {
+  let s = text;
+  let groups = 8;
+  const lastColon = s.lastIndexOf(":");
+  if (s.slice(lastColon + 1).includes(".")) {
+    if (!ipv4.test(s.slice(lastColon + 1))) return false;
+    s = s.slice(0, lastColon + 1) + "0";
+    groups = 7;
+  }
+  const hex = /^[0-9A-Fa-f]{1,4}$/;
+  const parts = s.split("::");
+  if (parts.length > 2) return false;
+  const count = (p: string) => (p === "" ? [] : p.split(":"));
+  const all = parts.flatMap(count);
+  if (!all.every((g) => hex.test(g))) return false;
+  if (parts.length === 2) return all.length <= groups - 1;
+  return all.length === groups;
+}
 
 /**
  * The host for display, read the way java.net.URI reads it: case kept, "" when the
@@ -52,7 +74,8 @@ function host(uri: string): string {
   const m = /^(\[[0-9A-Fa-f:.]+\]|[^:]*)(?::\d*)?$/.exec(server);
   if (m === null || m[1] === "") return "";
   const h = m[1];
-  return h.startsWith("[") || ipv4.test(h) || hostname.test(h) ? h : "";
+  if (h.startsWith("[")) return isIpv6(h.slice(1, -1)) ? h : "";
+  return ipv4.test(h) || hostname.test(h) ? h : "";
 }
 
 export const GroundingParser = { CITATIONS_MAX, parse };
