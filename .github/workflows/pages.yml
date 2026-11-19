@@ -46,9 +46,6 @@ jobs:
           test -f site/index.html && test -f site/docs/index.html && test -f site/googlefb1695ee9a07673e.html
       # The site carries no Firebase project: fail on any key, app id or project host in it.
       - name: leak check
-        env:
-          # The repository's project id, read by the check only (never by the build).
-          LEAK_CHECK_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
         run: bash scripts/site-leak-check.sh site
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
