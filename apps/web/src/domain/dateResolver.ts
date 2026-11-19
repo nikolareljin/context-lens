@@ -70,7 +70,9 @@ const words = re(`${S}+`);
  * Only the first mention is returned; phrases that need more context are ignored.
  */
 export function resolve(text: string, today: IsoDate): DateMention | null {
-  const match = pattern.exec(text);
+  // NFKC ("ſunday" → "sunday", "laﬆ" → "last") and every kind of space as one plain space,
+  // as the app does, so a phrase is found and read the same way in both.
+  const match = pattern.exec(text.normalize("NFKC").split(words).join(" "));
   if (match === null) return null;
   const phrase = match[0];
   const p = phrase.toLowerCase();
@@ -105,8 +107,10 @@ export function resolve(text: string, today: IsoDate): DateMention | null {
     case "last year":
       return range(isoDate(year - 1, 1, 1), isoDate(year - 1, 12, 31));
     default: {
-      const parts = p.split(words);
+      const parts = p.split(" ");
       const day = WEEKDAYS.indexOf(parts[parts.length - 1]) + 1;
+      // A phrase the folding could not bring to a plain weekday is not resolved.
+      if (day === 0) return null;
       let date: IsoDate;
       switch (parts.slice(0, -1).join(" ")) {
         case "next":

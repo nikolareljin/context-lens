@@ -115,6 +115,15 @@ class ContextTest {
     }
 
     @Test
+    fun foldedSpellingsResolveInsteadOfCrashing() {
+        // the pattern matches these case-insensitively on Android; the lookup must too
+        assertEquals(range("last week"), range("la\u017Ft week"))
+        assertEquals(range("last week"), range("la\uFB06 week"))
+        assertEquals(range("on Sunday"), range("on \u017Funday"))
+        assertEquals(range("this week"), range("this\u00A0week"))
+    }
+
+    @Test
     fun noDateMeansNull() {
         assertNull(DateResolver.resolve("the bridge is closed", today))
     }

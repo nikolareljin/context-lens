@@ -1,5 +1,6 @@
 package com.contextlens.app.context
 
+import java.text.Normalizer
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
@@ -17,6 +18,17 @@ data class DateMention(val phrase: String, val start: LocalDate, val end: LocalD
 object DateResolver {
     private val weekdays = DayOfWeek.entries.associateBy { it.name.lowercase() }
 
+    /** Every kind of space Android's regex \s matches, so a matched phrase splits the same way. */
+    private val spaces = Regex("[\\s\\p{Z}\\u0085]+")
+
+    /**
+     * The text the pattern runs on: NFKC-normalized ("ſunday" → "sunday", "laﬆ" → "last")
+     * with every kind of space as one plain space, so a phrase is found and read the same
+     * way on Android, in the JVM tests and in the web companion.
+     */
+    private fun normalized(text: String): String =
+        Normalizer.normalize(text, Normalizer.Form.NFKC).replace(spaces, " ")
+
     private val pattern = Regex(
         "\\b(today|tonight|yesterday|tomorrow|this week|last week|next week|this month|last month|" +
             "this year|last year|" +
@@ -25,7 +37,7 @@ object DateResolver {
     )
 
     fun resolve(text: String, today: LocalDate): DateMention? {
-        val match = pattern.find(text) ?: return null
+        val match = pattern.find(normalized(text)) ?: return null
         val phrase = match.value
         val p = phrase.lowercase()
         val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
@@ -43,8 +55,9 @@ object DateResolver {
             "last year" -> today.minusYears(1).withDayOfYear(1) to
                 today.minusYears(1).with(TemporalAdjusters.lastDayOfYear())
             else -> {
-                val words = p.split(Regex("\\s+"))
-                val day = weekdays.getValue(words.last())
+                val words = p.split(" ")
+                // A phrase the folding could not bring to a plain weekday is not resolved.
+                val day = weekdays[words.last()] ?: return null
                 val date = when (words.dropLast(1).joinToString(" ")) {
                     "next", "this coming" -> today.with(TemporalAdjusters.next(day))
                     "this" -> weekStart.with(TemporalAdjusters.nextOrSame(day))

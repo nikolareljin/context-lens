@@ -68,4 +68,12 @@ describe("DateResolver", () => {
   it("reads a weekday phrase split by a no-break space", () => {
     expect(DateResolver.resolve("next\u00a0Monday", "2026-11-14")).toMatchObject({ start: "2026-11-16" });
   });
+
+  it("resolves folded spellings the way the app does", () => {
+    const today = "2026-11-19";
+    expect(DateResolver.resolve("it was la\u017Ft week", today)).toMatchObject(DateResolver.resolve("it was last week", today)!);
+    expect(DateResolver.resolve("la\uFB06 week", today)).toMatchObject(DateResolver.resolve("last week", today)!);
+    expect(DateResolver.resolve("on \u017Funday", today)).toMatchObject({ start: DateResolver.resolve("on Sunday", today)!.start });
+    expect(DateResolver.resolve("this\u00A0week", today)).toMatchObject({ start: DateResolver.resolve("this week", today)!.start });
+  });
 });
