@@ -172,4 +172,9 @@ describe("PiiPostScrubber", () => {
     const ssn = "ssn \u0301123-45-6789 ok";
     expect(PiiPostScrubber.findIn(ssn, ssn).size).toBeGreaterThan(0);
   });
+
+  it("does not treat a name as public because of a connector character in a public name", () => {
+    // "Rosa‿Cup" is one word for ICU, so "Rosa" alone is not public there either
+    expect(PiiPostScrubber.findIn("Did Rosa win?", "my friend Rosa won", ["Rosa\u203FCup"]).has("NAME" as PiiKind)).toBe(true);
+  });
 });

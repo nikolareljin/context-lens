@@ -6,9 +6,11 @@
  * - Whitespace follows the phone, not the JVM unit tests: Android's ICU regex \s matches
  *   Unicode spaces and line separators (no-break space, U+2028) as well as ASCII ones, so a
  *   phrase or a card number split by them is read the same way in both apps.
- * - Word boundaries follow ICU \b as on the phone: letters, digits and "_" in any script
- *   are word characters, and combining marks and invisible format characters are looked
- *   past, so a stray accent before a number does not hide it.
+ * - Word boundaries follow ICU \b as on the phone. Word characters are ICU's \w set:
+ *   alphabetic characters (letters, letter numerals such as "Ⅻ", circled letters), marks,
+ *   decimal digits, connector punctuation ("_", "‿") and the zero-width joiners. Combining
+ *   marks and invisible format characters are looked past, so a stray accent before a
+ *   number does not hide it.
  * - JVM (?i) folds ASCII only; JavaScript /iu folds Unicode ("ſ" matches "s"), so
  *   case-insensitive words are spelled out as [aA] classes instead.
  */
@@ -16,14 +18,16 @@
 /** Android (ICU) \s: ASCII whitespace, U+0085 and every Unicode space or line separator. */
 export const S = "[\\t-\\r\\x85\\p{Z}]";
 
-const WORD = "[\\p{L}\\p{Nd}_]";
+const WORD = "[\\p{Alphabetic}\\p{M}\\p{Nd}\\p{Pc}\\u200C\\u200D]";
 const SKIP = "[\\p{Grapheme_Extend}\\p{Cf}]";
+/** A word character that is not looked past: what a boundary is decided on. */
+const BASE = `(?:(?!${SKIP})${WORD})`;
 
 /** ICU \b: a boundary between word and non-word characters, looking past combining marks and format characters. */
-export const B = `(?!${SKIP})(?:(?<!${WORD}${SKIP}*)(?=${WORD})|(?<=${WORD}${SKIP}*)(?!${WORD}))`;
+export const B = `(?!${SKIP})(?:(?<!${BASE}${SKIP}*)(?=${BASE})|(?<=${BASE}${SKIP}*)(?!${BASE}))`;
 
 /** ICU \W: any character that is not a word character. */
-export const W = "[^\\p{L}\\p{Nd}_]";
+export const W = "[^\\p{Alphabetic}\\p{M}\\p{Nd}\\p{Pc}\\u200C\\u200D]";
 
 /** ASCII letters matched without case, as JVM (?i) does: "the|a" -> "[tT][hH][eE]|[aA]". */
 export function ci(words: string): string {
