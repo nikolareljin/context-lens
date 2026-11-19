@@ -15,7 +15,7 @@
 #   recaptcha   a score-based reCAPTCHA Enterprise key for the Pages domain and localhost
 #   appcheck    register Play Integrity (Android) and reCAPTCHA Enterprise (web);
 #               --enforce also enforces App Check on AI Logic
-#   github      set the App Distribution target (never the Firebase configuration) on this repository
+#   github      set the App Distribution target as repository secrets (never the Firebase configuration)
 #   status      what is done and what is left
 #
 #   --yes       answer yes to every question (installs, GitHub writes)
@@ -329,13 +329,14 @@ step_github() {
   local repo; repo="$(github_repo)"
   # Only the App Distribution target goes to GitHub. The Firebase configuration (google-services.json,
   # the web config) stays on this machine: public builds (CI artifacts, releases, the site) carry none.
-  confirm "Write the App Distribution target to the Actions variables and secrets of $repo?" \
+  # Both are masked secrets: a plain variable would be printed in public Actions logs.
+  confirm "Write the App Distribution target to the Actions secrets of $repo?" \
     || { log "skipped"; return 0; }
   local gh; gh="$(gh_bin)"
-  printf '%s' "$(project_id)" | "$gh" variable set FIREBASE_PROJECT_ID --repo "$repo" >/dev/null
+  printf '%s' "$(project_id)" | "$gh" secret set FIREBASE_PROJECT_ID --repo "$repo" >/dev/null
   env_get "$TL_ENV_FILE" FIREBASE_ANDROID_APP_ID | tr -d '\n' \
     | "$gh" secret set FIREBASE_ANDROID_APP_ID --repo "$repo" >/dev/null
-  done_msg "GitHub: FIREBASE_PROJECT_ID and FIREBASE_ANDROID_APP_ID set on $repo; no Firebase configuration"
+  done_msg "GitHub: secrets FIREBASE_PROJECT_ID and FIREBASE_ANDROID_APP_ID set on $repo; no Firebase configuration"
 }
 
 # ---- status --------------------------------------------------------------

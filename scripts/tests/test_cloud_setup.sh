@@ -90,7 +90,8 @@ printf "%s %s %s=%s\n" "$1" "$2" "$3" "$(cat)" >> '"$PWD"'/gh-calls'
   export GH="$PWD/gh"
   out="$(bash "$cloud" github 2>&1)" || fail "github step failed: $out"
   calls="$(cat gh-calls)"
-  assert_contains "$calls" "variable set FIREBASE_PROJECT_ID=demo-proj"
+  assert_contains "$calls" "secret set FIREBASE_PROJECT_ID=demo-proj"
+  [[ "$calls" != *"variable set"* ]] || fail "a plain variable was set: $calls"
   assert_contains "$calls" "secret set FIREBASE_ANDROID_APP_ID=1:9:android:x"
   assert_eq "$(wc -l < gh-calls | tr -d ' ')" 2
   [[ "$out" != *v-API_KEY* ]] || fail "a value was printed: $out"

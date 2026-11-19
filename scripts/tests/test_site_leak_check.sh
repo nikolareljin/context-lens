@@ -130,4 +130,14 @@ test_the_project_id_from_ci_fails_without_being_printed() {
   assert_status 0 env LEAK_CHECK_PROJECT_ID=springfield-other-555 "$script" site
   assert_status 2 env LEAK_CHECK_PROJECT_ID='not a project' "$script" site
 }
+test_without_a_project_id_the_check_says_it_is_skipped() {
+  site
+  out="$(env -u LEAK_CHECK_PROJECT_ID "$script" site 2>&1)" || fail "check failed: $out"
+  assert_contains "$out" "LEAK_CHECK_PROJECT_ID is not set: the project-id check is skipped"
+  out="$(LEAK_CHECK_PROJECT_ID="" "$script" site 2>&1)" || fail "check failed: $out"
+  assert_contains "$out" "the project-id check is skipped"
+  out="$(LEAK_CHECK_PROJECT_ID=springfield-ci-555 "$script" site 2>&1)" || fail "check failed: $out"
+  [[ "$out" != *"skipped"* ]] || fail "said skipped with a project id: $out"
+  [[ "$out" != *"springfield-ci-555"* ]] || fail "the project id was printed: $out"
+}
 run_tests

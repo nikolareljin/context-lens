@@ -104,7 +104,10 @@ jobs:
       - run: npm run lint
       - run: npm run build
       # The built site carries no Firebase project: fail on any key, app id or project host in it.
+      # The masked secret is empty on fork pull requests; the project-id check is then skipped.
       - name: leak check
+        env:
+          LEAK_CHECK_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
         run: bash ../../scripts/site-leak-check.sh dist
       - run: npm test
 
@@ -124,6 +127,8 @@ jobs:
       - run: mkdocs build --strict --site-dir site
       # A key or project value in the docs fails the pull request, not only the deploy.
       - name: leak check
+        env:
+          LEAK_CHECK_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
         run: bash scripts/site-leak-check.sh site
 
   scripts:

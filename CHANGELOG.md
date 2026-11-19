@@ -18,6 +18,7 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 ### Security
 
 - The site has no build-time Firebase configuration any more (`VITE_FIREBASE_*` removed); CI fails the web build and the Pages deploy if the built output contains a Firebase API key, app id, project or storage host, or a reCAPTCHA site key, following symbolic links (`scripts/site-leak-check.sh`).
+- The project id is kept as a masked repository secret, never a plain variable, so it cannot appear in Actions logs; the leak check, the deploy and distribution workflows and `./dev cloud github` use the secret.
 
 ## [0.1.1] - 2026-11-18
 

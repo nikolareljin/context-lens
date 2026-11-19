@@ -14,8 +14,9 @@
 #     its name starts with "demo-" (the Firebase convention for projects that do not exist,
 #     used only as documentation examples)
 #   - a reCAPTCHA site key (6L followed by 38 key characters)
-#   - a project id given in LEAK_CHECK_PROJECT_ID (CI passes the repository's
-#     FIREBASE_PROJECT_ID variable; the check step reads it, the build never does)
+#   - a project id given in LEAK_CHECK_PROJECT_ID (CI passes the repository's masked
+#     FIREBASE_PROJECT_ID secret to the check step only, never to the build); without it,
+#     that check is skipped and one line says so
 #   - the project id of a maintainer configuration, when LEAK_CHECK_CONFIG names one (a local
 #     google-services.json or web config); without it, that check is skipped
 #   - a file or directory that cannot be read
@@ -87,10 +88,12 @@ report_project() {
     | sed 's/:\([0-9]*\)$/ line \1/')
 }
 
-# The maintainer's own project id, from CI's repository variable (an identifier, not a secret).
+# The maintainer's own project id, from CI's masked repository secret.
 if [[ -n "${LEAK_CHECK_PROJECT_ID:-}" ]]; then
   [[ "$LEAK_CHECK_PROJECT_ID" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]] || die "LEAK_CHECK_PROJECT_ID is not a project id" 2
   report_project "$LEAK_CHECK_PROJECT_ID"
+else
+  log "LEAK_CHECK_PROJECT_ID is not set: the project-id check is skipped"
 fi
 
 # The maintainer's own project id, from a local configuration that never enters the repository.
