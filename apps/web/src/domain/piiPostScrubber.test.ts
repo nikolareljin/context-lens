@@ -177,4 +177,9 @@ describe("PiiPostScrubber", () => {
     // "Rosa‿Cup" is one word for ICU, so "Rosa" alone is not public there either
     expect(PiiPostScrubber.findIn("Did Rosa win?", "my friend Rosa won", ["Rosa\u203FCup"]).has("NAME" as PiiKind)).toBe(true);
   });
+
+  it("folds ß and the long s in relation words, as ICU does", () => {
+    expect(PiiPostScrubber.findIn("Is Jenna ok?", "my bo\u00DF Jenna called").has("NAME" as PiiKind)).toBe(true);
+    expect(PiiPostScrubber.findIn("Is Jenna\u00B2 ok?", "my \u017Fister Jenna called").has("NAME" as PiiKind)).toBe(true);
+  });
 });
