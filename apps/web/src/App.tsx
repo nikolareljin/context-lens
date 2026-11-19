@@ -1,7 +1,8 @@
 import logoUrl from "../../../docs/assets/logo.svg?url";
 import heroUrl from "../../../docs/assets/hero.svg?url";
 import { DownloadStrip } from "./components/DownloadStrip";
-import { config, DOCS, REPOSITORY } from "./lib/config";
+import { DemoSection } from "./components/DemoSection";
+import { DOCS, REPOSITORY } from "./lib/config";
 
 const STAGES = [
   { n: 1, title: "Local speech", where: "on this device", text: "The sentence and its references (“here”, “they”, “last month”) stay here." },
@@ -53,17 +54,7 @@ export default function App() {
           ))}
         </section>
 
-        <section aria-labelledby="web-demo" className="rounded-2xl border border-edge bg-panel/60 p-6">
-          <h2 id="web-demo" className="text-xl font-semibold">Try it in Chrome</h2>
-          {config.firebase ? (
-            <p className="mt-2 text-slate-300">The live demo is being connected; it runs Gemini Nano inside Chrome where available.</p>
-          ) : (
-            <p className="mt-2 text-slate-300">
-              The live demo needs this site's Firebase configuration, which this build does not have. The Android app
-              below works on its own.
-            </p>
-          )}
-        </section>
+        <DemoSection />
 
         <DownloadStrip />
       </main>

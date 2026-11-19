@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
 import App from "./App";
+
+afterEach(cleanup);
 
 describe("App", () => {
   it("offers the fixed APK address and the docs", () => {
@@ -15,8 +17,10 @@ describe("App", () => {
     expect(screen.getByRole("link", { name: "Privacy" }).getAttribute("href")).toBe("/context-lens/docs/privacy/");
   });
 
-  it("says the demo is not configured when the build has no Firebase values", () => {
+  it("shows the demo with no project connected", () => {
     render(<App />);
-    expect(screen.getAllByText(/does not have/).length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Try it in Chrome" })).toBeTruthy();
+    expect(screen.getByText(/Not connected: everything stays in this browser/)).toBeTruthy();
+    expect(screen.getByText("No request has left this browser.")).toBeTruthy();
   });
 });

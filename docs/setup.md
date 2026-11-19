@@ -24,7 +24,7 @@ Run this in a terminal; it asks questions and opens browser pages:
 | `project` | Creates or picks the Firebase project and saves its ID as `FIREBASE_PROJECT_ID` in `.env`. |
 | `apis` | Enables the APIs (AI Logic, Gemini, App Check, reCAPTCHA Enterprise, Firestore, Remote Config, Identity Toolkit, Play Integrity). Opens **AI Logic** so you can click *Get started* → *Gemini Developer API*. |
 | `android` | Registers `com.contextlens.app`, adds the debug and release SHA-256 fingerprints, writes `apps/android/app/google-services.json`. |
-| `web` | Registers the web app and writes its configuration to `apps/web/.env.local`. |
+| `web` | Registers the web app and keeps its configuration in `apps/web/.env.local` for your reference. The site never reads it: paste the config into the page to connect (see [Web companion setup](web-setup.md)). |
 | `firestore` | Creates the Firestore database (`FIRESTORE_LOCATION`, default `nam5`). |
 | `auth` | Opens **Authentication** so you can enable Google sign-in: Google creates that provider's OAuth client, and there is no API for it. Then turns on anonymous sign-in and adds `<owner>.github.io` to the authorized domains. |
 | `recaptcha` | Creates a score-based reCAPTCHA Enterprise key for `<owner>.github.io` and `localhost`. |

@@ -5,7 +5,7 @@ name: pages
 on:
   push:
     branches: [main]
-    paths: ["apps/web/**", "apps/android/app/src/main/assets/prompts/**", "docs/**", "mkdocs.yml", ".github/workflows/pages.yml"]
+    paths: ["apps/web/**", "apps/android/app/src/main/assets/prompts/**", "docs/**", "mkdocs.yml", "scripts/site-leak-check.sh", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 concurrency:
@@ -26,7 +26,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
-      # The public site is built with no Firebase project: it shows the download and the docs.
+      # The public site is built with no Firebase project; visitors connect their own in the browser.
       - name: web companion
         working-directory: apps/web
         run: |
@@ -44,6 +44,9 @@ jobs:
           cp -R apps/web/dist/. site/
           mkdocs build --strict --site-dir site/docs
           test -f site/index.html && test -f site/docs/index.html && test -f site/googlefb1695ee9a07673e.html
+      # The site carries no Firebase project: fail on any key, app id or project host in it.
+      - name: leak check
+        run: bash scripts/site-leak-check.sh site
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:

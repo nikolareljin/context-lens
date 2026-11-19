@@ -103,6 +103,9 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run lint
       - run: npm run build
+      # The built site carries no Firebase project: fail on any key, app id or project host in it.
+      - name: leak check
+        run: bash ../../scripts/site-leak-check.sh dist
       - run: npm test
 
   docs:

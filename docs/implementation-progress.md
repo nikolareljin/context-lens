@@ -84,3 +84,11 @@ A dated record of the work done during the hackathon. Each entry lists what was 
 
 - The first APK at the download address since 0.1.0 was withdrawn: phone-only out of the box, with your own Firebase project connected in Settings (file, values or a connect code).
 
+## 2026-11-19: web companion live demo
+
+- The page runs the Android pipeline in Chrome: local rules, the gatekeeper on Gemini Nano through Firebase AI Logic (`ONLY_ON_DEVICE` in Strict, `PREFER_ON_DEVICE` in Balanced), the personal-data check, and the grounded verifier (`ONLY_IN_CLOUD` with Google Search). Cards show each stage with its source pill (`inferenceSource`), the verdict, the sources and Google's Search Suggestions in a sandboxed frame with scripts and loads blocked; the ledger lists every request that left the browser with its size, in memory only.
+- No build-time configuration: the visitor connects their own project on the page (web config or web connect code), confirms it by name and can disconnect; the values stay in the tab's memory unless they choose to remember them on the device. Without that, nothing of the project is written to browser storage (the SDK's heartbeat record is off, anonymous sign-in is in memory). Without one the cloud step shows "no project connected" with a search link. The Firebase SDK (13.4.0) loads only when first needed.
+- The on-device app names no project, and a check before each on-device call stops the SDK from routing an `ONLY_ON_DEVICE` request to the cloud when Chrome has no Prompt API.
+- `scripts/site-leak-check.sh` runs after the web build in CI and on the assembled Pages site, and fails on any Firebase API key, app id or project host.
+- Verified: unit and component tests, including the real SDK with every network API stubbed (nothing sent without a project, also when Chrome has no model; with a project in Strict only the clean question is sent), type check, production build, script tests and shellcheck.
+- Open: trying it in Chrome with Gemini Nano and a connected project.
