@@ -121,9 +121,28 @@ export function findIn(
   earlier: string[] = [],
 ): Set<PiiKind> {
   const hits = findInText(query, utterance, publicNames, earlier);
-  const nfkc = (s: string) => s.normalize("NFKC");
-  findInText(nfkc(query), nfkc(utterance), publicNames.map(nfkc), earlier.map(nfkc)).forEach((k) => hits.add(k));
+  const n = asciiForm;
+  findInText(n(query), n(utterance), publicNames.map(n), earlier.map(n)).forEach((k) => hits.add(k));
   return hits;
+}
+
+const ND = /\p{Nd}/u;
+
+/**
+ * NFKC, then every decimal digit of any script as its ASCII digit (Unicode keeps each
+ * script's digits as a run of ten from zero) and every Unicode space or line separator
+ * as a space: what ICU's \d and \s match on the phone.
+ */
+export function asciiForm(text: string): string {
+  return Array.from(text.normalize("NFKC"), (ch) => {
+    if (/[\p{Z}\u0085]/u.test(ch)) return " ";
+    if (ch >= "0" && ch <= "9") return ch;
+    if (!ND.test(ch)) return ch;
+    const cp = ch.codePointAt(0)!;
+    let k = 0;
+    while (k < 9 && ND.test(String.fromCodePoint(cp - k - 1))) k++;
+    return String(k % 10);
+  }).join("");
 }
 
 function findInText(

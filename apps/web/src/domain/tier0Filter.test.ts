@@ -44,4 +44,9 @@ describe("Tier0Filter", () => {
     // a no-break space is not JVM whitespace, so this is not "Morning!"
     expect(Tier0Filter.check("Morning ! how are you")).toEqual({ type: "pass" });
   });
+
+  it("keeps a short sentence with a number in any script, as on the phone", () => {
+    expect(Tier0Filter.check("Hi, \u0663 people came").type).toBe("pass");
+    expect(Tier0Filter.check("Hi, \uFF13 people came").type).toBe("pass");
+  });
 });

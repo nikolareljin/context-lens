@@ -15,7 +15,8 @@ export const MIN_WORDS = 3;
 export const SMALL_TALK_MAX_WORDS = 6;
 
 const word = re("[\\p{L}\\p{N}']+", "g");
-const digit = /\d/;
+// Any script's digits, as ICU's \d matches them on the phone: a number keeps the sentence.
+const digit = /\p{Nd}/u;
 
 const openers = [
   "hi", "hello", "hey", "good morning", "good afternoon", "good evening", "good night",

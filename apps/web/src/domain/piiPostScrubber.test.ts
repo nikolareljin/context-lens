@@ -146,4 +146,12 @@ describe("PiiPostScrubber", () => {
     // a name introduced with a no-break space after the title
     expect(PiiPostScrubber.findIn("Did Patel say flu doubled?", "Ask Dr.\u00a0Patel about the flu").has("NAME" as PiiKind)).toBe(true);
   });
+
+  it("catches digits of other scripts and Unicode line separators", () => {
+    // made-up 555 number in Arabic-Indic digits
+    const arabic = "whose number is \u0665\u0665\u0665-\u0661\u0662\u0663-\u0664\u0665\u0666\u0667";
+    expect(PiiPostScrubber.findIn(arabic, arabic).size).toBeGreaterThan(0);
+    const address = "who lives at 12\u2028Elm Street";
+    expect(PiiPostScrubber.findIn(address, address).size).toBeGreaterThan(0);
+  });
 });
