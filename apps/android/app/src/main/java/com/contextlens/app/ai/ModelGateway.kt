@@ -28,11 +28,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * Cloud model IDs to try, in order, until Remote Config provides the name.
- * Checked on Nov 14: the API names gemini-3.8-flash as the current Flash model;
- * gemini-3.1-flash-lite answers; gemini-2.5-flash is closed to new projects.
+ * Cloud model IDs the Diagnostics test tries, in the verifier's order: gemini-3.1-flash-lite
+ * answers in about a second, while gemini-3.8-flash can take the whole 20 s probe timeout
+ * (seen on the S26 on Nov 18), so it is tried second.
  */
-val CLOUD_MODEL_CANDIDATES = listOf("gemini-3.8-flash", "gemini-3.1-flash-lite")
+val CLOUD_MODEL_CANDIDATES = VERIFIER_CANDIDATES
 
 /** A fixed, neutral prompt: nothing personal ever goes into a diagnostics call. */
 const val PROBE_PROMPT = "Reply with the single word: ready"

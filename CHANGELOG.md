@@ -4,6 +4,10 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ## [Unreleased]
 
+### Fixed
+
+- Diagnostics → Test in cloud tries gemini-3.1-flash-lite first, like the fact check, instead of waiting up to 20 s for gemini-3.8-flash.
+
 ## [0.1.1] - 2026-11-18
 
 The app has no shared backend: out of the box it works on the phone alone, and the grounded cloud check runs in a Firebase project you connect in Settings. Replaces the withdrawn 0.1.0 APK.
