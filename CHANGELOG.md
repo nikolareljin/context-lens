@@ -7,7 +7,7 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 ### Added
 
 - Web companion live demo: type a sentence or run the Springfield demo, and the page runs the Android pipeline in Chrome (local rules, the gatekeeper on Gemini Nano through Firebase AI Logic, the personal-data check, the grounded check with Google Search), with the same cards, source pills, Search Suggestions and an egress ledger listing every request that left the browser, word for word. Strict mode by default; Balanced only with a project connected. The microphone stays off.
-- Connect your own Firebase project on the page: paste the web config or a web connect code, confirm the named project, and disconnect at any time. The values are kept in the tab's memory only, or in that browser's storage when you tick **Remember on this device**. Without a project nothing leaves the browser and the cloud step offers a search instead. App Check (reCAPTCHA Enterprise) and anonymous sign-in only when the connected config asks for them.
+- Connect your own Firebase project on the page: paste the web config or a web connect code, confirm the named project, and disconnect at any time. The values are kept in the tab's memory only, or in that browser's storage when you tick **Remember on this device**. Without a project nothing leaves the browser and the cloud step offers a search instead. App Check (reCAPTCHA Enterprise, only for a remembered project, since its SDK stores a token) and anonymous sign-in (in memory only) only when the connected config asks for them. Disconnect and Clear stop queued and running sentences.
 - Web companion groundwork: the local rules, the personal-data check, the gatekeeper and grounding parsers, the verdict rule and the date hints in TypeScript (`apps/web/src/domain/`), reading the same prompt files as the app and tested against the same evaluation set; CI runs the web tests when the evaluation set, the prompts or the Kotlin rules change.
 
 ### Fixed
@@ -17,7 +17,7 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ### Security
 
-- The site has no build-time Firebase configuration any more (`VITE_FIREBASE_*` removed); CI fails the web build and the Pages deploy if the built output contains a Firebase API key, app id or project host (`scripts/site-leak-check.sh`).
+- The site has no build-time Firebase configuration any more (`VITE_FIREBASE_*` removed); CI fails the web build and the Pages deploy if the built output contains a Firebase API key, app id, project or storage host, or a reCAPTCHA site key, following symbolic links (`scripts/site-leak-check.sh`).
 
 ## [0.1.1] - 2026-11-18
 

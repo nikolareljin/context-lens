@@ -18,7 +18,7 @@ export function LedgerPanel({ ledger }: { ledger: EgressLedger }) {
             {copied ? "Copied" : "Copy ledger"}
           </button>
           <button type="button" onClick={() => ledger.clear()} disabled={entries.length === 0} className="rounded-full border border-edge px-3 py-0.5 hover:border-device disabled:opacity-40">
-            Clear
+            Clear ledger
           </button>
         </div>
       </div>

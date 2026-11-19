@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { DOCS } from "../lib/config";
 import { PROBLEM_TEXT, parseProject, problems, type WebProject } from "../cloud/project";
 
@@ -21,6 +21,43 @@ export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: P
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<WebProject | null>(null);
+  const opener = useRef<HTMLButtonElement>(null);
+  const disconnectButton = useRef<HTMLButtonElement>(null);
+  const dialog = useRef<HTMLDivElement>(null);
+  const confirmButton = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(false);
+
+  // Focus moves into the dialog when it opens and back to the page when it closes.
+  useEffect(() => {
+    if (pending !== null) {
+      wasOpen.current = true;
+      confirmButton.current?.focus();
+    } else if (wasOpen.current) {
+      wasOpen.current = false;
+      (opener.current ?? disconnectButton.current)?.focus();
+    }
+  }, [pending]);
+
+  /** Escape cancels; Tab stays inside the dialog. */
+  const dialogKeys = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setPending(null);
+      return;
+    }
+    if (e.key !== "Tab" || dialog.current === null) return;
+    const items = Array.from(dialog.current.querySelectorAll<HTMLElement>("button, a[href], input, textarea, select"));
+    if (items.length === 0) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
 
   const check = () => {
     const parsed = parseProject(text, anonymous);
@@ -31,6 +68,12 @@ export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: P
     const found = problems(parsed);
     if (found.size > 0) {
       setError([...found].map((p) => PROBLEM_TEXT[p]).join("; "));
+      return;
+    }
+    if (parsed.recaptchaSiteKey && !remember) {
+      setError(
+        "App Check keeps a token in this browser's storage, so a reCAPTCHA site key needs “Remember on this device”. Tick it, or leave the site key out.",
+      );
       return;
     }
     setError(null);
@@ -55,7 +98,7 @@ export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: P
             {project.anonymousAuth ? " · anonymous sign-in" : ""}.{" "}
             {remembered ? "Remembered on this device." : "Kept in this tab's memory only; gone when the tab closes."}
           </p>
-          <button type="button" onClick={onDisconnect} className="rounded-full border border-edge px-4 py-1 text-sm hover:border-device">
+          <button ref={disconnectButton} type="button" onClick={onDisconnect} className="rounded-full border border-edge px-4 py-1 text-sm hover:border-device">
             Disconnect
           </button>
         </div>
@@ -86,10 +129,11 @@ export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: P
             <span>
               Remember on this device. Otherwise the project is kept in this tab's memory only. All sites under
               nikolareljin.github.io share this browser's storage (same origin), so remember it only in a personal browser.
+              Needed for an App Check site key.
             </span>
           </label>
           <div>
-            <button type="button" onClick={check} className="rounded-full bg-bridge px-4 py-1 text-sm font-medium text-white hover:bg-cloud">
+            <button ref={opener} type="button" onClick={check} className="rounded-full bg-bridge px-4 py-1 text-sm font-medium text-white hover:bg-cloud">
               Connect…
             </button>
           </div>
@@ -98,8 +142,15 @@ export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: P
       )}
 
       {pending && (
-        <div role="dialog" aria-modal="true" aria-labelledby="confirm-title" className="fixed inset-0 z-10 flex items-center justify-center bg-black/70 p-4">
-          <div className="max-w-md rounded-2xl border border-edge bg-panel p-5">
+        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/70 p-4">
+          <div
+            ref={dialog}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-title"
+            onKeyDown={dialogKeys}
+            className="max-w-md rounded-2xl border border-edge bg-panel p-5"
+          >
             <h4 id="confirm-title" className="text-lg font-semibold">Use the project “{pending.projectId}”?</h4>
             <ul className="mt-3 list-disc pl-5 text-sm text-slate-300">
               <li>Clean questions (never your sentences in Strict mode) go to Gemini in this project, on its quota and bill.</li>
@@ -108,12 +159,14 @@ export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: P
                   ? "The values are remembered in this browser's local storage, shared by every site under nikolareljin.github.io, and sent only to Firebase."
                   : "The values are kept in this tab's memory only and sent only to Firebase; they are gone when the tab closes."}
               </li>
-              {pending.recaptchaSiteKey && <li>App Check with reCAPTCHA Enterprise is turned on.</li>}
+              {pending.recaptchaSiteKey && (
+                <li>App Check with reCAPTCHA Enterprise is turned on; its token is kept in this browser until Disconnect, which reloads the page to delete it.</li>
+              )}
               {pending.anonymousAuth && <li>An anonymous sign-in is made before the first cloud call.</li>}
               <li>Disconnect removes them again.</li>
             </ul>
             <div className="mt-4 flex gap-3">
-              <button type="button" onClick={confirm} className="rounded-full bg-bridge px-4 py-1 font-medium text-white hover:bg-cloud">
+              <button ref={confirmButton} type="button" onClick={confirm} className="rounded-full bg-bridge px-4 py-1 font-medium text-white hover:bg-cloud">
                 Connect {pending.projectId}
               </button>
               <button type="button" onClick={() => setPending(null)} className="rounded-full border border-edge px-4 py-1 hover:border-device">

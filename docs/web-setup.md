@@ -26,9 +26,9 @@ contextlens-web-connect:1?project=demo-springfield&app=1%3A5550001%3Aweb%3A5ca1a
 
 `site=<reCAPTCHA site key>` is optional. Each value is checked: `apiKey` must look like a web API key, `appId` like `1:<number>:web:<hex>`, the project id like a Firebase project id, and `messagingSenderId` must match the app id's project number.
 
-The values go only to Firebase, through the SDK. By default they are kept in the tab's memory only and are gone when the tab closes. Tick **Remember on this device** before connecting to keep them in this browser's local storage instead; all sites under `nikolareljin.github.io` share that storage (same origin), so remember a project only in a personal browser. **Disconnect** clears both, and connecting another project starts a fresh Firebase app instance. Clean questions then run on your project's quota and bill.
+The values go only to Firebase, through the SDK. By default they are kept in the tab's memory only and are gone when the tab closes. Tick **Remember on this device** before connecting to keep them in this browser's local storage instead; all sites under `nikolareljin.github.io` share that storage (same origin), so remember a project only in a personal browser. **Disconnect** clears both, stops every sentence still queued or in progress (nothing more reaches the old project) and deletes its Firebase app instance; connecting another project starts a fresh one. Clean questions then run on your project's quota and bill.
 
-Without remembering, the page writes nothing of the project to local storage, session storage or IndexedDB: the Firebase SDK's daily usage record is turned off and an anonymous sign-in is kept in memory. Only App Check, when you give it a site key, keeps its short-lived token in IndexedDB, as the SDK does; Disconnect deletes it.
+Without remembering, the page writes nothing of the project to local storage, session storage or IndexedDB: the Firebase SDK's daily usage record is turned off and an anonymous sign-in is kept in memory only. App Check is the exception, so it needs **Remember on this device** (see below).
 
 ### Restrict the API key
 
@@ -37,9 +37,12 @@ A web API key is visible to anyone who has the config. Before giving a key to ju
 ### Optional: App Check and anonymous sign-in
 
 - **App Check**: add `"recaptchaSiteKey": "<site key>"` to the pasted config (or `site=` to the code) and the page turns on App Check with the reCAPTCHA Enterprise provider. Create a score-based key for your domain under **App Check → Apps → the web app → reCAPTCHA Enterprise**. For local development, add the App Check debug token from the browser console under **Manage debug tokens**. Without a site key App Check stays off, which works while it is not enforced.
-- **Anonymous sign-in**: tick the box before connecting (needs `authDomain` and the Anonymous provider enabled).
 
-Both are set up right before the first cloud call, and each is listed in the ledger.
+    The App Check SDK keeps its token in this browser's IndexedDB and holds that database open while the page is open, so a site key is accepted only together with **Remember on this device**. **Disconnect** then reloads the page: before the Firebase SDK loads again, the page deletes the SDK's databases (`firebase-app-check-database`, `firebase-heartbeat-database`). It does so at every start without a remembered project. If another tab of this site still has them open, the deletion finishes when that tab closes.
+
+- **Anonymous sign-in**: tick the box before connecting (needs `authDomain` and the Anonymous provider enabled). The session is kept in memory only.
+
+Both are set up right before the first cloud call: the grounded check, or in Balanced mode already the first gatekeeper call. Each is listed in the ledger.
 
 ## Privacy modes
 
@@ -56,7 +59,7 @@ On-device inference in the browser needs Chrome on desktop, version 139 or newer
 
 ## No build configuration
 
-The site is built without any Firebase values, and `apps/web` reads none: there is no `VITE_FIREBASE_*` setting, and a local `apps/web/.env.local` is never built in. CI fails the web build and the Pages deploy if the built output contains a Firebase API key, a Firebase app id or a `*.firebaseapp.com` / `*.web.app` host (`scripts/site-leak-check.sh`).
+The site is built without any Firebase values, and `apps/web` reads none: there is no `VITE_FIREBASE_*` setting, and a local `apps/web/.env.local` is never built in. CI fails the web build and the Pages deploy if the built output contains a Firebase API key, a Firebase app id, a `*.firebaseapp.com`, `*.web.app`, `*.firebasestorage.app` or `*.appspot.com` host (other than `demo-` examples) or a reCAPTCHA site key, or if anything in it cannot be read; symbolic links are followed (`scripts/site-leak-check.sh`). Locally, `LEAK_CHECK_CONFIG=<path to your google-services.json or web config>` also fails on your own project id; CI has no such file and skips that check.
 
 ## Local commands
 
@@ -64,4 +67,5 @@ The site is built without any Firebase values, and `apps/web` reads none: there 
 ./dev web check   # install, type check, tests, build
 ./dev web dev     # http://127.0.0.1:5173/context-lens/
 bash scripts/site-leak-check.sh apps/web/dist
+LEAK_CHECK_CONFIG=apps/android/app/google-services.json bash scripts/site-leak-check.sh apps/web/dist
 ```

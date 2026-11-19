@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { STORAGE_KEY, type WebProject } from "../cloud/project";
-import { CLEAN_QUESTION, FAKE_APP_ID, FAKE_KEY, FakeSource, fakeProject } from "../test/fakes";
+import { CLEAN_QUESTION, FAKE_APP_ID, FAKE_KEY, FakeSource, GATE_CLAIM, fakeProject, held } from "../test/fakes";
 import { DemoSection, type DemoModels } from "./DemoSection";
 
 const snippet = `const firebaseConfig = { apiKey: "${FAKE_KEY}", authDomain: "demo-springfield.firebaseapp.com", projectId: "demo-springfield", messagingSenderId: "5550001", appId: "${FAKE_APP_ID}" };`;
@@ -14,6 +14,7 @@ const createModels = (project: WebProject | null): DemoModels => {
 };
 const status = async () => "available" as const;
 const fetchSpy = vi.fn();
+const reload = vi.fn();
 
 beforeEach(() => {
   sources = [];
@@ -25,10 +26,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   fetchSpy.mockClear();
+  reload.mockClear();
 });
 
 function renderDemo() {
-  return render(<DemoSection createModels={createModels} status={status} demoGapMs={0} />);
+  return render(<DemoSection createModels={createModels} status={status} demoGapMs={0} reload={reload} />);
 }
 
 async function check(text: string) {
@@ -82,7 +84,43 @@ describe("connecting a project", () => {
     expect(screen.getByText("demo-springfield")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Disconnect" }));
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
-    expect(deleteDatabase).toHaveBeenCalledWith("firebase-app-check-database");
+    // no App Check was used, so there is nothing to clean up and no reload
+    expect(reload).not.toHaveBeenCalled();
+    expect(deleteDatabase).not.toHaveBeenCalled();
+  });
+
+  it("allows an App Check site key only with Remember, and reloads on Disconnect to delete its token", () => {
+    renderDemo();
+    const withKey = snippet.replace("};", ', recaptchaSiteKey: "6Lc_springfield_site_key_555" };');
+    fireEvent.change(screen.getByLabelText("Web app config or connect code"), { target: { value: withKey } });
+    fireEvent.click(screen.getByRole("button", { name: "Connect…" }));
+    expect(screen.getByRole("alert").textContent).toContain("needs “Remember on this device”");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(screen.getByLabelText(/Remember on this device/));
+    fireEvent.click(screen.getByRole("button", { name: "Connect…" }));
+    expect(screen.getByText(/its token is kept in this browser until Disconnect/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Connect demo-springfield" }));
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!).recaptchaSiteKey).toBe("6Lc_springfield_site_key_555");
+    sources.at(-1)!.source.usedAppCheck = true;
+    fireEvent.click(screen.getByRole("button", { name: "Disconnect" }));
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("moves focus into the dialog, closes it with Escape and returns focus", () => {
+    renderDemo();
+    fireEvent.change(screen.getByLabelText("Web app config or connect code"), { target: { value: snippet } });
+    const opener = screen.getByRole("button", { name: "Connect…" });
+    fireEvent.click(opener);
+    const dialog = screen.getByRole("dialog");
+    expect(document.activeElement).toBe(within(dialog).getByRole("button", { name: "Connect demo-springfield" }));
+    // Tab from the last button wraps to the first
+    within(dialog).getByRole("button", { name: "Cancel" }).focus();
+    fireEvent.keyDown(dialog, { key: "Tab" });
+    expect(document.activeElement).toBe(within(dialog).getByRole("button", { name: "Connect demo-springfield" }));
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(opener);
   });
 
   it("stores nothing when the visitor cancels", () => {
@@ -171,5 +209,57 @@ describe("with a project", () => {
     fireEvent.click(screen.getByRole("radio", { name: /Balanced/ }));
     await check("The bus fare went up twice this year.");
     await waitFor(() => expect(source.asked).toEqual(["STRICT", "BALANCED"]));
+  });
+});
+
+describe("stopping work in progress", () => {
+  beforeEach(() => localStorage.setItem(STORAGE_KEY, JSON.stringify(fakeProject())));
+
+  /** The on-device gatekeeper of the newest model set, held until released. */
+  function holdGate() {
+    const models = sources.at(-1)!.source;
+    const gate = held({ text: GATE_CLAIM, source: "ON_DEVICE" });
+    models.onDevice.generate = async (_prompt, signal) => {
+      models.onDevice.signals.push(signal);
+      return gate.wait();
+    };
+    return { models, gate };
+  }
+
+  it("Disconnect during the gatekeeper: nothing reaches the old project", async () => {
+    renderDemo();
+    const { models, gate } = holdGate();
+    await check("They raised it again here last month.");
+    await waitFor(() => expect(models.onDevice.signals).toHaveLength(1));
+    fireEvent.click(screen.getByRole("button", { name: "Disconnect" }));
+    expect(models.onDevice.signals[0]?.aborted).toBe(true);
+    expect(models.disposed).toBe(true);
+    gate.release();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(models.verifier.prompts).toEqual([]);
+    expect(screen.getByText("No request has left this browser.")).toBeTruthy();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("Clear drops queued sentences and aborts the one in progress", async () => {
+    renderDemo();
+    const { models, gate } = holdGate();
+    await check("They raised it again here last month.");
+    await check("The bus fare went up twice this year.");
+    await check("The city council doubled the parking fines.");
+    await waitFor(() => expect(models.onDevice.signals).toHaveLength(1));
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    expect(models.onDevice.signals[0]?.aborted).toBe(true);
+    gate.release();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(models.onDevice.signals).toHaveLength(1);
+    expect(models.verifier.prompts).toEqual([]);
+    expect(screen.getByText("No sentences yet.")).toBeTruthy();
+  });
+
+  it("announces the latest stage in one short status line", async () => {
+    renderDemo();
+    await check("They raised it again here last month.");
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Latest sentence: checked."));
   });
 });

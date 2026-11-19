@@ -1,38 +1,71 @@
 /**
  * Google's Search Suggestions chip (renderedContent) as a self-contained document for a
  * sandboxed iframe, as the Android app shows it in a WebView with JavaScript and network
- * loads off. Scripts, frames, forms, event handlers and script URLs are removed; a Content
- * Security Policy blocks every load and script; links open in a new tab.
+ * loads off. Scripts, frames, forms, meta and base tags, SVG animation and event handlers are
+ * removed, and so is every URL but an https link; a Content Security Policy blocks every load
+ * and script; links open in a new tab.
  */
-const DROP = "script,iframe,frame,frameset,object,embed,applet,form,input,button,textarea,select,link,meta,base,noscript,template";
+const DROP = [
+  "script", "noscript", "template", "iframe", "frame", "frameset", "object", "embed", "applet", "portal",
+  "form", "input", "button", "textarea", "select", "option", "datalist", "keygen", "isindex",
+  "link", "meta", "base", "title", "head",
+  "audio", "video", "source", "track", "picture",
+  "animate", "animatemotion", "animatetransform", "set", "use", "foreignobject", "handler", "listener",
+  "math", "xmp", "plaintext", "noembed", "noframes", "area", "map",
+].join(",");
+
+/** Attributes that load or navigate: kept only as an https link (href) or an inline image (src). */
+const URL_ATTRIBUTES = new Set([
+  "src", "srcset", "action", "formaction", "background", "poster", "data", "codebase", "cite", "longdesc",
+  "lowsrc", "dynsrc", "ping", "manifest", "xlink:href", "xml:base", "to", "from", "values", "by", "attributename",
+]);
 
 const CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; form-action 'none'; base-uri 'none'";
 
-function safeUrl(value: string): boolean {
-  return /^\s*https:\/\//i.test(value);
+/** Rounds of cleaning before giving up: markup that keeps changing when parsed again is dropped. */
+const MAX_ROUNDS = 5;
+
+function safeLink(value: string): boolean {
+  return /^https:\/\//i.test(value.trim());
 }
 
-/** The chip's markup without anything that could run or load. */
-export function sanitizeChip(html: string): string {
+function cleanOnce(html: string): string {
   const doc = new DOMParser().parseFromString(`<body>${html}</body>`, "text/html");
   doc.body.querySelectorAll(DROP).forEach((el) => el.remove());
   for (const el of Array.from(doc.body.querySelectorAll("*"))) {
     for (const attr of Array.from(el.attributes)) {
       const name = attr.name.toLowerCase();
-      if (name.startsWith("on") || name === "srcdoc" || name === "formaction" || name === "ping") {
+      if (name.startsWith("on") || name === "srcdoc" || name === "http-equiv" || name === "target" || name === "rel") {
         el.removeAttribute(attr.name);
-      } else if (name === "href" || name === "xlink:href") {
-        if (!safeUrl(attr.value)) el.removeAttribute(attr.name);
-      } else if (name === "src" || name === "srcset" || name === "action" || name === "background" || name === "poster") {
-        if (!attr.value.trim().startsWith("data:image/")) el.removeAttribute(attr.name);
+      } else if (name === "href") {
+        if (el.tagName.toLowerCase() !== "a" || !safeLink(attr.value)) el.removeAttribute(attr.name);
+      } else if (name === "src") {
+        if (el.tagName.toLowerCase() !== "img" || !attr.value.trim().startsWith("data:image/")) el.removeAttribute(attr.name);
+      } else if (URL_ATTRIBUTES.has(name) || name.endsWith(":href")) {
+        el.removeAttribute(attr.name);
       }
     }
-    if (el.tagName.toLowerCase() === "a") {
+    if (el.tagName.toLowerCase() === "a" && el.hasAttribute("href")) {
       el.setAttribute("target", "_blank");
       el.setAttribute("rel", "noopener noreferrer");
     }
   }
   return doc.body.innerHTML;
+}
+
+/**
+ * The chip's markup without anything that could run, load or navigate. It is cleaned again on
+ * its own output until it no longer changes, so markup that mutates when parsed (mXSS) cannot
+ * bring anything back; if it never settles, nothing is shown.
+ */
+export function sanitizeChip(html: string): string {
+  let current = html;
+  for (let round = 0; round < MAX_ROUNDS; round++) {
+    const next = cleanOnce(current);
+    if (next === current) return next;
+    current = next;
+  }
+  return "";
 }
 
 /** The iframe document: the cleaned chip under a policy that allows no script and no load. */

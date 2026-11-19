@@ -1,9 +1,10 @@
 /**
  * The Firebase project the cloud step runs on: the visitor's own, pasted on the page.
  * The site is built without any project, so nothing reaches the cloud until a visitor
- * connects one. The values stay in that browser (localStorage) and go only to Firebase
- * itself, through the SDK. None of them is a secret, but they decide whose quota and
- * bill the cloud step uses.
+ * connects one. The values are kept in the tab's memory, and in this browser's
+ * localStorage only when the visitor ticks "Remember on this device"; they go only to
+ * Firebase itself, through the SDK. None of them is a secret, but they decide whose quota
+ * and bill the cloud step uses.
  */
 export interface WebProject {
   projectId: string;
@@ -11,7 +12,10 @@ export interface WebProject {
   apiKey: string;
   authDomain: string | null;
   messagingSenderId: string;
-  /** reCAPTCHA Enterprise site key for App Check; null leaves App Check off. */
+  /**
+   * reCAPTCHA Enterprise site key for App Check; null leaves App Check off. Allowed only for
+   * a remembered project: the App Check SDK keeps its token in IndexedDB.
+   */
   recaptchaSiteKey: string | null;
   /** Sign in anonymously before cloud calls (needs the Anonymous provider in the project). */
   anonymousAuth: boolean;
@@ -144,7 +148,7 @@ export function parseProject(text: string, anonymousAuth = false): WebProject | 
   return text.trim().startsWith(WEB_CONNECT_PREFIX) ? fromConnectCode(text, anonymousAuth) : fromWebConfig(text, anonymousAuth);
 }
 
-/** Where the connected project is kept, in this browser only. */
+/** Where a project the visitor chose to remember is kept, in this browser only. */
 export const STORAGE_KEY = "contextlens.webProject.v1";
 
 type Store = Pick<Storage, "getItem" | "setItem" | "removeItem">;

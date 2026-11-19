@@ -2,14 +2,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DemoScript } from "../pipeline/demoScript";
 import { WebPipeline } from "../pipeline/pipeline";
 import { CLEAN_QUESTION, GATE_CLAIM, fakeProject } from "../test/fakes";
-import { FirebaseModelSource, onDeviceStatus, sourceLabel } from "./firebaseModels";
+import { deleteApp, getApps, initializeApp } from "@firebase/app";
+import * as appSdk from "@firebase/app";
+import {
+  FIREBASE_DATABASES,
+  FirebaseModelSource,
+  forgetFirebaseStorage,
+  onDeviceStatus,
+  prepareBrowserStorage,
+  silenceHeartbeat,
+  sourceLabel,
+} from "./firebaseModels";
 
 /**
  * These tests run the real Firebase JS SDK. Every way a page can reach the network is a spy,
  * and Chrome's Prompt API (LanguageModel) is a fake that answers like Gemini Nano.
  */
 const net = {
-  fetch: vi.fn(async (): Promise<Response> => {
+  fetch: vi.fn(async (_url?: unknown, _init?: RequestInit): Promise<Response> => {
     throw new Error("network is off in this test");
   }),
   beacon: vi.fn(() => false),
@@ -162,5 +172,148 @@ describe("sourceLabel", () => {
     expect(sourceLabel("on_device")).toBe("ON_DEVICE");
     expect(sourceLabel("in_cloud")).toBe("IN_CLOUD");
     expect(sourceLabel(undefined)).toBeNull();
+  });
+});
+
+/** Names of the Firebase apps that exist right now. */
+function appNames(): string[] {
+  return getApps().map((a) => a.name);
+}
+
+function okResponse(body: unknown): Response {
+  return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+}
+
+const VERIFIED = { candidates: [{ content: { parts: [{ text: "VERDICT: FALSE\nSUMMARY: No." }] } }] };
+
+describe("disconnecting", () => {
+  it("during the gatekeeper: nothing is sent and no app is made for the old project", async () => {
+    const { api } = fakeLanguageModel();
+    let answer: (text: string) => void = () => {};
+    const prompt = vi.fn(() => new Promise<string>((resolve) => (answer = resolve)));
+    api.create.mockImplementation(async () => ({ prompt, promptStreaming: vi.fn(), destroy: vi.fn() }));
+    net.fetch.mockImplementation(async () => okResponse(VERIFIED));
+    const source = new FirebaseModelSource(fakeProject());
+    const p = new WebPipeline({ models: source, cloudProject: () => true });
+    p.submit("They raised it again here last month.");
+    await vi.waitFor(() => expect(prompt).toHaveBeenCalled());
+    p.close();
+    await source.dispose();
+    answer(GATE_CLAIM);
+    await p.idle();
+    expect(net.fetch).not.toHaveBeenCalled();
+    expect(appNames().some((n) => n.startsWith("contextlens-cloud"))).toBe(false);
+    expect(p.ledger.entries).toEqual([]);
+  });
+
+  it("a disposed source makes no further call and no new app", async () => {
+    fakeLanguageModel();
+    const source = new FirebaseModelSource(fakeProject());
+    await source.dispose();
+    const before = appNames();
+    await expect(source.verifiers()[0].generate("Claim: x")).rejects.toThrow(/disconnected/);
+    await expect(source.gatekeeper("BALANCED").generate("x")).rejects.toThrow(/disconnected/);
+    await expect(source.gatekeeper("STRICT").generate("x")).rejects.toThrow(/disconnected/);
+    expect(appNames()).toEqual(before);
+    expectNothingSent();
+  });
+
+  it("an abort signal cancels the cloud request", async () => {
+    fakeLanguageModel();
+    net.fetch.mockImplementation(
+      (_url: unknown, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+        }) as unknown as Promise<Response>,
+    );
+    const source = new FirebaseModelSource(fakeProject());
+    const controller = new AbortController();
+    const call = source.verifiers()[0].generate("Claim: x", controller.signal);
+    await vi.waitFor(() => expect(net.fetch).toHaveBeenCalledTimes(1));
+    controller.abort(new DOMException("cleared", "AbortError"));
+    await expect(call).rejects.toBeTruthy();
+    await source.dispose();
+  });
+});
+
+describe("browser storage", () => {
+  it("anonymous sign-in stays in memory: nothing in local, session or IndexedDB storage", async () => {
+    fakeLanguageModel();
+    const open = vi.fn(() => {
+      throw new Error("IndexedDB used");
+    });
+    vi.stubGlobal("indexedDB", { open, deleteDatabase: vi.fn() });
+    const setItem = vi.spyOn(Storage.prototype, "setItem");
+    net.fetch.mockImplementation(async (url: unknown) =>
+      String(url).includes("identitytoolkit")
+        ? okResponse({ idToken: "springfield-id-token", refreshToken: "springfield-refresh", expiresIn: "3600", localId: "springfield-user", users: [{ localId: "springfield-user" }] })
+        : okResponse(VERIFIED),
+    );
+    const setup = vi.fn();
+    const source = new FirebaseModelSource(fakeProject({ anonymousAuth: true }), setup);
+    const p = new WebPipeline({ models: source, cloudProject: () => true });
+    p.submit("They raised it again here last month.");
+    await p.idle();
+    expect(setup).toHaveBeenCalledWith("Firebase Authentication: anonymous sign-in (session kept in memory only)", "ok");
+    const urls = net.fetch.mock.calls.map((c) => String((c as unknown[])[0]));
+    expect(urls.some((u) => u.includes("identitytoolkit"))).toBe(true);
+    expect(urls.some((u) => u.includes(":generateContent"))).toBe(true);
+    expect(open).not.toHaveBeenCalled();
+    expect(setItem).not.toHaveBeenCalled();
+    expect(localStorage.length).toBe(0);
+    expect(sessionStorage.length).toBe(0);
+    await source.dispose();
+  });
+
+  it("with an App Check site key, App Check is set up and the source says so", async () => {
+    fakeLanguageModel();
+    const setup = vi.fn();
+    const source = new FirebaseModelSource(fakeProject({ recaptchaSiteKey: "6Lc_springfield_site_key_555" }), setup);
+    const p = new WebPipeline({ models: source, cloudProject: () => true, verifyTimeoutMs: 50 });
+    p.submit("They raised it again here last month.");
+    await p.idle();
+    expect(source.usedAppCheck).toBe(true);
+    expect(setup.mock.calls[0][0]).toMatch(/^App Check: reCAPTCHA Enterprise token/);
+    p.close();
+    await source.dispose();
+  });
+
+  it("deletes the Firebase databases at startup unless a project is remembered", async () => {
+    const deleted: string[] = [];
+    const idb = {
+      deleteDatabase: vi.fn((name: string) => {
+        deleted.push(name);
+        const request = {} as IDBOpenDBRequest;
+        setTimeout(() => request.onsuccess?.(new Event("success")));
+        return request;
+      }),
+    } as unknown as IDBFactory;
+    expect(await prepareBrowserStorage(true, idb)).toBe("none");
+    expect(deleted).toEqual([]);
+    expect(await prepareBrowserStorage(false, idb)).toBe("deleted");
+    expect(deleted).toEqual(FIREBASE_DATABASES);
+  });
+
+  it("reports a deletion blocked by another tab, and a failed one", async () => {
+    const answer = (event: "onblocked" | "onerror") =>
+      ({
+        deleteDatabase: () => {
+          const request = {} as IDBOpenDBRequest;
+          setTimeout(() => (request[event] as ((e: Event) => void) | null)?.(new Event("x")));
+          return request;
+        },
+      }) as unknown as IDBFactory;
+    expect(await forgetFirebaseStorage(answer("onblocked"))).toBe("blocked");
+    expect(await forgetFirebaseStorage(answer("onerror"))).toBe("failed");
+    expect(await forgetFirebaseStorage(undefined)).toBe("none");
+  });
+
+  it("refuses an SDK whose heartbeat cannot be silenced", () => {
+    const app = initializeApp({ apiKey: "x", projectId: "x", appId: "x" }, "heartbeat-check");
+    expect(() => silenceHeartbeat({} as typeof appSdk, app)).toThrow(/not supported/);
+    const ignoring = { ...appSdk, _addOrOverwriteComponent: () => {} } as unknown as typeof appSdk;
+    expect(() => silenceHeartbeat(ignoring, app)).toThrow(/not supported/);
+    expect(() => silenceHeartbeat(appSdk, app)).not.toThrow();
+    void deleteApp(app);
   });
 });

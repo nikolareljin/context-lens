@@ -18,7 +18,10 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}"],
     // Tests run the AI SDK's browser build, the one the page bundles (with the Chrome
     // on-device adapter); under Node its exports would pick the server build.
-    alias: { "@firebase/ai": fileURLToPath(new URL("./node_modules/@firebase/ai/dist/esm/index.esm.js", import.meta.url)) },
+    alias: {
+      "@firebase/ai": fileURLToPath(new URL("./node_modules/@firebase/ai/dist/esm/index.esm.js", import.meta.url)),
+      "@firebase/auth": fileURLToPath(new URL("./node_modules/@firebase/auth/dist/esm/index.js", import.meta.url)),
+    },
     server: { deps: { inline: [/firebase/] } },
   },
 });

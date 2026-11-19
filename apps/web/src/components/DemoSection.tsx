@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { localToday } from "../domain";
-import { FirebaseModelSource, forgetFirebaseStorage, onDeviceStatus, type OnDeviceStatus, type SetupRecorder } from "../cloud/firebaseModels";
+import { FirebaseModelSource, onDeviceStatus, type OnDeviceStatus, type SetupRecorder } from "../cloud/firebaseModels";
 import { clearProject, loadProject, saveProject, type WebProject } from "../cloud/project";
 import { DemoScript } from "../pipeline/demoScript";
 import { EgressLedger } from "../pipeline/ledger";
-import { WebPipeline, type ModelSource, type PrivacyMode } from "../pipeline/pipeline";
+import { WebPipeline, type Check, type ModelSource, type PipelineSnapshot, type PrivacyMode } from "../pipeline/pipeline";
 import { CheckCard } from "./CheckCard";
 import { ConnectPanel } from "./ConnectPanel";
 import { LedgerPanel } from "./LedgerPanel";
@@ -13,6 +13,8 @@ import { LedgerPanel } from "./LedgerPanel";
 export interface DemoModels extends ModelSource {
   dispose?(): Promise<void>;
   prepareOnDevice?(progress?: (fraction: number) => void): Promise<void>;
+  /** True once App Check was set up, which keeps a token in IndexedDB until the page reloads. */
+  readonly usedAppCheck?: boolean;
 }
 
 export interface DemoProps {
@@ -20,6 +22,8 @@ export interface DemoProps {
   createModels?: (project: WebProject | null, setup: SetupRecorder) => DemoModels;
   status?: () => Promise<OnDeviceStatus>;
   demoGapMs?: number;
+  /** Reloads the page; the startup cleanup then deletes what App Check stored. */
+  reload?: () => void;
 }
 
 const STATUS_TEXT: Record<OnDeviceStatus, string> = {
@@ -29,10 +33,43 @@ const STATUS_TEXT: Record<OnDeviceStatus, string> = {
   unavailable: "Gemini Nano isn't available in this browser; only the local rules run on the device.",
 };
 
+const STAGE_WORD: Record<Check["stage"], string> = {
+  FILTERED: "not a claim",
+  GATEKEEPING: "reading",
+  NO_CLAIM: "no checkable claim",
+  NEEDS_MODEL: "not checked, no on-device model",
+  WITHHELD: "withheld for personal data",
+  VERIFYING: "checking with Google Search",
+  CLOUD_UNAVAILABLE: "cloud check unavailable",
+  OFFLINE: "offline",
+  NO_PROJECT: "no project connected",
+  DONE: "checked",
+  FAILED: "not checked",
+};
+
 const defaultModels = (project: WebProject | null, setup: SetupRecorder): DemoModels => new FirebaseModelSource(project, setup);
+const defaultReload = () => window.location.reload();
+
+interface Engine {
+  project: WebProject | null;
+  models: DemoModels;
+  pipeline: WebPipeline;
+}
+
+const EMPTY: PipelineSnapshot = {
+  checks: [],
+  counts: { processed: 0, filtered: 0, withheld: 0, readOnDevice: 0, readInCloud: 0, rawBytes: 0, checked: 0 },
+};
+const noSubscribe = () => () => {};
+const emptySnapshot = () => EMPTY;
 
 /** The live demo: the same pipeline as the Android app, typed sentences instead of speech. */
-export function DemoSection({ createModels = defaultModels, status = onDeviceStatus, demoGapMs = DemoScript.lineGapMs }: DemoProps) {
+export function DemoSection({
+  createModels = defaultModels,
+  status = onDeviceStatus,
+  demoGapMs = DemoScript.lineGapMs,
+  reload = defaultReload,
+}: DemoProps) {
   // Only a project the visitor chose to remember is in storage; otherwise it lives in this state.
   const [project, setProject] = useState<WebProject | null>(() => loadProject());
   const [remembered, setRemembered] = useState(() => project !== null);
@@ -44,38 +81,51 @@ export function DemoSection({ createModels = defaultModels, status = onDeviceSta
   const [device, setDevice] = useState<OnDeviceStatus | null>(null);
   const [preparing, setPreparing] = useState<string | null>(null);
   const [demoRunning, setDemoRunning] = useState(false);
+  const [engine, setEngine] = useState<Engine | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  // The project now connected; a pipeline built for an earlier one never reaches the cloud.
+  const projectRef = useRef(project);
+  projectRef.current = project;
 
   // In memory only; kept across project changes so the record of what left stays complete.
   const ledger = useMemo(() => new EgressLedger(), []);
 
-  // A new project means a new Firebase instance and a fresh pipeline.
-  const models = useMemo(
-    () =>
-      createModels(project, (what, outcome) =>
-        ledger.add({
-          atMillis: Date.now(),
-          kind: "SETUP",
-          stage: "setup",
-          model: "firebase",
-          text: `${what}. No sentence or question of yours is in this request.`,
-          bytes: 0,
-          source: null,
-          latencyMs: 0,
-          promptVersion: "-",
-          outcome,
-        }),
-      ),
-    [project, createModels, ledger],
-  );
-  useEffect(() => () => void models.dispose?.(), [models]);
+  // A new project means a new Firebase instance and a fresh pipeline. Both are made here and
+  // finished in the cleanup, so a disconnected project gets no further request (also when
+  // React runs effects twice in development).
+  useEffect(() => {
+    const models = createModels(project, (what, outcome) =>
+      ledger.add({
+        atMillis: Date.now(),
+        kind: "SETUP",
+        stage: "setup",
+        model: "firebase",
+        text: `${what}. No sentence or question of yours is in this request.`,
+        bytes: 0,
+        source: null,
+        latencyMs: 0,
+        promptVersion: "-",
+        outcome,
+      }),
+    );
+    const pipeline = new WebPipeline({
+      models,
+      ledger,
+      cloudProject: () => project !== null && projectRef.current === project,
+    });
+    setEngine({ project, models, pipeline });
+    return () => {
+      pipeline.close();
+      void models.dispose?.();
+    };
+  }, [project, createModels, ledger]);
 
-  const pipeline = useMemo(() => new WebPipeline({ models, ledger, cloudProject: () => project !== null }), [models, ledger, project]);
-  const snapshot = useSyncExternalStore(pipeline.subscribe, pipeline.getSnapshot);
+  const pipeline = engine?.pipeline ?? null;
+  const snapshot = useSyncExternalStore(pipeline?.subscribe ?? noSubscribe, pipeline?.getSnapshot ?? emptySnapshot);
 
   const effectiveMode: PrivacyMode = project === null ? "STRICT" : mode;
-  pipeline.setMode(effectiveMode);
-  pipeline.setSession({
+  pipeline?.setMode(effectiveMode);
+  pipeline?.setSession({
     today,
     region: area.trim() ? { city: area.trim(), area: "", country: "" } : null,
     pinnedTopic: topic.trim() || null,
@@ -97,6 +147,7 @@ export function DemoSection({ createModels = defaultModels, status = onDeviceSta
   useEffect(() => stopDemo, [pipeline]);
 
   const runDemo = () => {
+    if (pipeline === null) return;
     stopDemo();
     pipeline.clear();
     setArea(DemoScript.region.city);
@@ -115,10 +166,12 @@ export function DemoSection({ createModels = defaultModels, status = onDeviceSta
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (pipeline.submit(text) !== null) setText("");
+    if (pipeline?.submit(text) != null) setText("");
   };
 
   const connect = (p: WebProject, remember: boolean) => {
+    // App Check keeps a token in IndexedDB, so a site key needs the visitor's consent to store.
+    if (p.recaptchaSiteKey && !remember) return;
     stopDemo();
     if (remember) {
       setRemembered(saveProject(p));
@@ -130,15 +183,19 @@ export function DemoSection({ createModels = defaultModels, status = onDeviceSta
   };
   const disconnect = () => {
     stopDemo();
+    const usedAppCheck = engine?.models.usedAppCheck === true;
+    pipeline?.close();
     clearProject();
-    forgetFirebaseStorage();
     setProject(null);
     setRemembered(false);
     setMode("STRICT");
+    // App Check holds its database open in this tab; a reload lets the startup cleanup delete it.
+    if (usedAppCheck) reload();
   };
 
   const prepare = async () => {
-    if (!models.prepareOnDevice) return;
+    const models = engine?.models;
+    if (!models?.prepareOnDevice) return;
     setPreparing("Starting the download…");
     try {
       await models.prepareOnDevice((f) => setPreparing(`Downloading… ${Math.round(f * 100)}%`));
@@ -148,6 +205,7 @@ export function DemoSection({ createModels = defaultModels, status = onDeviceSta
     }
   };
 
+  const latest = snapshot.checks[0];
   const counts = snapshot.counts;
 
   return (
@@ -178,7 +236,7 @@ export function DemoSection({ createModels = defaultModels, status = onDeviceSta
         </label>
         <p className="text-xs text-slate-400" data-testid="device-status">
           {device === null ? "Checking Chrome's built-in model…" : STATUS_TEXT[device]}{" "}
-          {device === "downloadable" && models.prepareOnDevice && (
+          {device === "downloadable" && engine?.models.prepareOnDevice && (
             <button type="button" onClick={() => void prepare()} className="ml-1 rounded-full border border-edge px-2 hover:border-device">
               Download Gemini Nano
             </button>
@@ -218,7 +276,7 @@ export function DemoSection({ createModels = defaultModels, status = onDeviceSta
           <button type="button" onClick={demoRunning ? stopDemo : runDemo} className="rounded-full border border-edge px-5 py-2 hover:border-device">
             {demoRunning ? "Stop demo" : "Run demo"}
           </button>
-          <button type="button" onClick={() => { stopDemo(); pipeline.clear(); }} className="rounded-full border border-edge px-5 py-2 hover:border-device">
+          <button type="button" onClick={() => { stopDemo(); pipeline?.clear(); }} className="rounded-full border border-edge px-5 py-2 hover:border-device">
             Clear
           </button>
         </div>
@@ -229,8 +287,12 @@ export function DemoSection({ createModels = defaultModels, status = onDeviceSta
         in the cloud {counts.readInCloud} ({counts.rawBytes} B) · checked {counts.checked}
       </p>
 
+      <p role="status" className="sr-only" data-testid="latest-status">
+        {latest ? `Latest sentence: ${STAGE_WORD[latest.stage]}.` : ""}
+      </p>
+
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="flex flex-col gap-3" aria-live="polite">
+        <div className="flex flex-col gap-3">
           {snapshot.checks.length === 0 ? (
             <p className="text-sm text-slate-400">No sentences yet.</p>
           ) : (

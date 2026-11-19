@@ -38,14 +38,25 @@ export const GROUNDING: Grounding = {
 
 export class FakeModel implements TextModel {
   readonly prompts: string[] = [];
+  readonly signals: (AbortSignal | undefined)[] = [];
   constructor(
     readonly name: string,
     private readonly reply: (prompt: string) => ModelReply | Promise<ModelReply>,
   ) {}
-  async generate(prompt: string): Promise<ModelReply> {
+  async generate(prompt: string, signal?: AbortSignal): Promise<ModelReply> {
     this.prompts.push(prompt);
+    this.signals.push(signal);
     return this.reply(prompt);
   }
+}
+
+/** A reply that arrives only when the test says so, like a model that is still thinking. */
+export function held(reply: ModelReply) {
+  let release: () => void = () => {};
+  const done = new Promise<ModelReply>((resolve) => {
+    release = () => resolve(reply);
+  });
+  return { wait: () => done, release: () => release() };
 }
 
 /** A model source with spies on every model, so tests can say which ones were called. */
@@ -59,6 +70,12 @@ export class FakeSource implements ModelSource {
     grounding: GROUNDING,
   }));
   ready = true;
+  usedAppCheck = false;
+  disposed = false;
+
+  async dispose(): Promise<void> {
+    this.disposed = true;
+  }
 
   gatekeeper(mode: PrivacyMode): TextModel {
     this.asked.push(mode);

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { CLEAN_QUESTION, FakeModel, FakeSource } from "../test/fakes";
+import { CLEAN_QUESTION, FakeModel, FakeSource, GATE_CLAIM, held } from "../test/fakes";
 import { DemoScript } from "./demoScript";
 import { totals } from "./ledger";
-import { WebPipeline, isCloudLimit, redact, searchUrl } from "./pipeline";
+import { GATE_TIMEOUT_MS, WebPipeline, isCloudLimit, redact, searchUrl } from "./pipeline";
 
 function pipeline(source: FakeSource, cloud = true, online = true) {
   const p = new WebPipeline({ models: source, cloudProject: () => cloud, online: () => online });
@@ -145,6 +145,87 @@ describe("WebPipeline", () => {
     p.submit("The city council met on Tuesday about the buses.");
     await run(p, "They raised it again here last month.");
     expect(source.onDevice.prompts[1]).toContain("- The city council met on Tuesday about the buses.");
+  });
+});
+
+describe("stopping", () => {
+  function holding(models: FakeSource, mode: "STRICT" | "BALANCED" = "STRICT") {
+    const gate = held({ text: GATE_CLAIM, source: mode === "STRICT" ? "ON_DEVICE" : "IN_CLOUD" });
+    const model = mode === "STRICT" ? models.onDevice : models.cloudGate;
+    model.generate = async (prompt, signal) => {
+      model.prompts.push(prompt);
+      model.signals.push(signal);
+      return gate.wait();
+    };
+    return { gate, model };
+  }
+
+  it("Clear aborts the sentence in progress and drops the queued ones", async () => {
+    const models = new FakeSource();
+    const { gate, model } = holding(models);
+    const p = pipeline(models);
+    p.submit("They raised it again here last month.");
+    p.submit("The bus fare went up twice this year.");
+    p.submit("The city council doubled the parking fines.");
+    await Promise.resolve();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(model.prompts).toHaveLength(1);
+    p.clear();
+    expect(model.signals[0]?.aborted).toBe(true);
+    gate.release();
+    await p.idle();
+    expect(model.prompts).toHaveLength(1);
+    expect(models.verifier.prompts).toEqual([]);
+    expect(p.getSnapshot().checks).toEqual([]);
+    expect(p.ledger.entries).toEqual([]);
+    // new sentences after Clear run normally
+    model.generate = async () => ({ text: GATE_CLAIM, source: "ON_DEVICE" });
+    expect((await run(p, "They raised it again here last month.")).stage).toBe("DONE");
+  });
+
+  it("close() stops everything for good", async () => {
+    const models = new FakeSource();
+    const { gate, model } = holding(models);
+    const p = pipeline(models);
+    p.submit("They raised it again here last month.");
+    p.submit("The bus fare went up twice this year.");
+    await new Promise((r) => setTimeout(r, 0));
+    p.close();
+    expect(model.signals[0]?.aborted).toBe(true);
+    gate.release();
+    await p.idle();
+    expect(model.prompts).toHaveLength(1);
+    expect(models.verifier.prompts).toEqual([]);
+    expect(p.submit("Anything else at all here?")).toBeNull();
+  });
+
+  it("records a Balanced call stopped midway as maybe sent, and goes no further", async () => {
+    const models = new FakeSource();
+    models.ready = false;
+    const { gate } = holding(models, "BALANCED");
+    const p = pipeline(models);
+    p.setMode("BALANCED");
+    p.submit("They raised it again here last month.");
+    await new Promise((r) => setTimeout(r, 0));
+    p.close();
+    gate.release();
+    await p.idle();
+    expect(p.ledger.entries.map((e) => [e.kind, e.outcome])).toEqual([["RAW_TEXT", "cancelled; may have been sent"]]);
+    expect(models.verifier.prompts).toEqual([]);
+  });
+
+  it("aborts a request that times out", async () => {
+    const models = new FakeSource();
+    const { model } = holding(models);
+    const p = new WebPipeline({ models, cloudProject: () => true, gateTimeoutMs: 5 });
+    const check = await run(p, "They raised it again here last month.");
+    expect(check.stage).toBe("FAILED");
+    expect(check.note).toBe("gatekeeper: timed out; may have been sent");
+    expect(model.signals[0]?.aborted).toBe(true);
+  });
+
+  it("waits as long as Android for the gatekeeper", () => {
+    expect(GATE_TIMEOUT_MS).toBe(15_000);
   });
 });
 
