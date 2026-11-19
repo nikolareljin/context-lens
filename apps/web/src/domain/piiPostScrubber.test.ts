@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PiiPostScrubber, type PiiKind } from "./piiPostScrubber";
+import { PiiPostScrubber, mapDigitsSpaces, type PiiKind } from "./piiPostScrubber";
 
 const kinds = (...k: PiiKind[]) => new Set<PiiKind>(k);
 const none = kinds();
@@ -153,5 +153,15 @@ describe("PiiPostScrubber", () => {
     expect(PiiPostScrubber.findIn(arabic, arabic).size).toBeGreaterThan(0);
     const address = "who lives at 12\u2028Elm Street";
     expect(PiiPostScrubber.findIn(address, address).size).toBeGreaterThan(0);
+  });
+
+  it("catches a name typed with a combining accent after a no-break space", () => {
+    // made-up name; "e" + U+0301, as some keyboards type it
+    const said = "Mr.\u00a0Rene\u0301 Dubois called about the tax";
+    expect(PiiPostScrubber.findIn("What did Rene say about the tax", said).has("NAME" as PiiKind)).toBe(true);
+  });
+
+  it("gives every script's digits their value, math digits included", () => {
+    expect(mapDigitsSpaces("\u0665\u0966\u{1D7D7}\u{1D7FF}")).toBe("5099");
   });
 });

@@ -121,28 +121,38 @@ export function findIn(
   earlier: string[] = [],
 ): Set<PiiKind> {
   const hits = findInText(query, utterance, publicNames, earlier);
-  const n = asciiForm;
-  findInText(n(query), n(utterance), publicNames.map(n), earlier.map(n)).forEach((k) => hits.add(k));
+  // Digits and spaces mapped on the raw text (keeps decomposed accents as typed), and
+  // the same after NFKC (catches compatibility forms such as "ſ" for "s").
+  for (const f of [mapDigitsSpaces, asciiForm]) {
+    findInText(f(query), f(utterance), publicNames.map(f), earlier.map(f)).forEach((k) => hits.add(k));
+  }
   return hits;
 }
 
 const ND = /\p{Nd}/u;
+const SPACE = /[\p{Z}\u0085]/u;
 
 /**
- * NFKC, then every decimal digit of any script as its ASCII digit (Unicode keeps each
- * script's digits as a run of ten from zero) and every Unicode space or line separator
- * as a space: what ICU's \d and \s match on the phone.
+ * Every decimal digit of any script as its ASCII digit and every Unicode space or line
+ * separator as a space: what ICU's \d and \s match on the phone. Unicode keeps each
+ * script's digits as runs of ten starting at zero, so a digit's value is the number of
+ * digits right before it, modulo ten.
  */
-export function asciiForm(text: string): string {
-  return Array.from(text.normalize("NFKC"), (ch) => {
-    if (/[\p{Z}\u0085]/u.test(ch)) return " ";
+export function mapDigitsSpaces(text: string): string {
+  return Array.from(text, (ch) => {
+    if (SPACE.test(ch)) return " ";
     if (ch >= "0" && ch <= "9") return ch;
     if (!ND.test(ch)) return ch;
     const cp = ch.codePointAt(0)!;
     let k = 0;
-    while (k < 9 && ND.test(String.fromCodePoint(cp - k - 1))) k++;
+    while (ND.test(String.fromCodePoint(cp - k - 1))) k++;
     return String(k % 10);
   }).join("");
+}
+
+/** NFKC, then [mapDigitsSpaces]. */
+export function asciiForm(text: string): string {
+  return mapDigitsSpaces(text.normalize("NFKC"));
 }
 
 function findInText(
