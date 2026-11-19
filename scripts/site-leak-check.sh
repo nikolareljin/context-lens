@@ -14,6 +14,8 @@
 #     its name starts with "demo-" (the Firebase convention for projects that do not exist,
 #     used only as documentation examples)
 #   - a reCAPTCHA site key (6L followed by 38 key characters)
+#   - a project id given in LEAK_CHECK_PROJECT_ID (CI passes the repository's
+#     FIREBASE_PROJECT_ID variable; the check step reads it, the build never does)
 #   - the project id of a maintainer configuration, when LEAK_CHECK_CONFIG names one (a local
 #     google-services.json or web config); without it, that check is skipped
 #   - a file or directory that cannot be read
@@ -74,18 +76,30 @@ report "Firebase app id" "$app_re" ""
 report "Firebase project host" "$host_re" "$host_ok"
 report "reCAPTCHA site key" "$site_key_re" ""
 
-# The maintainer's own project id, from a local configuration that never enters the repository.
-if [[ -n "${LEAK_CHECK_CONFIG:-}" ]]; then
-  [[ -f "$LEAK_CHECK_CONFIG" ]] || die "LEAK_CHECK_CONFIG is not a file" 2
-  project="$(sed -nE 's/.*"?(project_id|projectId)"?[[:space:]]*:[[:space:]]*"([a-z][a-z0-9-]{4,28}[a-z0-9])".*/\2/p' \
-    "$LEAK_CHECK_CONFIG" | awk "NR == 1")"
-  [[ -n "$project" ]] || die "no project id in LEAK_CHECK_CONFIG" 2
+# report_project <id>: fails on the maintainer's project id anywhere in the site, without printing it.
+report_project() {
+  local project="$1" line
   matches "$project" "$tmp/p" -F
   while IFS= read -r line; do
     echo "  $line: the maintainer's project id" >&2
     hits=$((hits + 1))
   done < <(awk '{ i = index($0, ":"); j = index(substr($0, i + 1), ":"); print substr($0, 1, i + j - 1) }' "$tmp/p" \
     | sed 's/:\([0-9]*\)$/ line \1/')
+}
+
+# The maintainer's own project id, from CI's repository variable (an identifier, not a secret).
+if [[ -n "${LEAK_CHECK_PROJECT_ID:-}" ]]; then
+  [[ "$LEAK_CHECK_PROJECT_ID" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]] || die "LEAK_CHECK_PROJECT_ID is not a project id" 2
+  report_project "$LEAK_CHECK_PROJECT_ID"
+fi
+
+# The maintainer's own project id, from a local configuration that never enters the repository.
+if [[ -n "${LEAK_CHECK_CONFIG:-}" ]]; then
+  [[ -f "$LEAK_CHECK_CONFIG" ]] || die "LEAK_CHECK_CONFIG is not a file" 2
+  project="$(sed -nE 's/.*"?(project_id|projectId)"?[[:space:]]*:[[:space:]]*"([a-z][a-z0-9-]{4,28}[a-z0-9])".*/\2/p' \
+    "$LEAK_CHECK_CONFIG" | awk "NR == 1")"
+  [[ -n "$project" ]] || die "no project id in LEAK_CHECK_CONFIG" 2
+  report_project "$project"
 fi
 
 if [[ "$hits" -gt 0 ]]; then

@@ -105,6 +105,9 @@ jobs:
       - run: npm run build
       # The built site carries no Firebase project: fail on any key, app id or project host in it.
       - name: leak check
+        env:
+          # The repository's project id, read by the check only (never by the build).
+          LEAK_CHECK_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
         run: bash ../../scripts/site-leak-check.sh dist
       - run: npm test
 
@@ -124,6 +127,9 @@ jobs:
       - run: mkdocs build --strict --site-dir site
       # A key or project value in the docs fails the pull request, not only the deploy.
       - name: leak check
+        env:
+          # The repository's project id, read by the check only (never by the build).
+          LEAK_CHECK_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
         run: bash scripts/site-leak-check.sh site
 
   scripts:

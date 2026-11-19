@@ -120,4 +120,14 @@ test_the_maintainer_project_id_fails_when_configured() {
   assert_status 0 env LEAK_CHECK_CONFIG=conf/web.js "$script" site
   assert_status 2 env LEAK_CHECK_CONFIG=conf/missing.json "$script" site
 }
+test_the_project_id_from_ci_fails_without_being_printed() {
+  site
+  echo 'const p = "projects/springfield-ci-555/x";' > site/assets/x.js
+  assert_status 0 "$script" site
+  out="$(LEAK_CHECK_PROJECT_ID=springfield-ci-555 "$script" site 2>&1 || true)"
+  assert_contains "$out" "site/assets/x.js line 1: the maintainer's project id"
+  [[ "$out" != *"springfield-ci-555"* ]] || fail "the project id was printed"
+  assert_status 0 env LEAK_CHECK_PROJECT_ID=springfield-other-555 "$script" site
+  assert_status 2 env LEAK_CHECK_PROJECT_ID='not a project' "$script" site
+}
 run_tests
