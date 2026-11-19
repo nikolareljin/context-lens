@@ -10,7 +10,7 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ### Fixed
 
-- The date hints no longer crash or misread spellings such as "ſunday", "laﬆ week" or a no-break space inside "this week": the sentence is normalized (NFKC, plain spaces) before dates are looked for, in the app and in the web companion.
+- The date hints no longer crash on, misread or miss spellings such as "ſunday", "laﬆ week" or a no-break space inside "this week": the sentence is normalized (NFKC, plain spaces) before dates are looked for, in the app and in the web companion.
 - Diagnostics → Test in cloud tries gemini-3.1-flash-lite first, like the fact check, instead of waiting up to 20 s for gemini-3.8-flash.
 
 ## [0.1.1] - 2026-11-18
