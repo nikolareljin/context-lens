@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { DateResolver, type Verdict } from "../domain";
 import { ON_DEVICE, searchUrl, type Check } from "../pipeline/pipeline";
 import { CHIP_SANDBOX, chipDocument } from "../lib/searchChip";
+import type { OnDeviceStatus } from "../cloud/firebaseModels";
 
 const VERDICT_LABEL: Record<Verdict, string> = {
   VERIFIED: "✓ Verified",
@@ -50,7 +51,30 @@ function heardLabel(check: Check): [string, string] {
   return ["Heard", "bg-slate-500"];
 }
 
-function stageText(check: Check): string {
+/** What the visitor can do about a sentence Strict mode could not check without Chrome's model. */
+export interface CardContext {
+  projectConnected: boolean;
+  /** Chrome's built-in model status; null while it is being checked. */
+  device: OnDeviceStatus | null;
+}
+
+function needsModelText({ projectConnected, device }: CardContext): string {
+  const parts = ["Not checked: Strict mode reads sentences only with Chrome's built-in model (Gemini Nano)"];
+  if (device === "downloadable") {
+    parts.push("which isn't downloaded yet. Use Download Gemini Nano above");
+  } else if (device === "downloading") {
+    parts.push("and Chrome is still downloading it");
+  } else {
+    parts.push("which isn't available in this browser, so only the local rules ran");
+  }
+  let text = `${parts.join(", ")}. Nothing was sent.`;
+  if (projectConnected) {
+    text += " Switch to Balanced to check it with your project's cloud Gemini (the sentence is then sent to the cloud, as the mode says).";
+  }
+  return text;
+}
+
+function stageText(check: Check, context: CardContext): string {
   switch (check.stage) {
     case "FILTERED":
       return `Not a claim (local rules: ${check.note ?? ""}). No model was called.`;
@@ -59,7 +83,7 @@ function stageText(check: Check): string {
     case "NO_CLAIM":
       return `No checkable claim · ${check.gate ? `${check.gate.source ?? "?"} · ${check.gate.latencyMs} ms · ${check.gate.model}` : ""}`;
     case "NEEDS_MODEL":
-      return "Not checked: Chrome's built-in model (Gemini Nano) isn't available in this browser, so only the local rules ran. Nothing was sent.";
+      return needsModelText(context);
     case "WITHHELD":
       return `Question withheld: it still contained personal data (${check.withheld.map((k) => k.toLowerCase()).join(", ")}). Nothing was sent.`;
     case "VERIFYING":
@@ -93,7 +117,15 @@ export function SearchSuggestions({ html }: { html: string }) {
 }
 
 /** One sentence and what happened to it: the sentence, the clean question, the grounded verdict. */
-export function CheckCard({ check, today }: { check: Check; today: string }) {
+export function CheckCard({
+  check,
+  today,
+  context = { projectConnected: false, device: null },
+}: {
+  check: Check;
+  today: string;
+  context?: CardContext;
+}) {
   const [heard, heardDot] = heardLabel(check);
   const mention = DateResolver.resolve(check.utterance, today);
   const gate = check.gate?.result.hasVerifiableClaim ? check.gate : undefined;
@@ -152,7 +184,7 @@ export function CheckCard({ check, today }: { check: Check; today: string }) {
         </div>
       )}
 
-      {check.stage !== "DONE" && <p className="text-xs text-slate-400" data-testid="stage-text">{stageText(check)}</p>}
+      {check.stage !== "DONE" && <p className="text-xs text-slate-400" data-testid="stage-text">{stageText(check, context)}</p>}
       {(check.stage === "CLOUD_UNAVAILABLE" || check.stage === "OFFLINE" || check.stage === "NO_PROJECT") && (
         <a className="text-xs text-device underline" href={searchUrl(query)} target="_blank" rel="noopener noreferrer">
           Search this in your browser

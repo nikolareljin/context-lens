@@ -377,7 +377,7 @@ export class FirebaseModelSource implements ModelSource {
           });
           this.appCheckUsed = true;
           this.setup(
-            "App Check turned on (reCAPTCHA Enterprise). From now on each cloud call first gets an App Check token: reCAPTCHA runs in this page and Firebase App Check exchanges its result, and the SDK keeps the token in this browser (this project is remembered)",
+            "App Check set up (reCAPTCHA Enterprise). This entry stands for it: from now on the page gets App Check tokens (reCAPTCHA in this page, exchanged with Firebase App Check) for its cloud calls; those token requests carry none of your text and are not listed one by one. The SDK keeps the token in this browser (this project is remembered)",
             "on",
           );
         }
@@ -392,7 +392,10 @@ export class FirebaseModelSource implements ModelSource {
           } catch (e) {
             outcome = describe(e);
           }
-          this.setup("Firebase Authentication: anonymous sign-in (session kept in memory only)", outcome);
+          this.setup(
+            "Firebase Authentication: anonymous sign-in, kept in memory only. This entry stands for it: later token refreshes carry none of your text and are not listed one by one",
+            outcome,
+          );
         }
         if (this.disposed) throw new Error(DISCONNECTED);
       } catch (e) {

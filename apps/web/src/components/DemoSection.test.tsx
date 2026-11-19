@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { STORAGE_KEY, type WebProject } from "../cloud/project";
 import { CLEAN_QUESTION, FAKE_APP_ID, FAKE_KEY, FakeSource, GATE_CLAIM, fakeProject, held } from "../test/fakes";
-import { DemoSection, type DemoModels } from "./DemoSection";
+import { DemoSection, STATUS_POLL_MS, type DemoModels } from "./DemoSection";
 
 const snippet = `const firebaseConfig = { apiKey: "${FAKE_KEY}", authDomain: "demo-springfield.firebaseapp.com", projectId: "demo-springfield", messagingSenderId: "5550001", appId: "${FAKE_APP_ID}" };`;
 
@@ -39,15 +39,44 @@ async function check(text: string) {
 }
 
 describe("connecting a project", () => {
+  it("connecting without Remember leaves another tab's remembered project alone", () => {
+    renderDemo();
+    // another tab remembered a different project after this one loaded
+    const other = JSON.stringify(fakeProject({ projectId: "demo-shelbyville" }));
+    localStorage.setItem(STORAGE_KEY, other);
+    fireEvent.change(screen.getByLabelText("Web app config or connect code"), { target: { value: snippet } });
+    fireEvent.click(screen.getByRole("button", { name: "Connect…" }));
+    fireEvent.click(screen.getByRole("button", { name: "Connect demo-springfield" }));
+    expect(localStorage.getItem(STORAGE_KEY)).toBe(other);
+    fireEvent.click(screen.getByRole("button", { name: "Disconnect" }));
+    expect(localStorage.getItem(STORAGE_KEY)).toBe(other);
+  });
+
+  it("disconnects when another tab replaces the remembered project, and keeps the new one", () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(fakeProject()));
+    renderDemo();
+    expect(screen.getByText("demo-springfield")).toBeTruthy();
+    // the same project written again changes nothing
+    act(() => window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY, newValue: JSON.stringify(fakeProject()) })));
+    expect(screen.getByText("demo-springfield")).toBeTruthy();
+    const other = JSON.stringify(fakeProject({ projectId: "demo-shelbyville" }));
+    localStorage.setItem(STORAGE_KEY, other);
+    act(() => window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY, newValue: other })));
+    expect(screen.getByText(/Not connected/)).toBeTruthy();
+    expect(localStorage.getItem(STORAGE_KEY)).toBe(other);
+  });
+
   it("disconnects when another tab removes the remembered project", () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(fakeProject({ recaptchaSiteKey: "6Lc_springfield_site_key_555" })));
     vi.stubGlobal("indexedDB", { open: vi.fn(), deleteDatabase: vi.fn(() => ({}) as IDBOpenDBRequest) });
     renderDemo();
     expect(screen.getByText("demo-springfield")).toBeTruthy();
-    // a change to another key, or a new value, changes nothing
+    // a change to another key, or the same project written again, changes nothing
     act(() => {
       window.dispatchEvent(new StorageEvent("storage", { key: "other", newValue: null }));
-      window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY, newValue: "{}" }));
+      window.dispatchEvent(
+        new StorageEvent("storage", { key: STORAGE_KEY, newValue: JSON.stringify(fakeProject({ recaptchaSiteKey: "6Lc_springfield_site_key_555" })) }),
+      );
     });
     expect(screen.getByText("demo-springfield")).toBeTruthy();
     sources.at(-1)!.source.usedAppCheck = true;
@@ -328,5 +357,85 @@ describe("stopping work in progress", () => {
     renderDemo();
     await check("They raised it again here last month.");
     await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Latest sentence: checked."));
+  });
+});
+
+describe("without Gemini Nano in Strict mode", () => {
+  function withStatus(device: "available" | "downloadable" | "downloading" | "unavailable") {
+    return async () => device;
+  }
+  function renderWith(device: "downloadable" | "downloading" | "unavailable") {
+    const models = (project: WebProject | null): DemoModels => {
+      const fake = new FakeSource();
+      fake.ready = false;
+      sources.push({ project, source: fake });
+      return fake;
+    };
+    return render(<DemoSection createModels={models} status={withStatus(device)} demoGapMs={0} reload={reload} />);
+  }
+
+  it("with a project connected, points to Balanced", async () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(fakeProject()));
+    renderWith("unavailable");
+    await check("They raised it again here last month.");
+    const text = await screen.findByText(/Switch to Balanced to check it with your project's cloud Gemini/);
+    expect(text.textContent).toContain("the sentence is then sent to the cloud, as the mode says");
+    expect(text.textContent).toContain("Nothing was sent.");
+  });
+
+  it("points to the download when Chrome can download the model", async () => {
+    renderWith("downloadable");
+    await screen.findByText(/Chrome can download Gemini Nano/);
+    await check("They raised it again here last month.");
+    const text = await screen.findByText(/Use Download Gemini Nano above/);
+    expect(text.textContent).not.toContain("Switch to Balanced");
+  });
+
+  it("says Chrome is still downloading", async () => {
+    renderWith("downloading");
+    await screen.findByText(/Chrome is downloading Gemini Nano/);
+    await check("They raised it again here last month.");
+    expect(await screen.findByText(/Chrome is still downloading it/)).toBeTruthy();
+  });
+
+  it("without a project and without the model, only the local rules ran", async () => {
+    renderWith("unavailable");
+    await check("They raised it again here last month.");
+    const text = await screen.findByText(/isn't available in this browser, so only the local rules ran/);
+    expect(text.textContent).not.toContain("Balanced");
+  });
+});
+
+describe("Chrome's model status", () => {
+  it("is asked again every few seconds while downloading, and on window focus", async () => {
+    vi.useFakeTimers();
+    try {
+      const answers = ["downloading", "downloading", "available"] as const;
+      let i = 0;
+      const status = vi.fn(async () => answers[Math.min(i++, answers.length - 1)]);
+      render(<DemoSection createModels={createModels} status={status} demoGapMs={0} reload={reload} />);
+      await act(async () => {});
+      expect(status).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(STATUS_POLL_MS);
+      });
+      expect(status).toHaveBeenCalledTimes(2);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(STATUS_POLL_MS);
+      });
+      expect(status).toHaveBeenCalledTimes(3);
+      expect(screen.getByTestId("device-status").textContent).toContain("Gemini Nano is ready");
+      // ready: no more polling
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(STATUS_POLL_MS * 3);
+      });
+      expect(status).toHaveBeenCalledTimes(3);
+      await act(async () => {
+        window.dispatchEvent(new Event("focus"));
+      });
+      expect(status).toHaveBeenCalledTimes(4);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

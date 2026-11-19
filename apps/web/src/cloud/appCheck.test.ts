@@ -20,7 +20,7 @@ describe("App Check setup", () => {
     expect(appCheck.initializeAppCheck).toHaveBeenCalledTimes(1);
     expect(appCheck.initializeAppCheck.mock.calls[0][1]).toMatchObject({ isTokenAutoRefreshEnabled: false });
     expect(appCheck.ReCaptchaEnterpriseProvider).toHaveBeenCalledWith("6Lc_springfield_site_key_555");
-    expect(setup).toHaveBeenCalledWith(expect.stringMatching(/each cloud call first gets an App Check token/), "on");
+    expect(setup).toHaveBeenCalledWith(expect.stringMatching(/^App Check set up \(reCAPTCHA Enterprise\)\. This entry stands for it: .*carry none of your text and are not listed one by one/), "on");
     await source.dispose();
   });
 });

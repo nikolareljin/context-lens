@@ -8,7 +8,7 @@ import {
   type OnDeviceStatus,
   type SetupRecorder,
 } from "../cloud/firebaseModels";
-import { STORAGE_KEY, clearProject, loadProject, saveProject, type WebProject } from "../cloud/project";
+import { STORAGE_KEY, clearProject, loadProject, parseStored, sameProject, saveProject, type WebProject } from "../cloud/project";
 import { DemoScript } from "../pipeline/demoScript";
 import { EgressLedger } from "../pipeline/ledger";
 import { WebPipeline, type Check, type ModelSource, type PipelineSnapshot, type PrivacyMode } from "../pipeline/pipeline";
@@ -53,6 +53,20 @@ const STAGE_WORD: Record<Check["stage"], string> = {
   DONE: "checked",
   FAILED: "not checked",
 };
+
+/** How often the status is asked again while Chrome downloads its model. */
+export const STATUS_POLL_MS = 3_000;
+
+/** Forgets the stored project only when it is this one, so another tab's project stays. */
+function clearIfStored(project: WebProject): void {
+  try {
+    const raw = globalThis.localStorage?.getItem(STORAGE_KEY);
+    const stored = raw ? parseStored(raw) : null;
+    if (stored !== null && sameProject(stored, project)) clearProject();
+  } catch {
+    // storage not available: nothing stored
+  }
+}
 
 const defaultModels = (project: WebProject | null, setup: SetupRecorder): DemoModels => new FirebaseModelSource(project, setup);
 const defaultReload = () => window.location.reload();
@@ -107,7 +121,7 @@ export function DemoSection({
         kind: "SETUP",
         stage: "setup",
         model: "firebase",
-        text: `${what}. No sentence or question of yours is in this request.`,
+        text: `${what}. No sentence or question of yours is in it.`,
         bytes: 0,
         source: null,
         latencyMs: 0,
@@ -138,13 +152,26 @@ export function DemoSection({
     pinnedTopic: topic.trim() || null,
   });
 
+  // Chrome's model status, asked again when the window gets focus and every few seconds
+  // while Chrome downloads the model.
+  const [poll, setPoll] = useState(0);
   useEffect(() => {
     let live = true;
     void status().then((s) => live && setDevice(s));
     return () => {
       live = false;
     };
-  }, [status, preparing]);
+  }, [status, preparing, poll]);
+  useEffect(() => {
+    const again = () => setPoll((n) => n + 1);
+    window.addEventListener("focus", again);
+    return () => window.removeEventListener("focus", again);
+  }, []);
+  useEffect(() => {
+    if (device !== "downloading") return;
+    const timer = setInterval(() => setPoll((n) => n + 1), STATUS_POLL_MS);
+    return () => clearInterval(timer);
+  }, [device]);
 
   const stopDemo = () => {
     timers.current.forEach(clearTimeout);
@@ -189,7 +216,8 @@ export function DemoSection({
       setRemembered(saved);
     } else {
       stopDemo();
-      clearProject();
+      // Only this tab's own remembered project is forgotten; another tab's stays.
+      if (remembered && project !== null) clearIfStored(project);
       setRemembered(false);
     }
     setProject(p);
@@ -200,7 +228,7 @@ export function DemoSection({
     const hadAppCheck = project?.recaptchaSiteKey != null || engine?.models.usedAppCheck === true;
     const startedAppCheck = engine?.models.usedAppCheck === true;
     pipeline?.close();
-    clearProject();
+    if (remembered && project !== null) clearIfStored(project);
     setProject(null);
     setRemembered(false);
     setMode("STRICT");
@@ -224,8 +252,11 @@ export function DemoSection({
   rememberedRef.current = remembered;
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      const removed = e.key === null || (e.key === STORAGE_KEY && e.newValue === null);
-      if (removed && rememberedRef.current) disconnectRef.current();
+      if (!rememberedRef.current || projectRef.current === null) return;
+      if (e.key !== null && e.key !== STORAGE_KEY) return;
+      // Removed, or replaced by a different project: this tab no longer has the project it remembered.
+      const stored = e.key === null || e.newValue === null ? null : parseStored(e.newValue);
+      if (stored === null || !sameProject(stored, projectRef.current)) disconnectRef.current();
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -334,7 +365,9 @@ export function DemoSection({
           {snapshot.checks.length === 0 ? (
             <p className="text-sm text-slate-400">No sentences yet.</p>
           ) : (
-            snapshot.checks.map((c) => <CheckCard key={c.id} check={c} today={today} />)
+            snapshot.checks.map((c) => (
+              <CheckCard key={c.id} check={c} today={today} context={{ projectConnected: project !== null, device }} />
+            ))
           )}
         </div>
         <LedgerPanel ledger={ledger} />

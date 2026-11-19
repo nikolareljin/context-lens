@@ -270,7 +270,7 @@ describe("browser storage", () => {
     const p = new WebPipeline({ models: source, cloudProject: () => true });
     p.submit("They raised it again here last month.");
     await p.idle();
-    expect(setup).toHaveBeenCalledWith("Firebase Authentication: anonymous sign-in (session kept in memory only)", "ok");
+    expect(setup).toHaveBeenCalledWith(expect.stringMatching(/^Firebase Authentication: anonymous sign-in, kept in memory only\. This entry stands for it/), "ok");
     const urls = net.fetch.mock.calls.map((c) => String((c as unknown[])[0]));
     expect(urls.some((u) => u.includes("identitytoolkit"))).toBe(true);
     expect(urls.some((u) => u.includes(":generateContent"))).toBe(true);
@@ -289,7 +289,7 @@ describe("browser storage", () => {
     p.submit("They raised it again here last month.");
     await p.idle();
     expect(source.usedAppCheck).toBe(true);
-    expect(setup.mock.calls[0][0]).toMatch(/^App Check turned on \(reCAPTCHA Enterprise\)/);
+    expect(setup.mock.calls[0][0]).toMatch(/^App Check set up \(reCAPTCHA Enterprise\)/);
     p.close();
     await source.dispose();
   });
