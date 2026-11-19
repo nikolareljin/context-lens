@@ -164,4 +164,12 @@ describe("PiiPostScrubber", () => {
   it("gives every script's digits their value, math digits included", () => {
     expect(mapDigitsSpaces("\u0665\u0966\u{1D7D7}\u{1D7FF}")).toBe("5099");
   });
+
+  it("finds numbers after a stray combining mark, as ICU's word boundary does", () => {
+    // made-up test card and SSN numbers
+    const card = "card \u03014111 1111 1111 1111 ok";
+    expect(PiiPostScrubber.findIn(card, card).size).toBeGreaterThan(0);
+    const ssn = "ssn \u0301123-45-6789 ok";
+    expect(PiiPostScrubber.findIn(ssn, ssn).size).toBeGreaterThan(0);
+  });
 });

@@ -6,8 +6,9 @@
  * - Whitespace follows the phone, not the JVM unit tests: Android's ICU regex \s matches
  *   Unicode spaces and line separators (no-break space, U+2028) as well as ASCII ones, so a
  *   phrase or a card number split by them is read the same way in both apps.
- * - JVM \b (Java 17) counts letters, digits, "_" and combining marks in any script as word
- *   characters; JavaScript \b only knows ASCII.
+ * - Word boundaries follow ICU \b as on the phone: letters, digits and "_" in any script
+ *   are word characters, and combining marks and invisible format characters are looked
+ *   past, so a stray accent before a number does not hide it.
  * - JVM (?i) folds ASCII only; JavaScript /iu folds Unicode ("ſ" matches "s"), so
  *   case-insensitive words are spelled out as [aA] classes instead.
  */
@@ -15,10 +16,14 @@
 /** Android (ICU) \s: ASCII whitespace, U+0085 and every Unicode space or line separator. */
 export const S = "[\\t-\\r\\x85\\p{Z}]";
 
-const WORD = "[\\p{L}\\p{Nd}\\p{Mn}_]";
+const WORD = "[\\p{L}\\p{Nd}_]";
+const SKIP = "[\\p{Grapheme_Extend}\\p{Cf}]";
 
-/** JVM \b. */
-export const B = `(?:(?<!${WORD})(?=${WORD})|(?<=${WORD})(?!${WORD}))`;
+/** ICU \b: a boundary between word and non-word characters, looking past combining marks and format characters. */
+export const B = `(?!${SKIP})(?:(?<!${WORD}${SKIP}*)(?=${WORD})|(?<=${WORD}${SKIP}*)(?!${WORD}))`;
+
+/** ICU \W: any character that is not a word character. */
+export const W = "[^\\p{L}\\p{Nd}_]";
 
 /** ASCII letters matched without case, as JVM (?i) does: "the|a" -> "[tT][hH][eE]|[aA]". */
 export function ci(words: string): string {

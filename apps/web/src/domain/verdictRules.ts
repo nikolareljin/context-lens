@@ -1,4 +1,4 @@
-import { B, S, ci, ktIsBlank, ktLines, ktTrim, re } from "./jvmRegex";
+import { B, S, W, ci, ktIsBlank, ktLines, ktTrim, re } from "./jvmRegex";
 import { VERDICTS, type FactCard, type Grounding, type ModelReply, type Verdict } from "./types";
 
 /**
@@ -11,10 +11,10 @@ export const SUMMARY_SENTENCES = 2;
 
 /** Where a JVM multiline ^ matches: the start, or after any line terminator. */
 const LINE_START = "(?:^|(?<=[\\n\\r\\u0085\\u2028\\u2029]))";
-const VERDICT_BODY = `\\W*${ci("verdict")}\\W*:?${S}*\\**${S}*([A-Za-z_ ]+)`;
+const VERDICT_BODY = `${W}*${ci("verdict")}${W}*:?${S}*\\**${S}*([A-Za-z_ ]+)`;
 const verdictLine = re(`${LINE_START}${VERDICT_BODY}`);
 const verdictWholeLine = re(`^(?:${VERDICT_BODY})$`);
-const summaryLine = re(`${B}${ci("summary")}\\W*:${S}*([\\s\\S]+)`);
+const summaryLine = re(`${B}${ci("summary")}${W}*:${S}*([\\s\\S]+)`);
 const citationMarks = re(`${S}*\\[(?:\\d+(?:${S}*[,\\-]${S}*\\d+)*)\\]`, "g");
 /** JVM $ without multiline: the end, or before a final line terminator. */
 const abbreviation = re(
