@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { DateResolver, type Verdict } from "../domain";
-import { ON_DEVICE, searchUrl, type Check } from "../pipeline/pipeline";
+import { ON_DEVICE, searchUrl, type Check, type NeedsModelInfo } from "../pipeline/pipeline";
 import { CHIP_SANDBOX, chipDocument } from "../lib/searchChip";
 import type { OnDeviceStatus } from "../cloud/firebaseModels";
 
@@ -51,25 +51,32 @@ function heardLabel(check: Check): [string, string] {
   return ["Heard", "bg-slate-500"];
 }
 
-/** What the visitor can do about a sentence Strict mode could not check without Chrome's model. */
+/** The page now, for what a card may add to what was true when the sentence was checked. */
 export interface CardContext {
-  projectConnected: boolean;
-  /** Chrome's built-in model status; null while it is being checked. */
+  /** Chrome's built-in model status now; null while it is being checked. */
   device: OnDeviceStatus | null;
 }
 
-function needsModelText({ projectConnected, device }: CardContext): string {
-  const parts = ["Not checked: Strict mode reads sentences only with Chrome's built-in model (Gemini Nano)"];
+/**
+ * Why a sentence was not checked without Chrome's model, as it was at that moment (recorded
+ * on the check), so the text never changes into something untrue later. Only "ready now" is
+ * added from the page's current state.
+ */
+export function needsModelText(info: NeedsModelInfo | undefined, deviceNow: OnDeviceStatus | null): string {
+  const device = info?.device ?? null;
+  let text = "Not checked: Strict mode reads sentences only with Chrome's built-in model (Gemini Nano), ";
   if (device === "downloadable") {
-    parts.push("which isn't downloaded yet. Use Download Gemini Nano above");
+    text += "which wasn't downloaded yet. Nothing was sent. Use Download Gemini Nano above and check it again.";
   } else if (device === "downloading") {
-    parts.push("and Chrome is still downloading it");
+    text += "and Chrome was still downloading it. Nothing was sent. Check it again once the download has finished.";
   } else {
-    parts.push("which isn't available in this browser, so only the local rules ran");
+    text += "which wasn't available in this browser, so only the local rules ran. Nothing was sent.";
   }
-  let text = `${parts.join(", ")}. Nothing was sent.`;
-  if (projectConnected) {
-    text += " Switch to Balanced to check it with your project's cloud Gemini (the sentence is then sent to the cloud, as the mode says).";
+  if (info?.projectConnected && info.mode === "STRICT") {
+    text += " Or switch to Balanced and check it again: your project's cloud Gemini then reads the sentence (it is sent to the cloud, as the mode says).";
+  }
+  if (deviceNow === "available" && device !== "available") {
+    text += " Gemini Nano is ready now; check the sentence again.";
   }
   return text;
 }
@@ -83,7 +90,7 @@ function stageText(check: Check, context: CardContext): string {
     case "NO_CLAIM":
       return `No checkable claim · ${check.gate ? `${check.gate.source ?? "?"} · ${check.gate.latencyMs} ms · ${check.gate.model}` : ""}`;
     case "NEEDS_MODEL":
-      return needsModelText(context);
+      return needsModelText(check.needsModel, context.device);
     case "WITHHELD":
       return `Question withheld: it still contained personal data (${check.withheld.map((k) => k.toLowerCase()).join(", ")}). Nothing was sent.`;
     case "VERIFYING":
@@ -120,7 +127,7 @@ export function SearchSuggestions({ html }: { html: string }) {
 export function CheckCard({
   check,
   today,
-  context = { projectConnected: false, device: null },
+  context = { device: null },
 }: {
   check: Check;
   today: string;

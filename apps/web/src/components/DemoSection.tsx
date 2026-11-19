@@ -107,6 +107,8 @@ export function DemoSection({
   // The project now connected; a pipeline built for an earlier one never reaches the cloud.
   const projectRef = useRef(project);
   projectRef.current = project;
+  const statusRef = useRef(status);
+  statusRef.current = status;
 
   // In memory only; kept across project changes so the record of what left stays complete.
   const ledger = useMemo(() => new EgressLedger(), []);
@@ -133,6 +135,7 @@ export function DemoSection({
       models,
       ledger,
       cloudProject: () => project !== null && projectRef.current === project,
+      deviceStatus: () => statusRef.current(),
     });
     setEngine({ project, models, pipeline });
     return () => {
@@ -223,9 +226,13 @@ export function DemoSection({
     setProject(p);
     return null;
   };
-  const disconnect = () => {
+  /**
+   * [appCheckStorageInUse]: another tab replaced this project with one that also uses App Check,
+   * so the App Check storage now belongs to that project and is left alone.
+   */
+  const disconnect = (appCheckStorageInUse = false) => {
     stopDemo();
-    const hadAppCheck = project?.recaptchaSiteKey != null || engine?.models.usedAppCheck === true;
+    const hadAppCheck = !appCheckStorageInUse && (project?.recaptchaSiteKey != null || engine?.models.usedAppCheck === true);
     const startedAppCheck = engine?.models.usedAppCheck === true;
     pipeline?.close();
     if (remembered && project !== null) clearIfStored(project);
@@ -256,7 +263,7 @@ export function DemoSection({
       if (e.key !== null && e.key !== STORAGE_KEY) return;
       // Removed, or replaced by a different project: this tab no longer has the project it remembered.
       const stored = e.key === null || e.newValue === null ? null : parseStored(e.newValue);
-      if (stored === null || !sameProject(stored, projectRef.current)) disconnectRef.current();
+      if (stored === null || !sameProject(stored, projectRef.current)) disconnectRef.current(stored?.recaptchaSiteKey != null);
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -366,7 +373,7 @@ export function DemoSection({
             <p className="text-sm text-slate-400">No sentences yet.</p>
           ) : (
             snapshot.checks.map((c) => (
-              <CheckCard key={c.id} check={c} today={today} context={{ projectConnected: project !== null, device }} />
+              <CheckCard key={c.id} check={c} today={today} context={{ device }} />
             ))
           )}
         </div>

@@ -109,7 +109,7 @@ export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: P
             {project.anonymousAuth ? " · anonymous sign-in" : ""}.{" "}
             {remembered ? "Remembered on this device." : "Kept in this tab's memory only; gone when the tab closes."}
           </p>
-          <button ref={disconnectButton} type="button" onClick={onDisconnect} className="rounded-full border border-edge px-4 py-1 text-sm hover:border-device">
+          <button ref={disconnectButton} type="button" onClick={() => onDisconnect()} className="rounded-full border border-edge px-4 py-1 text-sm hover:border-device">
             Disconnect
           </button>
         </div>

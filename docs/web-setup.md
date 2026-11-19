@@ -5,7 +5,7 @@ The web companion is published at the root of this site; these docs live under `
 ## What runs without a project
 
 - The local rules drop small talk; nothing is called for it.
-- The gatekeeper runs on Chrome's built-in Gemini Nano (Firebase AI Logic, `ONLY_ON_DEVICE`), when Chrome has it. Without it, the card says the model isn't available and only the local rules ran.
+- The gatekeeper runs on Chrome's built-in Gemini Nano (Firebase AI Logic, `ONLY_ON_DEVICE`), when Chrome has it. Without it, nothing is sent and the card says why, as it was when the sentence was checked: Chrome had not downloaded the model yet (use **Download Gemini Nano** and check it again), Chrome was still downloading it (check it again once it has finished), or the model isn't available in this browser and only the local rules ran. With a project connected in Strict mode, the card adds that switching to Balanced and checking again lets your project's cloud Gemini read the sentence. Once the model is ready, older cards say so.
 - The cloud step shows **Not checked in the cloud: no Firebase project is connected** with a link that searches the clean question in your own browser.
 - No request goes to Google or Firebase: the ledger stays empty. The page loads the Firebase SDK code from this site only when the on-device model is first used, and the SDK's local app names no project and holds no key.
 

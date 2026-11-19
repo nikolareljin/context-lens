@@ -42,6 +42,16 @@ describe("WebPipeline", () => {
     expect(totals(p.ledger.entries).rawBytes).toBe(0);
   });
 
+  it("records the model status, project and mode on a sentence it could not check", async () => {
+    const models = new FakeSource();
+    models.ready = false;
+    const p = new WebPipeline({ models, cloudProject: () => false, deviceStatus: async () => "downloadable" });
+    p.setMode("BALANCED");
+    const check = await run(p, "They raised it again here last month.");
+    expect(check.stage).toBe("NEEDS_MODEL");
+    expect(check.needsModel).toEqual({ device: "downloadable", projectConnected: false, mode: "BALANCED" });
+  });
+
   it("Strict without the on-device model checks nothing and sends nothing", async () => {
     const source = new FakeSource();
     source.ready = false;

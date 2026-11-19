@@ -44,6 +44,18 @@ export interface GateInfo {
   latencyMs: number;
 }
 
+/** Chrome's built-in model status (the Prompt API's availability()). */
+export type DeviceStatus = "available" | "downloadable" | "downloading" | "unavailable";
+
+/** The situation when a sentence could not be checked without Chrome's model, kept with it. */
+export interface NeedsModelInfo {
+  /** Chrome's model status then; null when it could not be asked. */
+  device: DeviceStatus | null;
+  projectConnected: boolean;
+  /** The mode the sentence was submitted in. */
+  mode: PrivacyMode;
+}
+
 /** One sentence on its way through the pipeline. The raw text stays in memory only. */
 export interface Check {
   id: number;
@@ -58,6 +70,8 @@ export interface Check {
   demo: boolean;
   /** The sentence and its context went to the cloud gatekeeper (or may have); recorded in the ledger. */
   sentToCloud: boolean;
+  /** Set with the NEEDS_MODEL stage: what was true at that moment, so the card does not change later. */
+  needsModel?: NeedsModelInfo;
 }
 
 export interface PipelineCounts {
@@ -114,6 +128,8 @@ export interface PipelineOptions {
   /** False when no Firebase project is connected: on-device only, no cloud step, nothing sent. */
   cloudProject: () => boolean;
   online?: () => boolean;
+  /** Chrome's model status, recorded on a sentence that could not be checked without it. */
+  deviceStatus?: () => Promise<DeviceStatus>;
   clock?: () => number;
   gateTimeoutMs?: number;
   verifyTimeoutMs?: number;
@@ -151,6 +167,7 @@ export class WebPipeline {
   private readonly models: ModelSource;
   private readonly prompts: PipelinePrompts;
   private readonly cloudProject: () => boolean;
+  private readonly deviceStatus?: () => Promise<DeviceStatus>;
   private readonly online: () => boolean;
   private readonly clock: () => number;
   private readonly gateTimeoutMs: number;
@@ -174,6 +191,7 @@ export class WebPipeline {
     this.prompts = options.prompts ?? defaultPrompts;
     this.cloudProject = options.cloudProject;
     this.online = options.online ?? (() => globalThis.navigator?.onLine ?? true);
+    this.deviceStatus = options.deviceStatus;
     this.clock = options.clock ?? Date.now;
     this.gateTimeoutMs = options.gateTimeoutMs ?? GATE_TIMEOUT_MS;
     this.verifyTimeoutMs = options.verifyTimeoutMs ?? VERIFY_TIMEOUT_MS;
@@ -308,8 +326,15 @@ export class WebPipeline {
 
   private async gatekeep(work: Work, mode: PrivacyMode): Promise<GateInfo | null> {
     if (mode === "STRICT" && !(await this.models.onDeviceReady())) {
+      let device: DeviceStatus | null = null;
+      try {
+        device = (await this.deviceStatus?.()) ?? null;
+      } catch {
+        device = null;
+      }
+      const needsModel: NeedsModelInfo = { device, projectConnected: this.cloudProject(), mode: work.mode };
       this.count(work.session, (c) => ({ ...c, readOnDevice: c.readOnDevice + 1 }));
-      this.update(work, (c) => ({ ...c, stage: "NEEDS_MODEL" }));
+      this.update(work, (c) => ({ ...c, stage: "NEEDS_MODEL", needsModel }));
       return null;
     }
     if (this.stale(work)) return null;
