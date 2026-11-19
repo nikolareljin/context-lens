@@ -28,6 +28,18 @@ test_eval_set_change_marks_android() {
   out="$(bash "$script" "$base" HEAD)"
   assert_contains "$out" "android=true"
 }
+test_eval_set_change_marks_web() {
+  repo; commit_file apps/web/package.json; base="$(git rev-parse HEAD)"
+  commit_file eval/utterances.yaml
+  out="$(bash "$script" "$base" HEAD)"
+  assert_contains "$out" "web=true"
+}
+test_prompt_change_marks_web() {
+  repo; commit_file apps/web/package.json; base="$(git rev-parse HEAD)"
+  commit_file apps/android/app/src/main/assets/prompts/gatekeeper.v2.txt
+  out="$(bash "$script" "$base" HEAD)"
+  assert_contains "$out" "web=true"
+}
 test_ci_change_marks_present_areas_only() {
   repo; commit_file apps/android/gradlew; base="$(git rev-parse HEAD)"
   commit_file .github/workflows/ci.yml

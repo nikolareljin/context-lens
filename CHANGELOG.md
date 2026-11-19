@@ -4,6 +4,10 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ## [Unreleased]
 
+### Added
+
+- Web companion groundwork: the local rules, the personal-data check, the gatekeeper and grounding parsers, the verdict rule and the date hints in TypeScript (`apps/web/src/domain/`), reading the same prompt files as the app and tested against the same evaluation set; CI runs the web tests when the evaluation set, the prompts or the Kotlin rules change.
+
 ### Fixed
 
 - Diagnostics → Test in cloud tries gemini-3.1-flash-lite first, like the fact check, instead of waiting up to 20 s for gemini-3.8-flash.
