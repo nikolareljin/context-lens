@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { DOCS } from "../lib/config";
-import { PROBLEM_TEXT, parseProject, problems, type WebProject } from "../cloud/project";
+import { ANDROID_CONNECT_PREFIX, PROBLEM_TEXT, parseProject, problems, type WebProject } from "../cloud/project";
 
 interface Props {
   project: WebProject | null;
@@ -61,6 +61,12 @@ export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: P
   };
 
   const check = () => {
+    if (text.trim().startsWith(ANDROID_CONNECT_PREFIX)) {
+      setError(
+        "This is the Android app's connect code (contextlens-connect:1). The page needs the web app's config or a web connect code (contextlens-web-connect:1), which carries the web app id.",
+      );
+      return;
+    }
     const parsed = parseProject(text, anonymous);
     if (parsed === null) {
       setError("Paste the web app's firebaseConfig from the Firebase console, or a web connect code.");

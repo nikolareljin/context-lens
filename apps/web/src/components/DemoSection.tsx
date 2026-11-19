@@ -8,7 +8,7 @@ import {
   type OnDeviceStatus,
   type SetupRecorder,
 } from "../cloud/firebaseModels";
-import { clearProject, loadProject, saveProject, type WebProject } from "../cloud/project";
+import { STORAGE_KEY, clearProject, loadProject, saveProject, type WebProject } from "../cloud/project";
 import { DemoScript } from "../pipeline/demoScript";
 import { EgressLedger } from "../pipeline/ledger";
 import { WebPipeline, type Check, type ModelSource, type PipelineSnapshot, type PrivacyMode } from "../pipeline/pipeline";
@@ -215,6 +215,21 @@ export function DemoSection({
       void forgetFirebaseStorage();
     }
   };
+
+  // Another tab of this site removed the remembered project (its Disconnect, or cleared
+  // storage): this tab disconnects too, so it stops using a project the visitor took back.
+  const disconnectRef = useRef(disconnect);
+  disconnectRef.current = disconnect;
+  const rememberedRef = useRef(remembered);
+  rememberedRef.current = remembered;
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      const removed = e.key === null || (e.key === STORAGE_KEY && e.newValue === null);
+      if (removed && rememberedRef.current) disconnectRef.current();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   const prepare = async () => {
     const models = engine?.models;

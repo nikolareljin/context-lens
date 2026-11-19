@@ -333,7 +333,8 @@ export class WebPipeline {
       this.count(work.session, (c) => ({ ...c, readInCloud: c.readInCloud + 1, rawBytes: c.rawBytes + promptBytes }));
       this.update(work, (c) => ({ ...c, sentToCloud: true }));
     };
-    const outcome = await this.call(this.gateTimeoutMs, (signal) => model.generate(prompt, signal));
+    // A Strict call runs on the device only: stopping it never leaves anything "maybe sent".
+    const outcome = await this.call(this.gateTimeoutMs, mode === "BALANCED", (signal) => model.generate(prompt, signal));
     const latency = this.clock() - start;
     const reply = outcome.reply;
     // Stopped midway: a Balanced call may already have been sent, so it is recorded; nothing else happens.
@@ -382,7 +383,7 @@ export class WebPipeline {
     for (const model of this.models.verifiers()) {
       if (this.stale(work)) return;
       const start = this.clock();
-      const outcome = await this.call(this.verifyTimeoutMs, (signal) => model.generate(prompt, signal));
+      const outcome = await this.call(this.verifyTimeoutMs, true, (signal) => model.generate(prompt, signal));
       const latency = this.clock() - start;
       const reply = outcome.reply;
       this.ledger.add({
@@ -420,7 +421,11 @@ export class WebPipeline {
   }
 
   /** One request with its own abort signal: a timeout, Clear or close() aborts it. */
-  private async call(timeoutMs: number, block: (signal: AbortSignal) => Promise<ModelReply>): Promise<Outcome> {
+  private async call(timeoutMs: number, mayLeave: boolean, block: (signal: AbortSignal) => Promise<ModelReply>): Promise<Outcome> {
+    const stoppedLabel = (timedOut: boolean) => {
+      const what = timedOut ? "timed out" : "cancelled";
+      return mayLeave ? `${what}; ${MAYBE_SENT}` : what;
+    };
     const controller = new AbortController();
     this.inflight.add(controller);
     let timedOut = false;
@@ -435,10 +440,10 @@ export class WebPipeline {
     });
     try {
       const reply = await Promise.race([block(controller.signal), stopped]);
-      if (reply === null) return { reply: null, label: `${timedOut ? "timed out" : "cancelled"}; ${MAYBE_SENT}` };
+      if (reply === null) return { reply: null, label: stoppedLabel(timedOut) };
       return { reply, label: reply.text === null || reply.text.trim().length === 0 ? "ok, empty reply" : "ok" };
     } catch (e) {
-      if (controller.signal.aborted) return { reply: null, label: `${timedOut ? "timed out" : "cancelled"}; ${MAYBE_SENT}` };
+      if (controller.signal.aborted) return { reply: null, label: stoppedLabel(timedOut) };
       return { reply: null, label: describe(e) };
     } finally {
       clearTimeout(timer);

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { STORAGE_KEY, type WebProject } from "../cloud/project";
 import { CLEAN_QUESTION, FAKE_APP_ID, FAKE_KEY, FakeSource, GATE_CLAIM, fakeProject, held } from "../test/fakes";
 import { DemoSection, type DemoModels } from "./DemoSection";
@@ -39,6 +39,43 @@ async function check(text: string) {
 }
 
 describe("connecting a project", () => {
+  it("disconnects when another tab removes the remembered project", () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(fakeProject({ recaptchaSiteKey: "6Lc_springfield_site_key_555" })));
+    vi.stubGlobal("indexedDB", { open: vi.fn(), deleteDatabase: vi.fn(() => ({}) as IDBOpenDBRequest) });
+    renderDemo();
+    expect(screen.getByText("demo-springfield")).toBeTruthy();
+    // a change to another key, or a new value, changes nothing
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: "other", newValue: null }));
+      window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY, newValue: "{}" }));
+    });
+    expect(screen.getByText("demo-springfield")).toBeTruthy();
+    sources.at(-1)!.source.usedAppCheck = true;
+    localStorage.removeItem(STORAGE_KEY);
+    act(() => window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY, newValue: null })));
+    expect(screen.getByText(/Not connected/)).toBeTruthy();
+    expect(sources.at(-1)?.project).toBeNull();
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a project held in memory when another tab clears storage", () => {
+    renderDemo();
+    fireEvent.change(screen.getByLabelText("Web app config or connect code"), { target: { value: snippet } });
+    fireEvent.click(screen.getByRole("button", { name: "Connect…" }));
+    fireEvent.click(screen.getByRole("button", { name: "Connect demo-springfield" }));
+    act(() => window.dispatchEvent(new StorageEvent("storage", { key: null })));
+    expect(screen.getByText("demo-springfield")).toBeTruthy();
+  });
+
+  it("explains that the Android connect code is not the web one", () => {
+    renderDemo();
+    const code = `contextlens-connect:1?project=demo-springfield&app=1%3A5550001%3Aandroid%3Aab&key=${FAKE_KEY}`;
+    fireEvent.change(screen.getByLabelText("Web app config or connect code"), { target: { value: code } });
+    fireEvent.click(screen.getByRole("button", { name: "Connect…" }));
+    expect(screen.getByRole("alert").textContent).toContain("This is the Android app's connect code");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   it("Disconnect of a remembered App Check project cleans up even without a cloud call in this tab", () => {
     const deleteDatabase = vi.fn(() => ({}) as IDBOpenDBRequest);
     vi.stubGlobal("indexedDB", { open: vi.fn(), deleteDatabase });

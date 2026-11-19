@@ -13,7 +13,11 @@ export const GATEKEEPER_FALLBACK_MODEL = "gemini-3.1-flash-lite";
 /** What Chrome reports for its built-in model (the Prompt API's availability()). */
 export type OnDeviceStatus = "available" | "downloadable" | "downloading" | "unavailable";
 
-/** Text in and out, English: what the gatekeeper needs from Chrome's model. */
+/**
+ * Text in and out, English: what the gatekeeper needs from Chrome's model. Android also sets an
+ * output limit (256) and temperature (0.1) on the device; Chrome's Prompt API, as the SDK exposes
+ * it, takes neither, so Chrome's defaults apply.
+ */
 const CREATE_OPTIONS: LanguageModelCreateOptions = {
   expectedInputs: [{ type: "text", languages: ["en"] }],
   expectedOutputs: [{ type: "text", languages: ["en"] }],
@@ -259,7 +263,8 @@ export class FirebaseModelSource implements ModelSource {
               return ai.getGenerativeModel(await this.cloud(), {
                 mode: ai.InferenceMode.PREFER_ON_DEVICE,
                 onDeviceParams: { createOptions: CREATE_OPTIONS },
-                inCloudParams: { model: GATEKEEPER_FALLBACK_MODEL, generationConfig: { maxOutputTokens: 256, temperature: 0.1 } },
+                // As on Android: the cloud fallback sets only the output limit.
+                inCloudParams: { model: GATEKEEPER_FALLBACK_MODEL, generationConfig: { maxOutputTokens: 256 } },
               });
             },
             live,
@@ -367,12 +372,13 @@ export class FirebaseModelSource implements ModelSource {
           if (this.disposed) throw new Error(DISCONNECTED);
           appCheck.initializeAppCheck(created, {
             provider: new appCheck.ReCaptchaEnterpriseProvider(project.recaptchaSiteKey),
-            isTokenAutoRefreshEnabled: true,
+            // No background refresh: a token is fetched only for a cloud call the ledger lists.
+            isTokenAutoRefreshEnabled: false,
           });
           this.appCheckUsed = true;
           this.setup(
-            "App Check: reCAPTCHA Enterprise token, exchanged with Firebase App Check (the SDK keeps the token in this browser; this project is remembered)",
-            "started",
+            "App Check turned on (reCAPTCHA Enterprise). From now on each cloud call first gets an App Check token: reCAPTCHA runs in this page and Firebase App Check exchanges its result, and the SDK keeps the token in this browser (this project is remembered)",
+            "on",
           );
         }
         if (project.anonymousAuth) {

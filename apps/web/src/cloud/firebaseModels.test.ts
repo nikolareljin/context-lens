@@ -289,7 +289,7 @@ describe("browser storage", () => {
     p.submit("They raised it again here last month.");
     await p.idle();
     expect(source.usedAppCheck).toBe(true);
-    expect(setup.mock.calls[0][0]).toMatch(/^App Check: reCAPTCHA Enterprise token/);
+    expect(setup.mock.calls[0][0]).toMatch(/^App Check turned on \(reCAPTCHA Enterprise\)/);
     p.close();
     await source.dispose();
   });

@@ -87,6 +87,9 @@ function build(fields: Record<string, string | undefined>, anonymousAuth: boolea
   };
 }
 
+/** The start of the Android app's connect code, which carries an Android app id. */
+export const ANDROID_CONNECT_PREFIX = "contextlens-connect:";
+
 /** The start of a web connect code. */
 export const WEB_CONNECT_PREFIX = "contextlens-web-connect:1?";
 

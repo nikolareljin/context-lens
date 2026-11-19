@@ -220,8 +220,26 @@ describe("stopping", () => {
     const p = new WebPipeline({ models, cloudProject: () => true, gateTimeoutMs: 5 });
     const check = await run(p, "They raised it again here last month.");
     expect(check.stage).toBe("FAILED");
-    expect(check.note).toBe("gatekeeper: timed out; may have been sent");
+    expect(check.note).toBe("gatekeeper: timed out");
     expect(model.signals[0]?.aborted).toBe(true);
+  });
+
+  it("a Strict gatekeeper that times out stayed on the device: nothing may have been sent", async () => {
+    const models = new FakeSource();
+    holding(models);
+    const p = new WebPipeline({ models, cloudProject: () => true, gateTimeoutMs: 5 });
+    const check = await run(p, "They raised it again here last month.");
+    expect(check.note).toBe("gatekeeper: timed out");
+    expect(check.note).not.toContain("may have been sent");
+    expect(p.ledger.entries).toEqual([]);
+  });
+
+  it("a verifier that times out may have been sent, and the ledger says so", async () => {
+    const models = new FakeSource();
+    models.verifier.generate = () => new Promise(() => {});
+    const p = new WebPipeline({ models, cloudProject: () => true, verifyTimeoutMs: 5 });
+    await run(p, "They raised it again here last month.");
+    expect(p.ledger.entries[0].outcome).toBe("timed out; may have been sent");
   });
 
   it("waits as long as Android for the gatekeeper", () => {
