@@ -29,7 +29,7 @@ Run this in a terminal; it asks questions and opens browser pages:
 | `auth` | Opens **Authentication** so you can enable Google sign-in: Google creates that provider's OAuth client, and there is no API for it. Then turns on anonymous sign-in and adds `<owner>.github.io` to the authorized domains. |
 | `recaptcha` | Creates a score-based reCAPTCHA Enterprise key for `<owner>.github.io` and `localhost`. |
 | `appcheck` | Registers Play Integrity (Android) and reCAPTCHA Enterprise (web). `--enforce` also enforces App Check on AI Logic. |
-| `github` | Sets the App Distribution target (project ID and Android app ID) as masked repository secrets, never plain variables, so neither can appear in Actions logs. The Firebase configuration never goes to GitHub: public builds carry none. |
+| `github` | Sets the App Distribution target (project ID and Android app ID) as masked repository secrets, never plain variables, so neither can appear in Actions logs; a leftover `FIREBASE_PROJECT_ID` variable from an older setup is deleted. It stops before writing anything if either value is missing. The Firebase configuration never goes to GitHub: public builds carry none. |
 
 The configuration goes to git-ignored files; GitHub gets only the App Distribution target. None of it is printed.
 

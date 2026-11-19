@@ -78,6 +78,14 @@ echo "{\"apiKey\":\"AIzaFAKE\",\"authDomain\":\"demo-proj.firebaseapp.com\",\"pr
   assert_contains "$(cat headers)" "Authorization: Bearer SECRET-ACCESS"
   [[ "$out" != *AIzaFAKE* && "$out" != *SECRET-ACCESS* ]] || fail "a value was printed: $out"
 }
+# gh_stub: records each call ("<command> <action> <name>=<stdin>"); "variable list" names the
+# variables in the file "variables" and is not recorded.
+gh_stub() {
+  stub gh 'if [[ "$1" == repo ]]; then echo Owner/context-lens; exit; fi
+if [[ "$1 $2" == "variable list" ]]; then cat '"$PWD"'/variables 2>/dev/null; exit 0; fi
+printf "%s %s %s=%s\n" "$1" "$2" "$3" "$(cat)" >> '"$PWD"'/gh-calls'
+  export GH="$PWD/gh"
+}
 test_github_step_sets_only_the_distribution_target() {
   sandbox
   echo FIREBASE_PROJECT_ID=demo-proj > dot.env; echo FIREBASE_ANDROID_APP_ID=1:9:android:x >> dot.env
@@ -85,16 +93,44 @@ test_github_step_sets_only_the_distribution_target() {
   local n
   for n in API_KEY AUTH_DOMAIN PROJECT_ID APP_ID MESSAGING_SENDER_ID; do echo "VITE_FIREBASE_$n=v-$n" >> web.env; done
   echo VITE_RECAPTCHA_SITE_KEY=site-key >> web.env
-  stub gh 'if [[ "$1" == repo ]]; then echo Owner/context-lens; exit; fi
-printf "%s %s %s=%s\n" "$1" "$2" "$3" "$(cat)" >> '"$PWD"'/gh-calls'
-  export GH="$PWD/gh"
-  out="$(bash "$cloud" github 2>&1)" || fail "github step failed: $out"
+  gh_stub
+  out="$(bash "$cloud" github 2>&1 </dev/null)" || fail "github step failed: $out"
   calls="$(cat gh-calls)"
   assert_contains "$calls" "secret set FIREBASE_PROJECT_ID=demo-proj"
   [[ "$calls" != *"variable set"* ]] || fail "a plain variable was set: $calls"
   assert_contains "$calls" "secret set FIREBASE_ANDROID_APP_ID=1:9:android:x"
   assert_eq "$(wc -l < gh-calls | tr -d ' ')" 2
   [[ "$out" != *v-API_KEY* ]] || fail "a value was printed: $out"
+}
+test_github_step_removes_a_leftover_project_variable() {
+  sandbox
+  printf 'FIREBASE_PROJECT_ID=demo-proj\nFIREBASE_ANDROID_APP_ID=1:9:android:x\n' > dot.env
+  printf 'TESTER_GROUPS\nFIREBASE_PROJECT_ID\n' > variables
+  gh_stub
+  out="$(bash "$cloud" github 2>&1 </dev/null)" || fail "github step failed: $out"
+  calls="$(cat gh-calls)"
+  assert_contains "$calls" "secret set FIREBASE_PROJECT_ID=demo-proj"
+  assert_contains "$calls" "secret set FIREBASE_ANDROID_APP_ID=1:9:android:x"
+  assert_contains "$calls" "variable delete FIREBASE_PROJECT_ID="
+  [[ "$calls" != *"variable delete TESTER_GROUPS"* ]] || fail "another variable was deleted: $calls"
+  assert_eq "$(wc -l < gh-calls | tr -d ' ')" 3
+}
+test_github_step_without_a_project_fails_and_sets_nothing() {
+  sandbox
+  echo FIREBASE_ANDROID_APP_ID=1:9:android:x > dot.env
+  gh_stub
+  assert_status 1 bash "$cloud" github
+  [[ ! -s gh-calls ]] || fail "gh was called: $(cat gh-calls)"
+  out="$(bash "$cloud" github 2>&1 </dev/null || true)"
+  assert_contains "$out" "no Firebase project yet"
+  [[ "$out" != *"set on"* ]] || fail "reported done: $out"
+}
+test_github_step_without_an_android_app_fails_and_sets_nothing() {
+  sandbox
+  echo FIREBASE_PROJECT_ID=demo-proj > dot.env
+  gh_stub
+  assert_status 1 bash "$cloud" github
+  [[ ! -s gh-calls ]] || fail "gh was called: $(cat gh-calls)"
 }
 test_phone_token_is_registered_but_never_printed() {
   sandbox; fake_gcloud

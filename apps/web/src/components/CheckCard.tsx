@@ -92,7 +92,9 @@ function stageText(check: Check, context: CardContext): string {
     case "NEEDS_MODEL":
       return needsModelText(check.needsModel, context.device);
     case "WITHHELD":
-      return `Question withheld: it still contained personal data (${check.withheld.map((k) => k.toLowerCase()).join(", ")}). Nothing was sent.`;
+      return `Question withheld: it still contained personal data (${check.withheld.map((k) => k.toLowerCase()).join(", ")}). The question was not sent.${
+        check.sentToCloud ? " The sentence itself was read by your project's cloud Gemini (Balanced mode); the ledger lists that request." : ""
+      }`;
     case "VERIFYING":
       return "Checking with Google Search…";
     case "CLOUD_UNAVAILABLE":

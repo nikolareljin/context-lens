@@ -332,10 +332,20 @@ step_github() {
   # Both are masked secrets: a plain variable would be printed in public Actions logs.
   confirm "Write the App Distribution target to the Actions secrets of $repo?" \
     || { log "skipped"; return 0; }
+  # Both values are read first, so a missing one stops here before anything is written.
+  local id app
+  id="$(project_id)"
+  app="$(env_get "$TL_ENV_FILE" FIREBASE_ANDROID_APP_ID | tr -d '\n')"
+  [[ -n "$id" ]] || die "no Firebase project yet: run ./dev cloud project"
+  [[ -n "$app" ]] || die "no Android app id yet: run ./dev cloud android"
   local gh; gh="$(gh_bin)"
-  printf '%s' "$(project_id)" | "$gh" secret set FIREBASE_PROJECT_ID --repo "$repo" >/dev/null
-  env_get "$TL_ENV_FILE" FIREBASE_ANDROID_APP_ID | tr -d '\n' \
-    | "$gh" secret set FIREBASE_ANDROID_APP_ID --repo "$repo" >/dev/null
+  printf '%s' "$id" | "$gh" secret set FIREBASE_PROJECT_ID --repo "$repo" >/dev/null
+  printf '%s' "$app" | "$gh" secret set FIREBASE_ANDROID_APP_ID --repo "$repo" >/dev/null
+  # An older setup kept the project id as a plain variable, which Actions logs print: remove it.
+  if "$gh" variable list --repo "$repo" --json name --jq '.[].name' </dev/null | grep -qx FIREBASE_PROJECT_ID; then
+    "$gh" variable delete FIREBASE_PROJECT_ID --repo "$repo" </dev/null >/dev/null
+    log "removed the old FIREBASE_PROJECT_ID repository variable"
+  fi
   done_msg "GitHub: secrets FIREBASE_PROJECT_ID and FIREBASE_ANDROID_APP_ID set on $repo; no Firebase configuration"
 }
 

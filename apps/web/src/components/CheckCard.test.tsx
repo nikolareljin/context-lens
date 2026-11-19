@@ -40,3 +40,25 @@ describe("the out-of-quota card", () => {
     expect(text).not.toContain("in this browser");
   });
 });
+
+describe("the withheld card", () => {
+  function withheld(sentToCloud: boolean): Check {
+    return { ...quotaCheck(sentToCloud ? "IN_CLOUD" : "ON_DEVICE"), stage: "WITHHELD", withheld: ["PHONE"], sentToCloud, note: undefined };
+  }
+
+  it("says the question was not sent when the gatekeeper ran on the device", () => {
+    render(<CheckCard check={withheld(false)} today="2026-11-19" />);
+    const text = screen.getByTestId("stage-text").textContent ?? "";
+    expect(text).toContain("Question withheld: it still contained personal data (phone). The question was not sent.");
+    expect(text).not.toContain("cloud Gemini");
+    expect(text).not.toContain("Nothing was sent");
+  });
+
+  it("says the sentence was read in the cloud when Balanced sent it there", () => {
+    render(<CheckCard check={withheld(true)} today="2026-11-19" />);
+    const text = screen.getByTestId("stage-text").textContent ?? "";
+    expect(text).toContain("The question was not sent.");
+    expect(text).toContain("The sentence itself was read by your project's cloud Gemini (Balanced mode); the ledger lists that request.");
+    expect(text).not.toContain("Nothing was sent");
+  });
+});
