@@ -161,6 +161,28 @@ describe("PiiPostScrubber", () => {
     expect(PiiPostScrubber.findIn("What did Rene say about the tax", said).has("NAME" as PiiKind)).toBe(true);
   });
 
+  it("reads a year or round number in other digits as a phone or house number, as Android does", () => {
+    // made-up 555 numbers and a Springfield-style street; ICU's literal "20" and "000" are ASCII only
+    for (const digits of [["\u0662\u0660\u0660\u0660", "\u0662\u0660\u0661\u0669"], ["\uFF12\uFF10\uFF10\uFF10", "\uFF12\uFF10\uFF11\uFF19"]]) {
+      for (const d of digits) {
+        const phone = `Is 555-${d} her number?`;
+        expect(PiiPostScrubber.findIn(phone, phone)).toEqual(kinds("PHONE"));
+      }
+      const address = `Is ${digits[1]} Maple Street nice?`;
+      expect(PiiPostScrubber.findIn(address, address)).toEqual(kinds("ADDRESS"));
+    }
+    // ASCII years and round numbers stay quantities
+    expect(PiiPostScrubber.findIn("Is 555-2019 her number?", "Is 555-2019 her number?")).toEqual(none);
+    expect(PiiPostScrubber.findIn("Is 2019 Maple Street nice?", "Is 2019 Maple Street nice?")).toEqual(none);
+  });
+
+  it("checks Luhn on digit code points as Kotlin's c - '0' does", () => {
+    // made-up test numbers: Arabic-Indic digits weigh code point minus 48
+    expect(PiiPostScrubber.luhn("\u0664" + "\u0661".repeat(14) + "\u0667")).toBe(true);
+    expect(PiiPostScrubber.luhn("\u0664" + "\u0661".repeat(15))).toBe(false);
+    expect(PiiPostScrubber.luhn("4111111111111111")).toBe(true);
+  });
+
   it("gives every script's digits their value, math digits included", () => {
     expect(mapDigitsSpaces("\u0665\u0966\u{1D7D7}\u{1D7FF}")).toBe("5099");
   });

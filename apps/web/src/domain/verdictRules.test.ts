@@ -42,5 +42,8 @@ describe("VerdictRules", () => {
     expect(VerdictRules.firstSentences("Dr. Smith agreed. Yes! Done?", 5)).toBe("Dr. Smith agreed. Yes! Done?");
     expect(VerdictRules.parseVerdict("intro\nVERDICT: verified")).toBe("VERIFIED");
     expect(VerdictRules.parseSummary(null)).toBe("");
+    // ICU (?i) [A-Z] takes the long s; Kotlin's uppercase reads it as S
+    expect(VerdictRules.parseVerdict("Verdict: FAL\u017FE")).toBe("FALSE");
+    expect(VerdictRules.parseSummary("Summary: It rose [\u0661]. Then fell [\u0662, \u0663].")).toBe("It rose. Then fell.");
   });
 });

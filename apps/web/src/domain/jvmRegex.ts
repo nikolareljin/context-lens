@@ -6,6 +6,9 @@
  * - Whitespace follows the phone, not the JVM unit tests: Android's ICU regex \s matches
  *   Unicode spaces and line separators (no-break space, U+2028) as well as ASCII ones, so a
  *   phrase or a card number split by them is read the same way in both apps.
+ * - Digits follow the phone too: ICU \d matches the decimal digits of every script
+ *   ("٢٠١٩", "２０１９"), so a number in any script is read as one. Literal digits in a
+ *   pattern ("20" of a year, "000" of a round number) stay ASCII, as they are on the phone.
  * - Word boundaries follow ICU \b as on the phone. Word characters are ICU's \w set:
  *   alphabetic characters (letters, letter numerals such as "Ⅻ", circled letters), marks,
  *   decimal digits, connector punctuation ("_", "‿") and the zero-width joiners. Combining
@@ -16,6 +19,9 @@
  *   Latin ligatures their letters ("ﬁ" for "fi"). JavaScript /iu folds only one character to
  *   one, so the words are spelled out instead ([sSſ], (?:ss|ß), ...).
  */
+
+/** Android (ICU) \d: a decimal digit of any script. */
+export const D = "\\p{Nd}";
 
 /** Android (ICU) \s: ASCII whitespace, U+0085 and every Unicode space or line separator. */
 export const S = "[\\t-\\r\\x85\\p{Z}]";

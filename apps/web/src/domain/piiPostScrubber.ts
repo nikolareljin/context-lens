@@ -1,4 +1,4 @@
-import { B, S, ci, escape, ktTrim, re } from "./jvmRegex";
+import { B, D, S, ci, escape, ktTrim, re } from "./jvmRegex";
 
 export type PiiKind = "EMAIL" | "PHONE" | "CARD" | "IBAN" | "SSN" | "ADDRESS" | "NAME";
 
@@ -10,19 +10,19 @@ export type PiiKind = "EMAIL" | "PHONE" | "CARD" | "IBAN" | "SSN" | "ADDRESS" | 
  */
 
 const email = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/gu;
-const ssn = re(`${B}\\d{3}([ -])\\d{2}\\1\\d{4}${B}`, "g");
+const ssn = re(`${B}${D}{3}([ -])${D}{2}\\1${D}{4}${B}`, "g");
 /** A whole run of digits, not the decimals of a number ("3.14159265358979"); cardWindows finds the card inside it. */
-const card = re(`(?<!\\d[.,])${B}(?:\\d[ -]?){12,40}\\d${B}`, "g");
-const iban = re(`${B}[A-Z]{2}\\d{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,4})?${B}`, "g");
+const card = re(`(?<!${D}[.,])${B}(?:${D}[ -]?){12,40}${D}${B}`, "g");
+const iban = re(`${B}[A-Z]{2}${D}{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,4})?${B}`, "g");
 /**
  * North American numbers with separators, and any "+" number of 7 to 15 digits. The
  * short form takes "-" or "." only and no year after it ("Fortune 500 2024", "737-2018").
  * A range like "200-1500" still matches; it can't be told apart from "555-1500".
  */
 const phone = re(
-  `\\+\\d(?:[ .-]?\\d){6,14}${B}` +
-    `|(?:\\(\\d{3}\\)|${B}\\d{3})[ .-]?\\d{3}[ .-]\\d{4}${B}` +
-    `|${B}\\d{3}[.-](?!(?:1[89]|20)\\d\\d${B})\\d{4}${B}`,
+  `\\+${D}(?:[ .-]?${D}){6,14}${B}` +
+    `|(?:\\(${D}{3}\\)|${B}${D}{3})[ .-]?${D}{3}[ .-]${D}{4}${B}` +
+    `|${B}${D}{3}[.-](?!(?:1[89]|20)${D}${D}${B})${D}{4}${B}`,
   "g",
 );
 
@@ -31,15 +31,19 @@ const phone = re(
  * number. Only looked for in the sentences, never in the query alone: in a question
  * a bare number is far more often a quantity ("2300000 people").
  */
-const barePhone = re(`${B}\\d{10}${B}|${B}\\d{7}${B}`, "g");
+const barePhone = re(`${B}${D}{10}${B}|${B}${D}{7}${B}`, "g");
 
-const digitsOf = (text: string) => text.replace(/[^0-9]/g, "");
+/**
+ * Kotlin filter(Char::isDigit): the decimal digits of any script, one UTF-16 unit at a
+ * time (a digit outside the Basic Multilingual Plane is two units, neither a digit).
+ */
+const digitsOf = (text: string) => Array.from({ length: text.length }, (_, i) => text[i]).filter((c) => ND.test(c)).join("");
 
 /** A round number ("500-1000", "8000000") is a quantity, not a phone number. */
 const roundNumber = (text: string) => digitsOf(text).endsWith("000");
 
 /** A house number: not a year ("the 2008 Wall Street crash"), and never Wall Street itself. */
-const HOUSE = `${B}(?!(?:1[89]|20)\\d\\d${B})\\d{1,5}${S}+(?!Wall${S}+Street${B})`;
+const HOUSE = `${B}(?!(?:1[89]|20)${D}${D}${B})${D}{1,5}${S}+(?!Wall${S}+Street${B})`;
 
 /** A street-name word: not an article or preposition ("40 people block the street"). */
 const STREET_WORD = `(?!(?:${ci("the|a|an|on|in|at|of|to|and|or|for|from|by|with|into|down|up|along|across")})${B})`;
@@ -109,10 +113,11 @@ const word = (name: string) => re(`${B}${escape(name)}${B}`);
  * number" from them); publicNames (pinned topic, region) are never treated as
  * personal names.
  *
- * The patterns follow the JVM rules the Kotlin tests run on, where \s and \d are
- * ASCII. On the phone, Android's ICU regex also matches full-width digits and no-break
- * spaces, so the text is checked twice: as written and NFKC-normalized ("５５５" → "555",
- * U+00A0 → space). Either check finding something counts, so this can only find more.
+ * The patterns read digits and spaces as Android's ICU regex does: \d is a digit of any
+ * script ("٢٠١٩", "２０１９"), while the literal digits of a year or a round number are
+ * ASCII, so "555-٢٠١٩" is a phone number there and here. The text is then checked again
+ * with digits and spaces mapped to ASCII, as written and NFKC-normalized ("５５５" → "555",
+ * U+00A0 → space). Any check finding something counts, so the extra checks can only find more.
  */
 export function findIn(
   query: string,
@@ -175,8 +180,8 @@ function findInText(
       found.push(hit);
       const [kind, text] = hit;
       const partial =
-        (numeric.has(kind) && Array.from(text.matchAll(new RegExp(`\\d{${minPart},}`, "g"))).some((m) => query.includes(m[0]))) ||
-        (kind === "CARD" && new RegExp(`(?<!\\d)${digitsOf(text).slice(-4)}(?!\\d)`).test(query));
+        (numeric.has(kind) && Array.from(text.matchAll(re(`${D}{${minPart},}`, "g"))).some((m) => query.includes(m[0]))) ||
+        (kind === "CARD" && re(`(?<!${D})${digitsOf(text).slice(-4)}(?!${D})`).test(query));
       if (query.includes(text) || partial) hits.add(kind);
     });
   });
@@ -336,7 +341,7 @@ function cardWindows(m: RegExpMatchArray): [Range, string][] {
   const v = m[0];
   const offset = m.index!;
   const digitAt: number[] = [];
-  for (let i = 0; i < v.length; i++) if (v[i] >= "0" && v[i] <= "9") digitAt.push(i);
+  for (let i = 0; i < v.length; i++) if (ND.test(v[i])) digitAt.push(i);
   const last = digitAt.length - 1;
   const isStart = (i: number) => i === 0 || digitAt[i] !== digitAt[i - 1] + 1;
   const isEnd = (i: number) => i === last || digitAt[i + 1] !== digitAt[i] + 1;
@@ -355,7 +360,7 @@ function cardWindows(m: RegExpMatchArray): [Range, string][] {
   return out;
 }
 
-const yearLike = /^(?:1[89]|20)\d\d$/;
+const yearLike = re(`^(?:1[89]|20)${D}${D}$`);
 
 /**
  * Card numbers start with 2-6 (Mastercard, Amex, Visa, Discover and the like). A list
