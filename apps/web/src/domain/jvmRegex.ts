@@ -3,15 +3,17 @@
  * the JVM, so both apps decide the same way. Every pattern built from these uses the
  * "u" flag.
  *
- * - JVM \s is ASCII whitespace only; JavaScript \s also takes no-break and other Unicode spaces.
+ * - Whitespace follows the phone, not the JVM unit tests: Android's ICU regex \s matches
+ *   Unicode spaces and line separators (no-break space, U+2028) as well as ASCII ones, so a
+ *   phrase or a card number split by them is read the same way in both apps.
  * - JVM \b (Java 17) counts letters, digits, "_" and combining marks in any script as word
  *   characters; JavaScript \b only knows ASCII.
  * - JVM (?i) folds ASCII only; JavaScript /iu folds Unicode ("ſ" matches "s"), so
  *   case-insensitive words are spelled out as [aA] classes instead.
  */
 
-/** JVM \s. */
-export const S = "[ \\t\\n\\x0B\\f\\r]";
+/** Android (ICU) \s: ASCII whitespace, U+0085 and every Unicode space or line separator. */
+export const S = "[\\t-\\r\\x85\\p{Z}]";
 
 const WORD = "[\\p{L}\\p{Nd}\\p{Mn}_]";
 

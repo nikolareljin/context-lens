@@ -37,12 +37,12 @@ describe("Tier0Filter", () => {
     expect(Tier0Filter.check(text).type).toBe("drop");
   });
 
-  it("counts words in any script and keeps the JVM case and space rules", () => {
+  it("counts words in any script and keeps the phone's case and space rules", () => {
     expect(Tier0Filter.check("Ça va très bien")).toEqual({ type: "pass" });
     expect(Tier0Filter.check("ok ok")).toEqual({ type: "drop", reason: "too short" });
     expect(Tier0Filter.check("MORNING, how are you")).toEqual({ type: "drop", reason: "small talk" });
-    // a no-break space is not JVM whitespace, so this is not "Morning!"
-    expect(Tier0Filter.check("Morning ! how are you")).toEqual({ type: "pass" });
+    // a no-break space is whitespace for Android's ICU regex, so this is "Morning!" there too
+    expect(Tier0Filter.check("Morning\u00a0! how are you")).toEqual({ type: "drop", reason: "small talk" });
   });
 
   it("keeps a short sentence with a number in any script, as on the phone", () => {

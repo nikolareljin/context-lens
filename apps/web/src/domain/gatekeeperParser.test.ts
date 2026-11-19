@@ -62,4 +62,10 @@ describe("GatekeeperParser", () => {
     expect(many?.resolvedReferences[0].length).toBe(GatekeeperParser.REF_MAX);
     expect(GatekeeperParser.firstObject('x {"a": "}\\"{"} y')).toBe('{"a": "}\\"{"}');
   });
+
+  it("collapses mixed Unicode spaces in the question, as the phone does", () => {
+    // made-up test card number with a no-break space next to a space
+    const r = GatekeeperParser.parse('{"kind":"world","query":"Is card 4111\u00a0 1111 1111 1111 stolen?"}');
+    expect(r?.sanitizedResolvedQuery).toBe("Is card 4111 1111 1111 1111 stolen?");
+  });
 });

@@ -64,4 +64,8 @@ describe("DateResolver", () => {
     expect(DateResolver.resolve("todayé", today)).toBeNull();
     expect(DateResolver.resolve("é today", today)?.phrase).toBe("today");
   });
+
+  it("reads a weekday phrase split by a no-break space", () => {
+    expect(DateResolver.resolve("next\u00a0Monday", "2026-11-14")).toMatchObject({ start: "2026-11-16" });
+  });
 });
