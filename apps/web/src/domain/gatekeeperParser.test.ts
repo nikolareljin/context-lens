@@ -68,4 +68,10 @@ describe("GatekeeperParser", () => {
     const r = GatekeeperParser.parse('{"kind":"world","query":"Is card 4111\u00a0 1111 1111 1111 stolen?"}');
     expect(r?.sanitizedResolvedQuery).toBe("Is card 4111 1111 1111 1111 stolen?");
   });
+
+  it("accepts unquoted values, as the app's JSON reader does", () => {
+    expect(GatekeeperParser.parse('{"claim": True, "query": "Did the bus fare rise in 2026?"}')?.sanitizedResolvedQuery).toBe("Did the bus fare rise in 2026?");
+    expect(GatekeeperParser.parse('{"kind": world, "query": "Did the bus fare rise in 2026?"}')?.hasVerifiableClaim).toBe(true);
+    expect(GatekeeperParser.parse('{"claim": False, "query": "x"}')?.hasVerifiableClaim).toBe(false);
+  });
 });

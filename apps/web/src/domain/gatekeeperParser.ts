@@ -90,7 +90,21 @@ function escapeControls(block: string): string {
   let out = "";
   let inString = false;
   let escaped = false;
+  let bare = "";
+  // kotlinx.serialization also accepts unquoted values ({"claim": True}, {"kind": world});
+  // JSON.parse does not, so a bare token that is not true/false/null or a number is quoted.
+  const flushBare = () => {
+    if (bare.length > 0) out += /^(?:true|false|null|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)$/.test(bare) ? bare : JSON.stringify(bare);
+    bare = "";
+  };
   for (const c of block) {
+    if (!inString) {
+      if (c !== '"' && !/[{}[\]:,\s]/.test(c)) {
+        bare += c;
+        continue;
+      }
+      flushBare();
+    }
     if (inString && !escaped && c < " ") {
       out += `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`;
       continue;
@@ -100,6 +114,7 @@ function escapeControls(block: string): string {
     else if (c === '"') inString = !inString;
     out += c;
   }
+  flushBare();
   return out;
 }
 
