@@ -96,7 +96,9 @@ function stageText(check: Check, context: CardContext): string {
     case "VERIFYING":
       return "Checking with Google Search…";
     case "CLOUD_UNAVAILABLE":
-      return "Cloud check unavailable right now (quota or billing limit). The question was written in this browser; you can search it yourself.";
+      return `Cloud check unavailable right now (quota or billing limit). The question was written ${
+        check.gate?.source === ON_DEVICE ? "in this browser" : "by your project's cloud Gemini"
+      }; you can search it yourself.`;
     case "OFFLINE":
       return check.note !== undefined || check.sentToCloud
         ? "Not checked in the cloud: the network was lost during the check. A request may have left before that; the ledger lists it."

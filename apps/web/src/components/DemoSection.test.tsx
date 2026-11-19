@@ -40,7 +40,7 @@ async function check(text: string) {
 }
 
 describe("connecting a project", () => {
-  it("leaves App Check storage alone when another tab replaces the project with one that uses App Check", () => {
+  it("leaves App Check storage to another tab's App Check project, and still reloads to release it", () => {
     const deleteDatabase = vi.fn(() => ({}) as IDBOpenDBRequest);
     vi.stubGlobal("indexedDB", { open: vi.fn(), deleteDatabase });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(fakeProject({ recaptchaSiteKey: "6Lc_springfield_site_key_555" })));
@@ -54,7 +54,35 @@ describe("connecting a project", () => {
     expect(localStorage.getItem(STORAGE_KEY)).toBe(other);
     expect(localStorage.getItem("_grecaptcha")).toBe("springfield-recaptcha-state");
     expect(deleteDatabase).not.toHaveBeenCalled();
+    // this tab's App Check connection is released by the reload
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves App Check storage to another tab's App Check project when this tab never started App Check", () => {
+    const deleteDatabase = vi.fn(() => ({}) as IDBOpenDBRequest);
+    vi.stubGlobal("indexedDB", { open: vi.fn(), deleteDatabase });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(fakeProject({ recaptchaSiteKey: "6Lc_springfield_site_key_555" })));
+    localStorage.setItem("_grecaptcha", "springfield-recaptcha-state");
+    renderDemo();
+    const other = JSON.stringify(fakeProject({ projectId: "demo-shelbyville", recaptchaSiteKey: "6Lc_shelbyville_site_key_555" }));
+    localStorage.setItem(STORAGE_KEY, other);
+    act(() => window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY, newValue: other })));
+    expect(localStorage.getItem("_grecaptcha")).toBe("springfield-recaptcha-state");
+    expect(deleteDatabase).not.toHaveBeenCalled();
     expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("reloads when replaced by a project without a site key after App Check ran here", () => {
+    vi.stubGlobal("indexedDB", { open: vi.fn(), deleteDatabase: vi.fn(() => ({}) as IDBOpenDBRequest) });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(fakeProject({ recaptchaSiteKey: "6Lc_springfield_site_key_555" })));
+    localStorage.setItem("_grecaptcha", "springfield-recaptcha-state");
+    renderDemo();
+    sources.at(-1)!.source.usedAppCheck = true;
+    const other = JSON.stringify(fakeProject({ projectId: "demo-shelbyville" }));
+    localStorage.setItem(STORAGE_KEY, other);
+    act(() => window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY, newValue: other })));
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem("_grecaptcha")).toBeNull();
   });
 
   it("cleans App Check storage when the replacing project has no site key", () => {

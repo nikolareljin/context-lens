@@ -2,7 +2,7 @@ import type { FirebaseApp } from "@firebase/app";
 import type { AI, EnhancedGenerateContentResponse, GenerativeModel, LanguageModelCreateOptions } from "@firebase/ai";
 import { GroundingParser, type ModelReply, type WebSource } from "../domain";
 import { ON_DEVICE, describe, type ModelSource, type PrivacyMode, type TextModel } from "../pipeline/pipeline";
-import type { WebProject } from "./project";
+import { loadProject, type WebProject } from "./project";
 
 /** Grounded verifier models, in the order tried; the same as the Android app (FirebaseModels.kt). */
 export const VERIFIER_CANDIDATES = ["gemini-3.1-flash-lite", "gemini-3.8-flash"];
@@ -148,15 +148,35 @@ function defaultStore(): KeyStore | null {
 let storageReady: Promise<unknown> = Promise.resolve();
 
 /**
- * Cleans up at startup when no project is remembered: the Firebase SDK's databases and
- * reCAPTCHA's localStorage entries. The SDK loads only after the cleanup has finished or was
- * reported blocked, so it never holds the databases open first.
+ * Cleans up at startup unless [keepAppCheck]: the Firebase SDK's databases and reCAPTCHA's
+ * localStorage entries. The SDK loads only after the cleanup has finished or was reported
+ * blocked, so it never holds the databases open first.
  */
-export function prepareBrowserStorage(remembered: boolean, idb?: IDBFactory, store?: KeyStore | null): Promise<ForgetResult> {
-  if (!remembered) forgetRecaptchaStorage(store === undefined ? defaultStore() : store);
-  const run = remembered ? Promise.resolve<ForgetResult>("none") : forgetFirebaseStorage(idb);
+export function prepareBrowserStorage(keepAppCheck: boolean, idb?: IDBFactory, store?: KeyStore | null): Promise<ForgetResult> {
+  if (!keepAppCheck) forgetRecaptchaStorage(store === undefined ? defaultStore() : store);
+  const run = keepAppCheck ? Promise.resolve<ForgetResult>("none") : forgetFirebaseStorage(idb);
   storageReady = run;
   return run;
+}
+
+/**
+ * The startup cleanup: only a remembered project with an App Check site key keeps App Check's
+ * storage. A remembered project without one, or none, gets it deleted, whichever tab wrote it.
+ */
+export function startupStorageCleanup(
+  projectStore: Pick<Storage, "getItem" | "setItem" | "removeItem"> | null = defaultProjectStore(),
+  idb?: IDBFactory,
+  store?: KeyStore | null,
+): Promise<ForgetResult> {
+  return prepareBrowserStorage(loadProject(projectStore)?.recaptchaSiteKey != null, idb, store);
+}
+
+function defaultProjectStore(): Pick<Storage, "getItem" | "setItem" | "removeItem"> | null {
+  try {
+    return globalThis.localStorage ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** The SDK is loaded only when a model is first needed, so the landing page stays light. */

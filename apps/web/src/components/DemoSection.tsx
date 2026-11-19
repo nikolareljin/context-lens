@@ -228,25 +228,27 @@ export function DemoSection({
   };
   /**
    * [appCheckStorageInUse]: another tab replaced this project with one that also uses App Check,
-   * so the App Check storage now belongs to that project and is left alone.
+   * so the App Check storage now belongs to that project and is not deleted here.
    */
   const disconnect = (appCheckStorageInUse = false) => {
     stopDemo();
-    const hadAppCheck = !appCheckStorageInUse && (project?.recaptchaSiteKey != null || engine?.models.usedAppCheck === true);
     const startedAppCheck = engine?.models.usedAppCheck === true;
+    const hadAppCheck = project?.recaptchaSiteKey != null || startedAppCheck;
     pipeline?.close();
     if (remembered && project !== null) clearIfStored(project);
     setProject(null);
     setRemembered(false);
     setMode("STRICT");
     if (!hadAppCheck) return;
-    // App Check may have stored a token, in this visit or an earlier one. Started in this tab,
-    // it holds its database open, so a reload lets the startup cleanup delete it; otherwise
-    // nothing holds it and it is deleted right away.
-    forgetRecaptchaStorage();
+    // Started in this tab, App Check holds its database open: a reload always releases it, and
+    // the startup cleanup then deletes the storage unless a remembered project with a site key
+    // still uses it. Not started here, nothing holds it, so it is deleted right away, unless
+    // another tab's project now uses it.
     if (startedAppCheck) {
+      if (!appCheckStorageInUse) forgetRecaptchaStorage();
       reload();
-    } else {
+    } else if (!appCheckStorageInUse) {
+      forgetRecaptchaStorage();
       void forgetFirebaseStorage();
     }
   };

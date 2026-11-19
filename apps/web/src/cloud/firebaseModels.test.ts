@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DemoScript } from "../pipeline/demoScript";
 import { WebPipeline } from "../pipeline/pipeline";
 import { CLEAN_QUESTION, GATE_CLAIM, fakeProject } from "../test/fakes";
+import { STORAGE_KEY } from "./project";
 import { deleteApp, getApps, initializeApp } from "@firebase/app";
 import * as appSdk from "@firebase/app";
 import {
@@ -10,6 +11,7 @@ import {
   forgetFirebaseStorage,
   onDeviceStatus,
   prepareBrowserStorage,
+  startupStorageCleanup,
   RECAPTCHA_STORAGE_KEYS,
   silenceHeartbeat,
   sourceLabel,
@@ -323,6 +325,44 @@ describe("browser storage", () => {
     await prepareBrowserStorage(false, idb, keyStore);
     expect(RECAPTCHA_STORAGE_KEYS.some((k) => store.has(k))).toBe(false);
     expect(store.get("other")).toBe("kept");
+  });
+
+  it("at startup keeps App Check storage only for a remembered project with a site key", async () => {
+    const deleted: string[] = [];
+    const idb = {
+      deleteDatabase: (name: string) => {
+        deleted.push(name);
+        const request = {} as IDBOpenDBRequest;
+        setTimeout(() => request.onsuccess?.(new Event("success")));
+        return request;
+      },
+    } as unknown as IDBFactory;
+    const projects = new Map<string, string>();
+    const projectStore = {
+      getItem: (k: string) => projects.get(k) ?? null,
+      setItem: (k: string, v: string) => void projects.set(k, v),
+      removeItem: (k: string) => void projects.delete(k),
+    };
+    const keys = new Map<string, string>([["_grecaptcha", "springfield"]]);
+    const keyStore = { removeItem: (k: string) => void keys.delete(k) };
+
+    // remembered without a site key (another tab's project): App Check storage is deleted
+    projects.set(STORAGE_KEY, JSON.stringify(fakeProject()));
+    expect(await startupStorageCleanup(projectStore, idb, keyStore)).toBe("deleted");
+    expect(deleted).toEqual(FIREBASE_DATABASES);
+    expect(keys.has("_grecaptcha")).toBe(false);
+
+    // remembered with a site key: its storage is in use and stays
+    deleted.length = 0;
+    keys.set("_grecaptcha", "springfield");
+    projects.set(STORAGE_KEY, JSON.stringify(fakeProject({ recaptchaSiteKey: "6Lc_springfield_site_key_555" })));
+    expect(await startupStorageCleanup(projectStore, idb, keyStore)).toBe("none");
+    expect(deleted).toEqual([]);
+    expect(keys.has("_grecaptcha")).toBe(true);
+
+    // nothing remembered: deleted
+    projects.clear();
+    expect(await startupStorageCleanup(projectStore, idb, keyStore)).toBe("deleted");
   });
 
   it("reports a deletion blocked by another tab, and a failed one", async () => {
