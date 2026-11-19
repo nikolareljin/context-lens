@@ -45,4 +45,14 @@ describe("GroundingParser", () => {
     expect(hostOf("https://[zz]/")).toBe("");
     expect(hostOf("https://[1:2:3:4:5:6:7:8:9]/")).toBe("");
   });
+
+  it("matches java.net.URI on zeros, single labels, zone ids, userinfo and illegal characters", () => {
+    const hostOf = (uri: string) => GroundingParser.parse([{ uri, title: null, domain: null }], [], null).citations[0]?.domain ?? "";
+    expect(hostOf("https://0001.1.1.1/")).toBe("0001.1.1.1");
+    expect(hostOf("https://1eth0/")).toBe("1eth0");
+    expect(hostOf("https://[fe80::1%25eth0]/")).toBe("[fe80::1%25eth0]");
+    expect(hostOf("https://]$@example.org/")).toBe("");
+    expect(hostOf("https://example.org/[x")).toBe("");
+    expect(hostOf("https://example.org/a\u00a0b")).toBe("");
+  });
 });

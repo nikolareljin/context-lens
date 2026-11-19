@@ -35,11 +35,13 @@ function nonEmpty(text: string | null): string | null {
   return t.length > 0 ? t : null;
 }
 
-const illegal = /[\x00-\x20\x7F"<>\\^`{|}]|%(?![0-9A-Fa-f]{2})/;
+const illegal = /[\x00-\x20\x7F-\x9F"<>\\^`{|}\p{Zs}\p{Zl}\p{Zp}]/u;
+const badEscape = /%(?![0-9A-Fa-f]{2})/;
+const userinfo = /^(?:[A-Za-z0-9\-_.!~*'();:&=+$,]|%[0-9A-Fa-f]{2}|[^\x00-\x7F])*$/;
 const label = "[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?";
-const hostname = new RegExp(`^(?:${label}\\.)*[A-Za-z](?:[A-Za-z0-9-]*[A-Za-z0-9])?\\.?$`);
+const hostname = new RegExp(`^(?:${label}\\.?|(?:${label}\\.)+[A-Za-z](?:[A-Za-z0-9-]*[A-Za-z0-9])?\\.?)$`);
 // java.net.URI takes leading zeros in an IPv4 octet ("001.2.3.4").
-const octet = "(?:25[0-5]|2[0-4]\\d|[01]?\\d?\\d)";
+const octet = "0*(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)";
 const ipv4 = new RegExp(`^(?:${octet}\\.){3}${octet}$`);
 
 /** A valid IPv6 literal, as java.net.URI checks it: 8 groups, or fewer with one "::", optionally ending in IPv4. */
@@ -69,12 +71,16 @@ function isIpv6(text: string): boolean {
 function host(uri: string): string {
   if (illegal.test(uri)) return "";
   const authority = /^https:\/\/([^/?#]*)/.exec(uri)?.[1] ?? "";
+  if (/^[^?#]*[[\]]|#.*#/.test(uri.slice(8 + authority.length))) return "";
   const at = authority.indexOf("@");
+  if (at >= 0 && !userinfo.test(authority.slice(0, at))) return "";
   const server = at >= 0 ? authority.slice(at + 1) : authority;
-  const m = /^(\[[0-9A-Fa-f:.]+\]|[^:]*)(?::\d*)?$/.exec(server);
+  const scoped = /^\[[0-9A-Fa-f:.]+(%[A-Za-z0-9_.]+)?\]/.exec(server);
+  if (badEscape.test(scoped ? uri.replace(scoped[0], "") : uri)) return "";
+  const m = /^(\[[0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.]+)?\]|[^:]*)(?::\d*)?$/.exec(server);
   if (m === null || m[1] === "") return "";
   const h = m[1];
-  if (h.startsWith("[")) return isIpv6(h.slice(1, -1)) ? h : "";
+  if (h.startsWith("[")) return isIpv6(h.slice(1, -1).split("%")[0]) ? h : "";
   return ipv4.test(h) || hostname.test(h) ? h : "";
 }
 
