@@ -31,8 +31,8 @@ Each card shows the source Firebase AI Logic reported for that request (on devic
 
 <div class="cl-screens" markdown>
 <figure><img src="assets/screen-listen-top.png" alt="Listen screen in Strict mode with the date, the fictional Springfield area, a pinned topic and three counters: 6 sentences read only on this phone, 0 B raw text sent, 0 claims checked in the cloud"><figcaption>Listen: Strict mode, the pinned topic and the session counters.</figcaption></figure>
-<figure><img src="assets/screen-listen-cards.png" alt="Two demo cards: each sentence rewritten on the device into a clean question about Springfield bus fares, with its resolved references and an ON_DEVICE source pill; the cloud check offers a browser search instead"><figcaption>Cards from the demo: the clean question is written on the device; here the cloud check was not set up yet, so the card offers a search.</figcaption></figure>
-<figure><img src="assets/screen-ledger.png" alt="Egress ledger: 6 sentences processed, 4 filtered on the phone, 0 B raw text sent, and the exact clean question that was sent to the cloud"><figcaption>Ledger: everything that left the phone, word for word.</figcaption></figure>
+<figure><img src="assets/screen-listen-cards.png" alt="Demo cards: a sentence rewritten on the device into a clean question about Springfield bus fares, with its resolved references and an ON_DEVICE Gemini Nano pill; the grounded check was refused on the free plan, so the card offers a browser search; small talk is dropped by the local rules"><figcaption>Cards from the demo: the clean question is written on the device; on a free-plan project the grounded check is refused, so the card offers a search. Small talk never reaches a model.</figcaption></figure>
+<figure><img src="assets/screen-ledger.png" alt="Egress ledger: 6 sentences processed, 5 filtered on the phone, 0 B raw text sent, and the exact clean question that was sent to the cloud, 283 B"><figcaption>Ledger: everything that left the phone, word for word.</figcaption></figure>
 </div>
 
 ## Get it
