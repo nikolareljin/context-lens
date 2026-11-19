@@ -74,4 +74,11 @@ describe("GatekeeperParser", () => {
     expect(GatekeeperParser.parse('{"kind": world, "query": "Did the bus fare rise in 2026?"}')?.hasVerifiableClaim).toBe(true);
     expect(GatekeeperParser.parse('{"claim": False, "query": "x"}')?.hasVerifiableClaim).toBe(false);
   });
+
+  it("rejects what the app's reader rejects and keeps its token rules", () => {
+    expect(GatekeeperParser.parse('{kind: world, query: "Did the bus fare rise in 2026?"}')).toBeNull();
+    expect(GatekeeperParser.parse('{"kind":"world","query":who\\won}')).toBeNull();
+    expect(GatekeeperParser.parse('{"claim":true,"query":"q","refs":[01]}')?.sanitizedResolvedQuery).toBe("q");
+    expect(GatekeeperParser.parse('{"kind":small\u00a0talk,"query":"q"}')?.hasVerifiableClaim).toBe(false);
+  });
 });

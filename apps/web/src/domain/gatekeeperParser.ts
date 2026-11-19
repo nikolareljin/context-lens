@@ -91,19 +91,34 @@ function escapeControls(block: string): string {
   let inString = false;
   let escaped = false;
   let bare = "";
-  // kotlinx.serialization also accepts unquoted values ({"claim": True}, {"kind": world});
-  // JSON.parse does not, so a bare token that is not true/false/null or a number is quoted.
+  // kotlinx.serialization (the app's reader) also accepts unquoted values in value position
+  // ({"claim": True}, {"kind": world}, [01]) but not unquoted keys, or values with a
+  // backslash or a control character. JSON.parse accepts none of them, so a bare value
+  // token is quoted unless it is strict JSON already; anything else is left for JSON.parse
+  // to reject, as kotlinx does. Tokens end only at structure and space/tab/LF/CR.
+  const stack: string[] = [];
+  let last = "";
   const flushBare = () => {
-    if (bare.length > 0) out += /^(?:true|false|null|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)$/.test(bare) ? bare : JSON.stringify(bare);
+    if (bare.length > 0) {
+      const valuePosition = last === ":" || (stack[stack.length - 1] === "[" && (last === "[" || last === ","));
+      const keepRaw =
+        !valuePosition ||
+        /[\\\x00-\x1f]/.test(bare) ||
+        /^(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)$/.test(bare);
+      out += keepRaw ? bare : JSON.stringify(bare);
+    }
     bare = "";
   };
   for (const c of block) {
     if (!inString) {
-      if (c !== '"' && !/[{}[\]:,\s]/.test(c)) {
+      if (!/[{}[\]:,"\\ \t\n\r]/.test(c)) {
         bare += c;
         continue;
       }
       flushBare();
+      if (c === "{" || c === "[") stack.push(c);
+      else if (c === "}" || c === "]") stack.pop();
+      if (/[{}[\]:,"\\]/.test(c)) last = c;
     }
     if (inString && !escaped && c < " ") {
       out += `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`;
