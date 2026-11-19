@@ -108,12 +108,29 @@ const word = (name: string) => re(`${B}${escape(name)}${B}`);
  * earlier the sentences the gatekeeper saw before it (it resolves "she" or "that
  * number" from them); publicNames (pinned topic, region) are never treated as
  * personal names.
+ *
+ * The patterns follow the JVM rules the Kotlin tests run on, where \s and \d are
+ * ASCII. On the phone, Android's ICU regex also matches full-width digits and no-break
+ * spaces, so the text is checked twice: as written and NFKC-normalized ("５５５" → "555",
+ * U+00A0 → space). Either check finding something counts, so this can only find more.
  */
 export function findIn(
   query: string,
   utterance: string,
   publicNames: string[] = [],
   earlier: string[] = [],
+): Set<PiiKind> {
+  const hits = findInText(query, utterance, publicNames, earlier);
+  const nfkc = (s: string) => s.normalize("NFKC");
+  findInText(nfkc(query), nfkc(utterance), publicNames.map(nfkc), earlier.map(nfkc)).forEach((k) => hits.add(k));
+  return hits;
+}
+
+function findInText(
+  query: string,
+  utterance: string,
+  publicNames: string[],
+  earlier: string[],
 ): Set<PiiKind> {
   const hits = new Set<PiiKind>();
   patternHits(query).forEach(([kind]) => hits.add(kind));

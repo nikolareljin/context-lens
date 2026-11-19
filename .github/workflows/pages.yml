@@ -5,7 +5,7 @@ name: pages
 on:
   push:
     branches: [main]
-    paths: ["apps/web/**", "docs/**", "mkdocs.yml", ".github/workflows/pages.yml"]
+    paths: ["apps/web/**", "apps/android/app/src/main/assets/prompts/**", "docs/**", "mkdocs.yml", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 concurrency:

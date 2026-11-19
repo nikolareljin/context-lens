@@ -139,4 +139,11 @@ describe("PiiPostScrubber", () => {
     expect(PiiPostScrubber.findIn("Did Jennaé win?", "My friend Jenna won.")).toEqual(none);
     expect(PiiPostScrubber.names("My NEIGHBOUR Jenna and Dr. Rosa's dog")).toEqual(new Set(["Jenna", "Rosa"]));
   });
+
+  it("catches full-width digits and no-break spaces, as Android's ICU regex does", () => {
+    // made-up 555 number written with full-width digits
+    expect(PiiPostScrubber.findIn("Is \uFF15\uFF15\uFF15-\uFF11\uFF12\uFF13-\uFF14\uFF15\uFF16\uFF17 a scam?", "").size).toBeGreaterThan(0);
+    // a name introduced with a no-break space after the title
+    expect(PiiPostScrubber.findIn("Did Patel say flu doubled?", "Ask Dr.\u00a0Patel about the flu").has("NAME" as PiiKind)).toBe(true);
+  });
 });
