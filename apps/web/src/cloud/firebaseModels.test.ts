@@ -10,6 +10,7 @@ import {
   forgetFirebaseStorage,
   onDeviceStatus,
   prepareBrowserStorage,
+  RECAPTCHA_STORAGE_KEYS,
   silenceHeartbeat,
   sourceLabel,
 } from "./firebaseModels";
@@ -236,6 +237,21 @@ describe("disconnecting", () => {
   });
 });
 
+describe("the on-device app", () => {
+  it("is made once for calls at the same time, and deleted by dispose()", async () => {
+    fakeLanguageModel();
+    const count = () => appNames().filter((n) => n.startsWith("contextlens-on-device")).length;
+    const before = count();
+    const source = new FirebaseModelSource(null);
+    const strict = source.gatekeeper("STRICT");
+    await Promise.all([strict.generate("Is the sky blue?"), strict.generate("Is grass green?"), source.prepareOnDevice()]);
+    expect(count()).toBe(before + 1);
+    await source.dispose();
+    expect(count()).toBe(before);
+    expectNothingSent();
+  });
+});
+
 describe("browser storage", () => {
   it("anonymous sign-in stays in memory: nothing in local, session or IndexedDB storage", async () => {
     fakeLanguageModel();
@@ -292,6 +308,21 @@ describe("browser storage", () => {
     expect(deleted).toEqual([]);
     expect(await prepareBrowserStorage(false, idb)).toBe("deleted");
     expect(deleted).toEqual(FIREBASE_DATABASES);
+  });
+
+  it("removes reCAPTCHA's local storage at startup unless a project is remembered", async () => {
+    const idb = { deleteDatabase: () => {
+      const request = {} as IDBOpenDBRequest;
+      setTimeout(() => request.onsuccess?.(new Event("success")));
+      return request;
+    } } as unknown as IDBFactory;
+    const store = new Map<string, string>([["_grecaptcha", "springfield"], ["other", "kept"]]);
+    const keyStore = { removeItem: (k: string) => void store.delete(k) };
+    await prepareBrowserStorage(true, idb, keyStore);
+    expect(store.has("_grecaptcha")).toBe(true);
+    await prepareBrowserStorage(false, idb, keyStore);
+    expect(RECAPTCHA_STORAGE_KEYS.some((k) => store.has(k))).toBe(false);
+    expect(store.get("other")).toBe("kept");
   });
 
   it("reports a deletion blocked by another tab, and a failed one", async () => {

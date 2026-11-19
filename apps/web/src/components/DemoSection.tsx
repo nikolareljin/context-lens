@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { localToday } from "../domain";
-import { FirebaseModelSource, onDeviceStatus, type OnDeviceStatus, type SetupRecorder } from "../cloud/firebaseModels";
+import {
+  FirebaseModelSource,
+  forgetFirebaseStorage,
+  forgetRecaptchaStorage,
+  onDeviceStatus,
+  type OnDeviceStatus,
+  type SetupRecorder,
+} from "../cloud/firebaseModels";
 import { clearProject, loadProject, saveProject, type WebProject } from "../cloud/project";
 import { DemoScript } from "../pipeline/demoScript";
 import { EgressLedger } from "../pipeline/ledger";
@@ -169,28 +176,44 @@ export function DemoSection({
     if (pipeline?.submit(text) != null) setText("");
   };
 
-  const connect = (p: WebProject, remember: boolean) => {
+  const connect = (p: WebProject, remember: boolean): string | null => {
     // App Check keeps a token in IndexedDB, so a site key needs the visitor's consent to store.
-    if (p.recaptchaSiteKey && !remember) return;
-    stopDemo();
+    if (p.recaptchaSiteKey && !remember) return "A reCAPTCHA site key needs “Remember on this device”.";
     if (remember) {
-      setRemembered(saveProject(p));
+      const saved = saveProject(p);
+      // Without storage there is no remembered project, and so no consent for App Check's token.
+      if (!saved && p.recaptchaSiteKey) {
+        return "This browser's storage is not available, so the project can't be remembered and App Check stays off. Connect without the site key.";
+      }
+      stopDemo();
+      setRemembered(saved);
     } else {
+      stopDemo();
       clearProject();
       setRemembered(false);
     }
     setProject(p);
+    return null;
   };
   const disconnect = () => {
     stopDemo();
-    const usedAppCheck = engine?.models.usedAppCheck === true;
+    const hadAppCheck = project?.recaptchaSiteKey != null || engine?.models.usedAppCheck === true;
+    const startedAppCheck = engine?.models.usedAppCheck === true;
     pipeline?.close();
     clearProject();
     setProject(null);
     setRemembered(false);
     setMode("STRICT");
-    // App Check holds its database open in this tab; a reload lets the startup cleanup delete it.
-    if (usedAppCheck) reload();
+    if (!hadAppCheck) return;
+    // App Check may have stored a token, in this visit or an earlier one. Started in this tab,
+    // it holds its database open, so a reload lets the startup cleanup delete it; otherwise
+    // nothing holds it and it is deleted right away.
+    forgetRecaptchaStorage();
+    if (startedAppCheck) {
+      reload();
+    } else {
+      void forgetFirebaseStorage();
+    }
   };
 
   const prepare = async () => {

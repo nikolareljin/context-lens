@@ -161,7 +161,7 @@ function browserStore(): Store | null {
   }
 }
 
-/** The stored project; null when there is none or it no longer validates. */
+/** The stored project; null when there is none. A stored value that no longer validates is removed. */
 export function loadProject(store: Store | null = browserStore()): WebProject | null {
   try {
     const raw = store?.getItem(STORAGE_KEY);
@@ -179,8 +179,11 @@ export function loadProject(store: Store | null = browserStore()): WebProject | 
       },
       data.anonymousAuth === true,
     );
-    return problems(project).size === 0 ? project : null;
+    if (problems(project).size === 0) return project;
+    clearProject(store);
+    return null;
   } catch {
+    clearProject(store);
     return null;
   }
 }

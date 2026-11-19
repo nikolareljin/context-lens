@@ -89,6 +89,10 @@ describe("keeping a project in this browser", () => {
     expect(loadProject(store)).toBeNull();
     store.setItem(STORAGE_KEY, JSON.stringify({ ...fakeProject(), apiKey: "x" }));
     expect(loadProject(store)).toBeNull();
+    expect(store.map.has(STORAGE_KEY)).toBe(false);
+    store.setItem(STORAGE_KEY, "{not json");
+    expect(loadProject(store)).toBeNull();
+    expect(store.map.has(STORAGE_KEY)).toBe(false);
   });
 
   it("works without storage", () => {

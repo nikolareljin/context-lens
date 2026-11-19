@@ -39,6 +39,36 @@ async function check(text: string) {
 }
 
 describe("connecting a project", () => {
+  it("Disconnect of a remembered App Check project cleans up even without a cloud call in this tab", () => {
+    const deleteDatabase = vi.fn(() => ({}) as IDBOpenDBRequest);
+    vi.stubGlobal("indexedDB", { open: vi.fn(), deleteDatabase });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(fakeProject({ recaptchaSiteKey: "6Lc_springfield_site_key_555" })));
+    localStorage.setItem("_grecaptcha", "springfield-recaptcha-state");
+    renderDemo();
+    expect(screen.getByText("demo-springfield")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Disconnect" }));
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(localStorage.getItem("_grecaptcha")).toBeNull();
+    expect(deleteDatabase.mock.calls.map((c) => (c as unknown[])[0])).toEqual(["firebase-app-check-database", "firebase-heartbeat-database"]);
+    // App Check did not run in this tab, so nothing holds the database open: no reload needed
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("refuses a site key when the project cannot be remembered", () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("QuotaExceededError");
+    });
+    renderDemo();
+    const withKey = snippet.replace("};", ', recaptchaSiteKey: "6Lc_springfield_site_key_555" };');
+    fireEvent.change(screen.getByLabelText("Web app config or connect code"), { target: { value: withKey } });
+    fireEvent.click(screen.getByLabelText(/Remember on this device/));
+    fireEvent.click(screen.getByRole("button", { name: "Connect…" }));
+    fireEvent.click(screen.getByRole("button", { name: "Connect demo-springfield" }));
+    expect(screen.getByRole("alert").textContent).toContain("can't be remembered and App Check stays off");
+    expect(screen.getByText(/Not connected/)).toBeTruthy();
+    expect(sources.at(-1)?.project).toBeNull();
+  });
+
   it("asks for confirmation naming the project, keeps it in memory only, and disconnects", async () => {
     const setItem = vi.spyOn(Storage.prototype, "setItem");
     const open = vi.fn();

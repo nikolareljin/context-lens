@@ -119,13 +119,37 @@ export async function forgetFirebaseStorage(idb: IDBFactory | undefined = global
   return results.find((r) => r !== "deleted") ?? "deleted";
 }
 
+/** localStorage keys reCAPTCHA Enterprise writes for App Check. */
+export const RECAPTCHA_STORAGE_KEYS = ["_grecaptcha"];
+
+type KeyStore = Pick<Storage, "removeItem">;
+
+/** Removes reCAPTCHA's own entries from this browser's localStorage. */
+export function forgetRecaptchaStorage(store: KeyStore | null = defaultStore()): void {
+  try {
+    RECAPTCHA_STORAGE_KEYS.forEach((key) => store?.removeItem(key));
+  } catch {
+    // storage blocked: nothing was stored either
+  }
+}
+
+function defaultStore(): KeyStore | null {
+  try {
+    return globalThis.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
 let storageReady: Promise<unknown> = Promise.resolve();
 
 /**
- * Cleans up at startup when no project is remembered. The SDK loads only after the cleanup
- * has finished or was reported blocked, so it never holds the databases open first.
+ * Cleans up at startup when no project is remembered: the Firebase SDK's databases and
+ * reCAPTCHA's localStorage entries. The SDK loads only after the cleanup has finished or was
+ * reported blocked, so it never holds the databases open first.
  */
-export function prepareBrowserStorage(remembered: boolean, idb?: IDBFactory): Promise<ForgetResult> {
+export function prepareBrowserStorage(remembered: boolean, idb?: IDBFactory, store?: KeyStore | null): Promise<ForgetResult> {
+  if (!remembered) forgetRecaptchaStorage(store === undefined ? defaultStore() : store);
   const run = remembered ? Promise.resolve<ForgetResult>("none") : forgetFirebaseStorage(idb);
   storageReady = run;
   return run;
@@ -209,6 +233,7 @@ class SdkModel implements TextModel {
 export class FirebaseModelSource implements ModelSource {
   private sdk: Promise<{ app: AppSdk; ai: AiSdk }> | null = null;
   private localApp: FirebaseApp | null = null;
+  private localAppReady: Promise<FirebaseApp> | null = null;
   private cloudApp: FirebaseApp | null = null;
   private cloudAi: Promise<AI> | null = null;
   private preferred: string | null = null;
@@ -292,17 +317,27 @@ export class FirebaseModelSource implements ModelSource {
     return created;
   }
 
-  private async onDeviceModel(): Promise<GenerativeModel> {
-    const { app, ai } = await this.load();
-    if (this.localApp === null) {
-      const created = await this.newApp(app, ON_DEVICE_OPTIONS, ON_DEVICE_APP_NAME);
+  /** The on-device app, made once even when two calls ask at the same time. */
+  private onDeviceApp(appSdk: AppSdk): Promise<FirebaseApp> {
+    this.localAppReady ??= (async () => {
+      const created = await this.newApp(appSdk, ON_DEVICE_OPTIONS, ON_DEVICE_APP_NAME);
       if (this.disposed) {
-        await app.deleteApp(created).catch(() => {});
+        await appSdk.deleteApp(created).catch(() => {});
         throw new Error(DISCONNECTED);
       }
       this.localApp = created;
-    }
-    return ai.getGenerativeModel(ai.getAI(this.localApp), {
+      return created;
+    })().catch((e: unknown) => {
+      this.localAppReady = null;
+      throw e;
+    });
+    return this.localAppReady;
+  }
+
+  private async onDeviceModel(): Promise<GenerativeModel> {
+    const { app, ai } = await this.load();
+    const local = await this.onDeviceApp(app);
+    return ai.getGenerativeModel(ai.getAI(local), {
       mode: ai.InferenceMode.ONLY_ON_DEVICE,
       onDeviceParams: { createOptions: CREATE_OPTIONS },
     });
@@ -403,6 +438,7 @@ export class FirebaseModelSource implements ModelSource {
     this.disposed = true;
     const apps = [this.localApp, this.cloudApp].filter((a): a is FirebaseApp => a !== null);
     this.localApp = null;
+    this.localAppReady = null;
     this.cloudApp = null;
     this.cloudAi = null;
     const sdk = this.sdk;

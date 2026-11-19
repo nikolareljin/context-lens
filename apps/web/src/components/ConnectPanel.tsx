@@ -6,7 +6,8 @@ interface Props {
   project: WebProject | null;
   /** True when the project is kept in this browser's storage. */
   remembered: boolean;
-  onConnect: (project: WebProject, remember: boolean) => void;
+  /** Returns why the project was not connected, or null when it was. */
+  onConnect: (project: WebProject, remember: boolean) => string | null;
   onDisconnect: () => void;
 }
 
@@ -82,8 +83,12 @@ export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: P
 
   const confirm = () => {
     if (pending === null) return;
-    onConnect(pending, remember);
+    const refused = onConnect(pending, remember);
     setPending(null);
+    if (refused !== null) {
+      setError(refused);
+      return;
+    }
     setText("");
   };
 
