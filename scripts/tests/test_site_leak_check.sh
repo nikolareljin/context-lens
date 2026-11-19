@@ -32,6 +32,16 @@ test_an_app_id_fails() {
   out="$(check site || true)"
   assert_contains "$out" "site/assets/chunk.js line 3: Firebase app id"
 }
+test_a_percent_encoded_app_id_fails() {
+  site; printf 'contextlens-web-connect:1?project=demo-x&app=%s&sender=481234567\n' "1%3A48""1234567%3Aweb%3Aab12cd" > site/a.html
+  out="$(check site || true)"
+  assert_contains "$out" "site/a.html line 1: Firebase app id"
+  printf 'app=%s\n' "1%3a48""1234567%3aandroid%3aab12" > site/a.html
+  assert_status 1 "$script" site
+  # the documentation example uses a short made-up project number
+  printf 'app=%s\n' "1%3A55501%3Aweb%3A5ca1ab1e" > site/a.html
+  assert_status 0 "$script" site
+}
 test_project_hosts_fail() {
   site; printf '%s\n%s\n' "$host" "https://$pages_host/x" > site/docs.html
   out="$(check site || true)"

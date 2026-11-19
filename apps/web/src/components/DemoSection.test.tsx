@@ -40,6 +40,30 @@ async function check(text: string) {
 }
 
 describe("connecting a project", () => {
+  it("Disconnect finishes the model source before it asks whether App Check started", () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(fakeProject({ recaptchaSiteKey: "6Lc_springfield_site_key_555" })));
+    vi.stubGlobal("indexedDB", { open: vi.fn(), deleteDatabase: vi.fn(() => ({}) as IDBOpenDBRequest) });
+    const order: string[] = [];
+    const models = (project: WebProject | null): DemoModels => {
+      const fake = new FakeSource();
+      fake.dispose = async () => void order.push("dispose");
+      Object.defineProperty(fake, "usedAppCheck", {
+        get: () => {
+          order.push("usedAppCheck");
+          return false;
+        },
+      });
+      sources.push({ project, source: fake });
+      return fake;
+    };
+    render(<DemoSection createModels={models} status={status} demoGapMs={0} reload={reload} />);
+    order.length = 0;
+    localStorage.removeItem(STORAGE_KEY);
+    act(() => window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY, newValue: null })));
+    expect(order[0]).toBe("dispose");
+    expect(order).toContain("usedAppCheck");
+  });
+
   it("leaves App Check storage to another tab's App Check project, and still reloads to release it", () => {
     const deleteDatabase = vi.fn(() => ({}) as IDBOpenDBRequest);
     vi.stubGlobal("indexedDB", { open: vi.fn(), deleteDatabase });

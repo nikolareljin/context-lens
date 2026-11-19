@@ -232,6 +232,9 @@ export function DemoSection({
    */
   const disconnect = (appCheckStorageInUse = false) => {
     stopDemo();
+    // Finished first (dispose() marks the source disposed at once), so a cloud setup still in
+    // progress can no longer start App Check after usedAppCheck is read below.
+    void engine?.models.dispose?.();
     const startedAppCheck = engine?.models.usedAppCheck === true;
     const hadAppCheck = project?.recaptchaSiteKey != null || startedAppCheck;
     pipeline?.close();

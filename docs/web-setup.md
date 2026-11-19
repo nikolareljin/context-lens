@@ -21,7 +21,7 @@ The microphone stays off: Chrome's speech recognition sends audio to Google.
 A web connect code carries the same values on one line:
 
 ```text
-contextlens-web-connect:1?project=demo-springfield&app=1%3A5550001%3Aweb%3A5ca1ab1e&key=<apiKey>&domain=demo-springfield.firebaseapp.com&sender=5550001
+contextlens-web-connect:1?project=demo-springfield&app=1%3A55501%3Aweb%3A5ca1ab1e&key=<apiKey>&domain=demo-springfield.firebaseapp.com&sender=55501
 ```
 
 `site=<reCAPTCHA site key>` is optional. Each value is checked: `apiKey` must look like a web API key, `appId` like `1:<number>:web:<hex>`, the project id like a Firebase project id, and `messagingSenderId` must match the app id's project number.

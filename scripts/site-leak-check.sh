@@ -8,7 +8,8 @@
 # Fails on, in any file under <dir> (text or binary; symbolic links are followed, as the
 # Pages upload follows them):
 #   - a web API key (AIza followed by 35 key characters)
-#   - a Firebase app id (<number>:<project number>:web|android|ios:<hex>)
+#   - a Firebase app id (<number>:<project number>:web|android|ios:<hex>), also with the colons
+#     percent-encoded (%3A), as in a connect code
 #   - a *.firebaseapp.com, *.web.app, *.firebasestorage.app or *.appspot.com host, unless
 #     its name starts with "demo-" (the Firebase convention for projects that do not exist,
 #     used only as documentation examples)
@@ -30,7 +31,8 @@ dir="$1"
 [[ -d "$dir" ]] || die "not a directory: $dir" 2
 
 key_re='AIza[0-9A-Za-z_-]{35}'
-app_re='[0-9]+:[0-9]{6,}:(web|android|ios):[0-9a-f]+'
+# also percent-encoded, as in a connect code (1%3A…%3Aweb%3A…)
+app_re='[0-9]+(:|%3[Aa])[0-9]{6,}(:|%3[Aa])(web|android|ios)(:|%3[Aa])[0-9a-f]+'
 host_re='[A-Za-z0-9.-]*[A-Za-z0-9-]\.(firebaseapp\.com|web\.app|firebasestorage\.app|appspot\.com)'
 # only a host whose own name starts with "demo-"
 host_ok='^([A-Za-z0-9-]+\.)*demo-[A-Za-z0-9-]*\.(firebaseapp\.com|web\.app|firebasestorage\.app|appspot\.com)$'
