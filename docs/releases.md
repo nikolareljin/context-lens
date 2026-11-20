@@ -21,14 +21,14 @@ Versions follow [Semantic Versioning](https://semver.org/). Tags carry the bare 
 |---|---|---|
 | CI artifact | every pull request and push to `main` | debug APK |
 | Firebase App Distribution | every merge to `main` that touches the app, once enabled | signed build for testers |
-| GitHub Releases | every version tag | signed APK and AAB, the Chrome extension zip and its SHA-256, release notes |
+| GitHub Releases | every version tag | signed APK and AAB, the Chrome extension zip and its SHA-256, the Chrome Web Store zip, release notes |
 | This site | every merge to `main` that touches the docs | rebuilt and published; the download page always points at the latest release |
 
 ## How a release is made
 
 1. `./dev version --dry-run` shows the next version, derived from the Conventional Commits since the last tag: a breaking change bumps the major version (the minor one while the version is `0.x`), `feat` bumps the minor version, anything else the patch version. A level or an exact version can be given instead.
 2. `./dev version --pr` writes `VERSION` and the web companion's package version (`apps/web/package.json` and its lock file), dates the `## [Unreleased]` changelog entries as the new version, commits on `release/X.Y.Z` and opens the pull request.
-3. Merging that pull request tags the merge commit (`tag-release` workflow), builds the signed APK and AAB and the Chrome extension zip with its SHA-256, and publishes the GitHub release.
+3. Merging that pull request tags the merge commit (`tag-release` workflow), builds the signed APK and AAB, the Chrome extension zip with its SHA-256 and the Chrome Web Store zip, and publishes the GitHub release.
 
 Published tags are immutable: the workflow may create a tag, never move or delete one. `./dev release` remains as a manual fallback that tags `main` directly.
 

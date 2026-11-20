@@ -10,8 +10,9 @@ Ready for the Chrome Web Store: the upload package, the install options and the 
 
 ### Added
 
+- Link previews: the web companion and every docs page carry Open Graph and Twitter/X tags with a 1280×640 social card (`docs/assets/social-card.png`, source `social-card.svg`), each docs page with its own title and address.
 - Chrome Web Store upload: packaging also writes `context-lens-extension-store.zip` (same files, manifest without the `key` that fixes the unpacked extension id; the store assigns its own), attached to every release.
-- The extension guide lists the three ways to install (Chrome Web Store once published, one command, the ZIP by hand), and the privacy page has a section for the web companion and the extension, which the store listing links to.
+- The extension guide lists the three ways to install (Chrome Web Store once published, one command, the ZIP by hand), and the privacy page has a section for the web companion and the extension, for the store listing to link to.
 
 ## [0.3.0] - 2026-11-19
 
