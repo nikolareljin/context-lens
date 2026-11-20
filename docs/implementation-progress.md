@@ -109,3 +109,6 @@ A dated record of the work done during the hackathon. Each entry lists what was 
 - Verified: unit tests (manifest, extension id from the key, the site key refused in the extension), script tests (packaging checks, installer: checksum, update, Chromium launch, Chrome steps, a folder that is not the extension is left alone), the PowerShell installer in PowerShell 7, and the package loaded in Chromium with `--load-extension`, where the side panel page rendered the demo.
 - Open: a run in Chrome with Gemini Nano and the judges' project.
 
+## 2026-11-19: release 0.3.0
+
+- The first release with the Chrome extension attached (`context-lens-extension.zip` and its SHA-256), so the one-command install has something to download.

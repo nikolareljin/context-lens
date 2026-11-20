@@ -11,7 +11,7 @@ title: ContextLens
 <div class="tl-badges"><span>Android</span><span>Firebase AI Logic</span><span>Gemini Nano on device</span><span>Grounding with Google Search</span><span>App Check</span></div>
 
 !!! info "Status"
-    Built for the [Firebase Hybrid AI Hackathon 2026](https://firebasehybridaihackathon.devpost.com/). Release 0.2.0 is the complete loop on Android, phone-only until you connect your own Firebase project ([download it](download.md)), and the same pipeline in Chrome on the [web companion](../). What exists today, and when it was built, is in the [progress log](implementation-progress.md); the on-device results are in [Evaluation](evaluation.md).
+    Built for the [Firebase Hybrid AI Hackathon 2026](https://firebasehybridaihackathon.devpost.com/). Release 0.3.0 is the complete loop on Android, phone-only until you connect your own Firebase project ([download it](download.md)), the same pipeline in Chrome on the [web companion](../), and in Chrome's side panel as the [Chrome extension](extension.md). What exists today, and when it was built, is in the [progress log](implementation-progress.md); the on-device results are in [Evaluation](evaluation.md).
 
 ## The problem
 
