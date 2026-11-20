@@ -31,7 +31,7 @@ describe("demo run steps", () => {
   it("goes all the way for a checked claim, and says where the question was written", () => {
     expect(states({ ...base, stage: "DONE", gate })).toEqual(["done", "done", "done", "done"]);
     expect(stepsOf({ ...base, stage: "DONE", gate }).map((s) => s.where)[1]).toBe("Gemini Nano, in this browser");
-    expect(stepsOf({ ...base, stage: "DONE", gate, sentToCloud: true })[1].where).toBe("cloud Gemini (Balanced mode)");
+    expect(stepsOf({ ...base, stage: "DONE", gate, sentToCloud: true }, "BALANCED")[1].where).toBe("cloud Gemini (Balanced mode)");
   });
 
   it("says the sentence went to the cloud in Balanced mode, even when the question is withheld", () => {
