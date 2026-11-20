@@ -215,8 +215,13 @@ describe("connecting a project", () => {
       expect(screen.getByRole("alert").textContent).toContain("can't load inside the extension");
       expect(screen.queryByRole("button", { name: "Connect demo-springfield" })).toBeNull();
       expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+      expect(document.body.textContent).toContain("this extension's own storage");
+      expect(document.body.textContent).not.toContain("share this browser's storage");
       fireEvent.change(screen.getByLabelText("Web app config or connect code"), { target: { value: snippet } });
       fireEvent.click(screen.getByRole("button", { name: "Connect…" }));
+      const dialog = screen.getByRole("dialog");
+      expect(dialog.textContent).toContain("this extension's own storage");
+      expect(dialog.textContent).not.toContain("nikolareljin.github.io");
       fireEvent.click(screen.getByRole("button", { name: "Connect demo-springfield" }));
       expect(sources.at(-1)?.project?.projectId).toBe("demo-springfield");
     } finally {

@@ -141,11 +141,18 @@ export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: P
           </label>
           <label className="flex items-start gap-2 text-sm text-slate-300">
             <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="mt-1" />
-            <span>
-              Remember on this device. Otherwise the project is kept in this tab's memory only. All sites under
-              nikolareljin.github.io share this browser's storage (same origin), so remember it only in a personal browser.
-              Needed for an App Check site key.
-            </span>
+            {inExtension() ? (
+              <span>
+                Remember on this device. Otherwise the project is kept only while the panel is open. A remembered project
+                is kept in this extension's own storage, separate from every website.
+              </span>
+            ) : (
+              <span>
+                Remember on this device. Otherwise the project is kept in this tab's memory only. All sites under
+                nikolareljin.github.io share this browser's storage (same origin), so remember it only in a personal browser.
+                Needed for an App Check site key.
+              </span>
+            )}
           </label>
           <div>
             <button ref={opener} type="button" onClick={check} className="rounded-full bg-bridge px-4 py-1 text-sm font-medium text-white hover:bg-cloud">
@@ -171,8 +178,12 @@ export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: P
               <li>Clean questions (never your sentences in Strict mode) go to Gemini in this project, on its quota and bill.</li>
               <li>
                 {remember
-                  ? "The values are remembered in this browser's local storage, shared by every site under nikolareljin.github.io, and sent only to Firebase."
-                  : "The values are kept in this tab's memory only and sent only to Firebase; they are gone when the tab closes."}
+                  ? inExtension()
+                    ? "The values are remembered in this extension's own storage and sent only to Firebase."
+                    : "The values are remembered in this browser's local storage, shared by every site under nikolareljin.github.io, and sent only to Firebase."
+                  : inExtension()
+                    ? "The values are kept only while the panel is open and sent only to Firebase."
+                    : "The values are kept in this tab's memory only and sent only to Firebase; they are gone when the tab closes."}
               </li>
               {pending.recaptchaSiteKey && (
                 <li>App Check with reCAPTCHA Enterprise is turned on; its token is kept in this browser until Disconnect, which reloads the page to delete it.</li>
