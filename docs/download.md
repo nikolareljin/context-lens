@@ -23,7 +23,7 @@ With **USB debugging** on (Settings → About phone → tap **Build number** sev
 
 ```bash
 bash scripts/phone-install.sh                  # the newest release
-bash scripts/phone-install.sh --version 0.1.1  # a given release
+bash scripts/phone-install.sh --version 0.2.0  # a given release
 bash scripts/phone-install.sh --apk my.apk     # a file you already have
 ```
 

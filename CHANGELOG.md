@@ -4,6 +4,10 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-19
+
+The web companion runs the same pipeline in Chrome, on a Firebase project the visitor connects. The APK carries the Android fixes below.
+
 ### Added
 
 - Web companion live demo: type a sentence or run the Springfield demo, and the page runs the Android pipeline in Chrome (local rules, the gatekeeper on Gemini Nano through Firebase AI Logic, the personal-data check, the grounded check with Google Search), with the same cards, source pills, Search Suggestions and an egress ledger listing every request that left the browser, word for word. Strict mode by default; Balanced only with a project connected. The microphone stays off.

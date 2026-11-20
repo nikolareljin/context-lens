@@ -2,15 +2,15 @@
 
 ## Versions
 
-Versions follow [Semantic Versioning](https://semver.org/). Tags carry the bare version (`0.3.0`), and the Android `versionName` comes from the `VERSION` file.
+Versions follow [Semantic Versioning](https://semver.org/). Tags carry the bare version (`0.3.0`). One version covers the whole repository: the Android `versionName`, the web companion and the Chrome extension all come from the `VERSION` file.
 
 | Version | Content |
 |---|---|
 | 0.1.x | the complete loop: on-device gatekeeper, grounded cloud check, privacy firewall, diagnostics, evaluation |
-| 0.2.x | Remote Config tuning |
-| 0.3.x | offline outbox |
-| 0.4.x | slide context from one photo, on device |
-| 0.5.x | server prompt templates |
+| 0.2.x | web companion in Chrome (live demo on your own project) |
+| 0.3.x | Chrome extension (side panel) |
+| 0.4.x | Remote Config tuning, offline outbox |
+| 0.5.x | slide context from one photo, on device; server prompt templates |
 | 0.9.x | release candidates |
 | 1.0.0 | hackathon submission |
 

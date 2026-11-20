@@ -95,3 +95,7 @@ A dated record of the work done during the hackathon. Each entry lists what was 
 - The Firebase SDK comes as its four packages (`@firebase/app` 0.16.7, `@firebase/ai` 3.1.0, `@firebase/auth` 1.13.11, `@firebase/app-check` 0.13.2) instead of the `firebase` bundle, which pulled in Firestore.
 - Verified: unit and component tests, including the real SDK with every network API stubbed (nothing sent without a project, also when Chrome has no model; with a project in Strict only the clean question is sent), type check, production build, script tests and shellcheck.
 - Open: trying it in Chrome with Gemini Nano and a connected project.
+
+## 2026-11-19: release 0.2.0
+
+- One version for the whole repository (Android, web companion and, next, the Chrome extension). The APK carries the date-hint and cloud-test fixes; the site carries the live demo.
