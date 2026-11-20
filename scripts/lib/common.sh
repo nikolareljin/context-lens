@@ -41,6 +41,23 @@ version() { tr -d '[:space:]' < "$TL_ROOT/VERSION"; }
 # is_semver <string>: strict MAJOR.MINOR.PATCH, no prefix.
 is_semver() { [[ "$1" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; }
 
+# check_web_version <commit> <version>: dies unless apps/web/package.json and its lock file
+# (root and packages[""] entries) at <commit> carry <version>; passes when there is no web app.
+# One version for the whole repository: the web companion's package follows VERSION.
+check_web_version() {
+  local sha="$1" v="$2" got
+  git cat-file -e "$sha:apps/web/package.json" 2>/dev/null || return 0
+  command -v jq >/dev/null || die "jq is needed to check the web package version"
+  got="$(git show "$sha:apps/web/package.json" | jq -r '.version // ""' 2>/dev/null)" \
+    || die "apps/web/package.json at $sha is not valid JSON"
+  [[ "$got" == "$v" ]] || die "apps/web/package.json at $sha has version '$got', not $v"
+  git cat-file -e "$sha:apps/web/package-lock.json" 2>/dev/null || return 0
+  got="$(git show "$sha:apps/web/package-lock.json" \
+    | jq -r '[.version, (.packages[""].version // .version)] | unique | join(",")' 2>/dev/null)" \
+    || die "apps/web/package-lock.json at $sha is not valid JSON"
+  [[ "$got" == "$v" ]] || die "apps/web/package-lock.json at $sha has version '$got', not $v"
+}
+
 # usage_from <file>: print the leading comment block of a script as help.
 usage_from() {
   awk 'NR == 1 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$1"

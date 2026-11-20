@@ -58,6 +58,14 @@ test_refuses_a_different_web_lock_version() {
   setup_repo 0.2.0; add_web 0.2.0 0.2.0 0.1.1
   assert_status 1 bash scripts/release-tag.sh release/0.2.0 "$sha"
 }
+test_refuses_a_broken_web_package_with_a_message() {
+  setup_repo 0.2.0
+  mkdir -p apps/web && echo '{ "version": ' > apps/web/package.json
+  git add -A && git commit -q -m "chore: web" && git push -q origin main
+  sha="$(git rev-parse HEAD)"
+  out="$(bash scripts/release-tag.sh release/0.2.0 "$sha" 2>&1)" && fail "a broken package was tagged"
+  assert_contains "$out" "apps/web/package.json at $sha is not valid JSON"
+}
 test_refuses_missing_changelog_section() {
   setup_repo 0.2.0 0.1.0
   assert_status 1 bash scripts/release-tag.sh release/0.2.0 "$sha"
