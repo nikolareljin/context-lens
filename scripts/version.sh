@@ -92,7 +92,12 @@ unreleased="$(awk '/^## \[Unreleased\]/ { on = 1; next } on && /^## \[/ { exit }
 grep -q '[^[:space:]]' <<<"$unreleased" || die "nothing under ## [Unreleased] in CHANGELOG.md"
 
 web=apps/web
-if [[ -f "$web/package.json" ]]; then command -v jq >/dev/null || die "jq is needed to set the web package version"; fi
+if [[ -f "$web/package.json" ]]; then
+  command -v jq >/dev/null || die "jq is needed to set the web package version"
+  for f in "$web/package.json" "$web/package-lock.json"; do
+    [[ ! -f "$f" ]] || jq -e 'type == "object"' "$f" >/dev/null 2>&1 || die "$f is not a JSON object"
+  done
+fi
 
 git switch -q -c "release/$next"
 echo "$next" > VERSION

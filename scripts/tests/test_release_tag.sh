@@ -35,6 +35,29 @@ test_refuses_version_mismatch() {
   setup_repo 0.1.0
   assert_status 1 bash scripts/release-tag.sh release/0.2.0 "$sha"
 }
+# add_web <package-version> <lock-version> <lock-root-entry-version>: commits apps/web at the new HEAD.
+add_web() {
+  mkdir -p apps/web
+  printf '{ "name": "web", "version": "%s" }\n' "$1" > apps/web/package.json
+  printf '{ "version": "%s", "packages": { "": { "version": "%s" } } }\n' "$2" "$3" > apps/web/package-lock.json
+  git add -A && git commit -q -m "chore: web" && git push -q origin main
+  sha="$(git rev-parse HEAD)"
+}
+test_tags_when_the_web_package_matches() {
+  setup_repo 0.2.0; add_web 0.2.0 0.2.0 0.2.0
+  bash scripts/release-tag.sh release/0.2.0 "$sha" >/dev/null 2>&1 || fail "tagging failed"
+  assert_eq "$(git -C ../origin.git rev-parse '0.2.0^{commit}')" "$sha"
+}
+test_refuses_a_different_web_package_version() {
+  setup_repo 0.2.0; add_web 0.1.1 0.2.0 0.2.0
+  assert_status 1 bash scripts/release-tag.sh release/0.2.0 "$sha"
+  out="$(bash scripts/release-tag.sh release/0.2.0 "$sha" 2>&1 || true)"
+  assert_contains "$out" "apps/web/package.json"
+}
+test_refuses_a_different_web_lock_version() {
+  setup_repo 0.2.0; add_web 0.2.0 0.2.0 0.1.1
+  assert_status 1 bash scripts/release-tag.sh release/0.2.0 "$sha"
+}
 test_refuses_missing_changelog_section() {
   setup_repo 0.2.0 0.1.0
   assert_status 1 bash scripts/release-tag.sh release/0.2.0 "$sha"
