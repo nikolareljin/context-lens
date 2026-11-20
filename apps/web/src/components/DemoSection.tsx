@@ -313,7 +313,7 @@ export function DemoSection({
         <label className={`flex items-start gap-2 text-sm ${project === null ? "opacity-50" : ""}`}>
           <input type="radio" name="mode" disabled={project === null} checked={effectiveMode === "BALANCED"} onChange={() => setMode("BALANCED")} />
           <span>
-            Balanced: if this browser can't run the model, the sentence is sent to cloud Gemini in your project.
+            Balanced: if this browser can't run the model, the sentence and its context (the sentences before it, date, area, topic) are sent to cloud Gemini in the connected project.
             {project === null && " (Connect a project first.)"}
           </span>
         </label>

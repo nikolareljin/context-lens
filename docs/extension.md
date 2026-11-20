@@ -76,11 +76,15 @@ The grounded check runs in a Firebase project you connect, on that project's quo
 
 ## Update
 
-Run the same install command again. In Chromium or Chrome for Testing, restart the browser it started. In Chrome, open `chrome://extensions` and click the reload arrow on the ContextLens card. A remembered project stays.
+- **Chrome Web Store:** Chrome updates it by itself.
+- **One command:** run the same command again. In Chromium or Chrome for Testing, restart the browser it started; in Chrome, open `chrome://extensions` and click the reload arrow on the ContextLens card.
+- **ZIP by hand:** download the newest ZIP, unzip it over the same folder (replace the files), then click the reload arrow on the ContextLens card in `chrome://extensions`.
+
+A remembered project stays.
 
 ## Remove
 
-Open `chrome://extensions` and click **Remove** on the ContextLens card, then delete the `context-lens` folder in your home folder. Removing the extension deletes everything it stored.
+Open `chrome://extensions` and click **Remove** on the ContextLens card. Removing the extension deletes everything it stored. If you installed it with the command or the ZIP, also delete its folder (`context-lens` in your home folder, or wherever you unzipped it).
 
 ## Why Developer mode?
 
@@ -88,7 +92,7 @@ Chrome installs extensions with one click only from the Chrome Web Store. Instal
 
 ## What it can access
 
-The extension asks for one permission: the side panel. It has no access to the pages you visit, your tabs, history or downloads, and no content scripts. All its code is in the package (extensions can't run code from the web), and the package contains no App Check or sign-in popup code, which would load scripts from Google. Requests go only to Chrome's on-device model and, with a project connected, to Firebase for that project; the egress ledger lists every one of them, word for word.
+The extension asks for one permission: the side panel. It has no access to the pages you visit, your tabs, history or downloads, and no content scripts. All its code is in the package (extensions can't run code from the web), and the package contains no App Check or sign-in popup code, which would load scripts from Google. Requests go only to Chrome's on-device model and, with a project connected, to Firebase for that project; the egress ledger lists every request that carries your text, word for word (details on the [privacy page](privacy.md#web-companion-and-chrome-extension)).
 
 ## What it is for
 

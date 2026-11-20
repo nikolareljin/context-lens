@@ -76,7 +76,8 @@ Details: [Download](https://nikolareljin.github.io/context-lens/docs/download/).
 
 Every release (`x.y.z`) builds a signed APK and attaches it to the GitHub release, once as
 `contextlens-x.y.z.apk` and once as `context-lens.apk`, the fixed name the QR code points to.
-The Chrome extension is attached as `context-lens-extension.zip` with its `.sha256`.
+The Chrome extension is attached as `context-lens-extension.zip` with its `.sha256` (install this one), and as
+`context-lens-extension-store.zip`, the Chrome Web Store upload only (no fixed extension id).
 
 ## License
 
