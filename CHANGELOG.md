@@ -4,6 +4,10 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-20
+
+A home page a first-time visitor can follow: run the demo step by step, try it live with an access code, install the extension.
+
 ### Changed
 
 - The home page starts with three ways to try it: **Run the demo**, **Try it live** and **Get the extension**. A recorded run appears there once one exists.
