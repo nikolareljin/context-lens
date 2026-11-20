@@ -2,7 +2,7 @@
 
 The extension puts the [web companion](../)'s live demo in Chrome's side panel, next to whatever you are reading or watching. It runs the same three stages: the local rules and Gemini Nano in Chrome on your computer, and the grounded check in a Firebase project you connect. It reads nothing from the pages you visit: you type or paste the sentence.
 
-You need Chrome 138 or newer on Windows, macOS or Linux (Chromium, Chrome for Testing and Microsoft Edge work too). Gemini Nano is optional: without it the local rules still run, and with a project connected, Balanced mode checks in the cloud. Getting Gemini Nano is described in [Web companion setup](web-setup.md).
+You need Chrome 138 or newer on Windows, macOS or Linux; Chromium and Chrome for Testing work too. (Microsoft Edge and Brave can load it the same way from their extensions page, but they have no Gemini Nano, so only the local rules and the cloud check run there.) Gemini Nano is optional: without it the local rules still run, and with a project connected, Balanced mode checks in the cloud. Getting Gemini Nano is described in [Web companion setup](web-setup.md).
 
 ## Install with one command
 

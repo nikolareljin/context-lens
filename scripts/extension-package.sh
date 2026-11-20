@@ -41,5 +41,6 @@ mkdir -p "$out"
 zip_path="$out/context-lens-extension.zip"
 rm -f "$zip_path" "$zip_path.sha256"
 (cd "$build" && zip -q -X -r "$zip_path" .)
-(cd "$out" && sha256sum context-lens-extension.zip > context-lens-extension.zip.sha256)
+if command -v sha256sum >/dev/null; then sum=(sha256sum); else sum=(shasum -a 256); fi
+(cd "$out" && "${sum[@]}" context-lens-extension.zip > context-lens-extension.zip.sha256)
 log "packaged $v: $zip_path ($(wc -c < "$zip_path" | tr -d ' ') bytes) and its .sha256"

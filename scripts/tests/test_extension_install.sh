@@ -77,6 +77,18 @@ test_wsl_points_to_powershell_without_downloading() {
   assert_contains "$out" "extension-install.ps1 | iex"
   [[ ! -e home/context-lens ]] || fail "something was installed"
 }
+test_a_release_without_the_extension_is_explained() {
+  stubs; mkdir home bin
+  printf '#!/usr/bin/env bash\nprintf 404\n' > bin/curl; chmod +x bin/curl
+  out="$(HOME="$PWD/home" PATH="$PWD/bin:$PATH" CONTEXTLENS_WSL=0 CONTEXTLENS_BROWSER=none CONTEXTLENS_CHROME=none bash "$script" 2>&1)" \
+    && fail "a missing extension was not reported"
+  assert_contains "$out" "has no Chrome extension yet"
+}
+test_leaves_only_the_extension_behind() {
+  release; stubs; mkdir home
+  install env CONTEXTLENS_BROWSER=none CONTEXTLENS_CHROME=none >/dev/null || fail "install failed"
+  assert_eq "$(ls -A home/context-lens)" "extension"
+}
 test_rejects_a_bad_version() {
   assert_status 1 bash "$script" --version v1
 }
