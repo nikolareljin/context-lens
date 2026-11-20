@@ -56,6 +56,22 @@ test_prepares_branch_version_and_changelog() {
   grep -Eq '^## \[0\.1\.0\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$' CHANGELOG.md || fail "dated heading missing"
   assert_eq "$(git log -1 --format=%s)" "chore(release): 0.1.0"
 }
+test_web_package_follows_the_version() {
+  setup_repo 0.1.1
+  mkdir -p apps/web
+  printf '{\n  "name": "web",\n  "version": "0.1.1",\n  "private": true\n}\n' > apps/web/package.json
+  printf '{\n  "name": "web",\n  "version": "0.1.1",\n  "packages": {\n    "": {\n      "name": "web",\n      "version": "0.1.1"\n    },\n    "node_modules/x": {\n      "version": "0.1.1"\n    }\n  }\n}\n' > apps/web/package-lock.json
+  git add -A && git commit -q -m "chore: web" && git push -q origin main
+  commit "feat: demo"
+  bash scripts/version.sh >/dev/null 2>&1 || fail "version failed"
+  assert_eq "$(jq -r .version apps/web/package.json)" 0.2.0
+  assert_eq "$(jq -r .private apps/web/package.json)" true
+  assert_eq "$(jq -r .version apps/web/package-lock.json)" 0.2.0
+  assert_eq "$(jq -r '.packages[""].version' apps/web/package-lock.json)" 0.2.0
+  assert_eq "$(jq -r '.packages["node_modules/x"].version' apps/web/package-lock.json)" 0.1.1
+  [[ -z "$(git status --porcelain)" ]] || fail "uncommitted changes: $(git status --porcelain)"
+  assert_contains "$(git show --name-only --format= HEAD)" "apps/web/package-lock.json"
+}
 test_empty_unreleased_is_refused() {
   setup_repo 0.0.1
   printf '# Changelog\n\n## [Unreleased]\n\n## [0.0.1] - 2026-11-01\n\n- x\n' > CHANGELOG.md

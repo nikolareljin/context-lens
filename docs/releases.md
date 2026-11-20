@@ -2,7 +2,7 @@
 
 ## Versions
 
-Versions follow [Semantic Versioning](https://semver.org/). Tags carry the bare version (`0.3.0`). One version covers the whole repository: the Android `versionName`, the web companion and the Chrome extension all come from the `VERSION` file.
+Versions follow [Semantic Versioning](https://semver.org/). Tags carry the bare version (`0.3.0`). One version covers the whole repository: the Android `versionName` comes from the `VERSION` file, the web companion's package version is set to match it in each release commit, and the Chrome extension will follow it once it is built.
 
 | Version | Content |
 |---|---|
@@ -26,7 +26,7 @@ Versions follow [Semantic Versioning](https://semver.org/). Tags carry the bare 
 ## How a release is made
 
 1. `./dev version --dry-run` shows the next version, derived from the Conventional Commits since the last tag: a breaking change bumps the major version (the minor one while the version is `0.x`), `feat` bumps the minor version, anything else the patch version. A level or an exact version can be given instead.
-2. `./dev version --pr` writes `VERSION`, dates the `## [Unreleased]` changelog entries as the new version, commits on `release/X.Y.Z` and opens the pull request.
+2. `./dev version --pr` writes `VERSION` and the web companion's package version (`apps/web/package.json` and its lock file), dates the `## [Unreleased]` changelog entries as the new version, commits on `release/X.Y.Z` and opens the pull request.
 3. Merging that pull request tags the merge commit (`tag-release` workflow), builds the signed APK and AAB and publishes the GitHub release.
 
 Published tags are immutable: the workflow may create a tag, never move or delete one. `./dev release` remains as a manual fallback that tags `main` directly.

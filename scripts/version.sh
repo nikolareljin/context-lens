@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Prepare a release: bump VERSION, date the changelog section, commit on a
+# Prepare a release: bump VERSION (and the web companion's package version to
+# match), date the changelog section, commit on a
 # release/X.Y.Z branch, and (with --pr) push it and open the pull request.
 # Merging that pull request tags the merge commit and publishes the release.
 #
@@ -90,8 +91,23 @@ fi
 unreleased="$(awk '/^## \[Unreleased\]/ { on = 1; next } on && /^## \[/ { exit } on { print }' CHANGELOG.md)"
 grep -q '[^[:space:]]' <<<"$unreleased" || die "nothing under ## [Unreleased] in CHANGELOG.md"
 
+web=apps/web
+if [[ -f "$web/package.json" ]]; then command -v jq >/dev/null || die "jq is needed to set the web package version"; fi
+
 git switch -q -c "release/$next"
 echo "$next" > VERSION
+# One version for the whole repository: the web companion's package follows VERSION.
+if [[ -f "$web/package.json" ]]; then
+  jq --arg v "$next" '.version = $v' "$web/package.json" > "$web/package.json.tmp"
+  mv "$web/package.json.tmp" "$web/package.json"
+  git add "$web/package.json"
+  if [[ -f "$web/package-lock.json" ]]; then
+    jq --arg v "$next" '.version = $v | if .packages[""] then .packages[""].version = $v else . end' \
+      "$web/package-lock.json" > "$web/package-lock.json.tmp"
+    mv "$web/package-lock.json.tmp" "$web/package-lock.json"
+    git add "$web/package-lock.json"
+  fi
+fi
 today="$(date -u +%F)"
 awk -v v="$next" -v d="$today" '
   /^## \[Unreleased\]/ && !done { print; print ""; print "## [" v "] - " d; done = 1; next }
