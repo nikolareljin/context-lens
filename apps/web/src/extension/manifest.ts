@@ -24,7 +24,8 @@ export function buildManifest(version: string): Record<string, unknown> {
     name: "ContextLens",
     version,
     description:
-      "Private, grounded fact checks: Gemini Nano in Chrome decides what is checked; your own Firebase project verifies it with Google Search.",
+      // at most 132 characters (Chrome Web Store)
+      "Private, grounded fact checks: Gemini Nano in Chrome picks what to check; your own Firebase project verifies it with Google Search.",
     minimum_chrome_version: MINIMUM_CHROME,
     key: EXTENSION_PUBLIC_KEY,
     icons,

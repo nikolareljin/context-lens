@@ -13,6 +13,8 @@ describe("extension manifest", () => {
     }
     expect(m.side_panel).toEqual({ default_path: "sidepanel.html" });
     expect(m.background).toEqual({ service_worker: "background.js", type: "module" });
+    expect((m.description as string).length).toBeLessThanOrEqual(132);
+    expect((m.name as string).length).toBeLessThanOrEqual(75);
   });
 
   it("refuses anything but a plain release version", () => {
