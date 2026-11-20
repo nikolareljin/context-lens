@@ -35,6 +35,10 @@ bash "$TL_ROOT/scripts/site-leak-check.sh" "$build"
 if grep -RIlE 'exchangeRecaptchaEnterpriseToken|gapi\.iframes' "$build" >/dev/null; then
   die "the extension build carries App Check or the Auth popup loader (they load scripts from Google)"
 fi
+# No address of a script the SDK could load (the build empties @firebase/app's list of them).
+if grep -RIlE 'googletagmanager\.com/gtag/js|apis\.google\.com/js/api\.js|google\.com/recaptcha/' "$build" >/dev/null; then
+  die "the extension build contains the address of a remote script (gtag, gapi or reCAPTCHA)"
+fi
 if grep -RIlE '<script[^>]+src="(https?:)?//' "$build" --include='*.html' >/dev/null; then
   die "an extension page references a remote script"
 fi

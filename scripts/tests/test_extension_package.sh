@@ -54,6 +54,13 @@ test_refuses_app_check_or_auth_popup_code() {
   rm build/assets/b.js; echo 'window.gapi.iframes.getContext()' > build/assets/c.js
   assert_contains "$(package || true)" "App Check or the Auth popup loader"
 }
+test_refuses_a_remote_script_address() {
+  setup_repo
+  echo 'const ALLOWED=["https://www.google.com/recaptcha/enterprise.js"]' > build/assets/d.js
+  assert_contains "$(package || true)" "address of a remote script"
+  echo 'const ALLOWED=["https://apis.google.com/js/api.js"]' > build/assets/d.js
+  assert_contains "$(package || true)" "address of a remote script"
+}
 test_refuses_a_remote_script_in_a_page() {
   setup_repo
   echo '<script src="https://example.invalid/x.js"></script>' >> build/sidepanel.html

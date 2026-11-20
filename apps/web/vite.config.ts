@@ -11,6 +11,23 @@ function writeJson(path: string, value: unknown): void {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+// @firebase/app lists the Google scripts the SDK may load (gtag, gapi, reCAPTCHA) for its Trusted
+// Types policy. The extension loads none of them (App Check is stubbed out, Auth is the
+// web-extension build), so the extension build empties the list: no remote script address is
+// left in the package for a store review to flag, and a load attempt would be refused.
+function noRemoteScriptList(): Plugin {
+  return {
+    name: "context-lens-no-remote-script-list",
+    enforce: "pre",
+    transform(code, id) {
+      if (!/@firebase[\\/]app[\\/]dist[\\/]esm[\\/]index\.esm\.js$/.test(id)) return null;
+      const list = /const ALLOWED_SCRIPT_URLS = \[[^\]]*\];/;
+      if (!list.test(code)) this.error("@firebase/app no longer has ALLOWED_SCRIPT_URLS: check the extension build for remote script addresses");
+      return { code: code.replace(list, "const ALLOWED_SCRIPT_URLS = [];"), map: null };
+    },
+  };
+}
+
 // The extension build gets its manifest (with the repository's VERSION) and icons.
 function extensionFiles(): Plugin {
   return {
@@ -30,7 +47,7 @@ function extensionFiles(): Plugin {
 // `vite build --mode extension` builds the Chrome extension instead: the same demo in a side panel.
 export default defineConfig(({ mode }) => ({
   base: mode === "extension" ? "./" : "/context-lens/",
-  plugins: [react(), tailwindcss(), ...(mode === "extension" ? [extensionFiles()] : [])],
+  plugins: [react(), tailwindcss(), ...(mode === "extension" ? [noRemoteScriptList(), extensionFiles()] : [])],
   // The extension carries no code that loads scripts from Google: no App Check (reCAPTCHA), and
   // Firebase Auth's web-extension build (no popup, redirect or phone sign-in loaders).
   resolve:

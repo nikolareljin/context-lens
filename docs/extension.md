@@ -8,7 +8,7 @@ You need Chrome 138 or newer on Windows, macOS or Linux. Chromium and Chrome for
 
 | Option | Clicks | Updates | Status |
 |---|---|---|---|
-| [Chrome Web Store](#from-the-chrome-web-store) | one | automatic | submitted; this page links the listing once Google publishes it |
+| [Chrome Web Store](#from-the-chrome-web-store) | two (**Add to Chrome**, **Add extension**) | automatic | not published yet; this page links the listing once Google publishes it |
 | [One command](#install-with-one-command) | a command, then four clicks in Chrome (none in Chromium) | run the command again | available |
 | [ZIP by hand](#install-from-the-zip-by-hand) | download, unzip, four clicks | download again | available |
 
