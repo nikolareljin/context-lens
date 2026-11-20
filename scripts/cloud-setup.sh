@@ -342,7 +342,10 @@ step_github() {
   printf '%s' "$id" | "$gh" secret set FIREBASE_PROJECT_ID --repo "$repo" >/dev/null
   printf '%s' "$app" | "$gh" secret set FIREBASE_ANDROID_APP_ID --repo "$repo" >/dev/null
   # An older setup kept the project id as a plain variable, which Actions logs print: remove it.
-  if "$gh" variable list --repo "$repo" --json name --jq '.[].name' </dev/null | grep -qx FIREBASE_PROJECT_ID; then
+  local vars
+  if ! vars="$("$gh" variable list --repo "$repo" --json name --jq '.[].name' </dev/null)"; then
+    warn "could not list the repository variables of $repo: check that no FIREBASE_PROJECT_ID variable is left (Settings > Secrets and variables > Actions > Variables) and delete it if there is one"
+  elif grep -qx FIREBASE_PROJECT_ID <<<"$vars"; then
     "$gh" variable delete FIREBASE_PROJECT_ID --repo "$repo" </dev/null >/dev/null
     log "removed the old FIREBASE_PROJECT_ID repository variable"
   fi
