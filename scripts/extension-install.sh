@@ -13,7 +13,7 @@
 # Usage: extension-install.sh [--version X.Y.Z] [--no-launch]
 #   (piped: curl ... | bash -s -- --no-launch)
 # Environment, mainly for tests: CONTEXTLENS_RELEASE_URL (base address of the release files),
-# CONTEXTLENS_BROWSER / CONTEXTLENS_CHROME (a browser path, or "none"), CONTEXTLENS_COPY
+# CONTEXTLENS_BROWSER / CONTEXTLENS_CHROME / CONTEXTLENS_GOOGLE_CHROME (a browser path, or "none"), CONTEXTLENS_COPY
 # (clipboard command, or "none"), CONTEXTLENS_WSL (1 or 0 instead of detecting WSL).
 # Standalone on purpose: it runs from a pipe, without the rest of the repository. Everything is
 # inside main(), which runs only once the whole script has arrived.
@@ -126,6 +126,13 @@ main() {
       "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge" \
       "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
   }
+  # find_google_chrome: Google Chrome only (the browser with Gemini Nano), for the hint below.
+  find_google_chrome() {
+    if [[ -n "${CONTEXTLENS_GOOGLE_CHROME:-}" ]]; then [[ "$CONTEXTLENS_GOOGLE_CHROME" == none ]] && return 1; printf '%s\n' "$CONTEXTLENS_GOOGLE_CHROME"; return 0; fi
+    local p
+    for p in google-chrome google-chrome-stable; do if command -v "$p" >/dev/null; then command -v "$p"; return 0; fi; done
+    find_first "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+  }
   copy_path() {
     local cmd="${CONTEXTLENS_COPY:-}"
     if [[ "$cmd" == none ]]; then return 1; fi
@@ -152,7 +159,7 @@ main() {
     say "opens in a tab; for the side panel, click the puzzle icon, pin ContextLens and click its icon."
     say "To update later, run the same install command again and restart that browser."
     say "Chromium and Chrome for Testing have no Gemini Nano, so Strict mode runs the local rules only."
-    if find_chrome >/dev/null; then
+    if find_google_chrome >/dev/null; then
       say "For Gemini Nano, also load it in Google Chrome: open chrome://extensions, turn on"
       say "\"Developer mode\", click \"Load unpacked\" and choose $dir"
     fi
@@ -162,7 +169,7 @@ main() {
     if [[ "$launch" -eq 1 && -n "$chrome" ]]; then
       if [[ "$(uname -s)" == Darwin ]]; then start open -a "$(basename "$chrome")" "chrome://extensions"
       else start "$chrome" "chrome://extensions"; fi
-      step "Chrome is opening chrome://extensions. Load ContextLens there:"
+      step "$(basename "$chrome") is opening chrome://extensions. Load ContextLens there:"
     else
       step "Open chrome://extensions in Chrome (type it in the address bar), then:"
     fi

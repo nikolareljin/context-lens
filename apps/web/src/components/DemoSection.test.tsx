@@ -225,7 +225,7 @@ describe("connecting a project", () => {
       expect(dialog.textContent).not.toContain("nikolareljin.github.io");
       fireEvent.click(screen.getByRole("button", { name: "Connect demo-springfield" }));
       expect(sources.at(-1)?.project?.projectId).toBe("demo-springfield");
-      expect(document.body.textContent).toMatch(/Remembered on this device|Kept only while the panel is open/);
+      expect(document.body.textContent).toMatch(/Remembered on this device|Kept only while this ContextLens page is open/);
       expect(document.body.textContent).not.toMatch(/\btab\b/);
     } finally {
       vi.unstubAllEnvs();

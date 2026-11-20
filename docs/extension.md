@@ -62,7 +62,7 @@ The grounded check runs in a Firebase project you connect, on that project's quo
 
 ## Update
 
-Run the same install command again. In Chromium or Chrome for Testing, restart the browser it started. In Chrome, open `chrome://extensions` and click the reload arrow on the ContextLens card. Your connected project stays.
+Run the same install command again. In Chromium or Chrome for Testing, restart the browser it started. In Chrome, open `chrome://extensions` and click the reload arrow on the ContextLens card. A remembered project stays.
 
 ## Remove
 

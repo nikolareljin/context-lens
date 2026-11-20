@@ -12,7 +12,7 @@
 # Options through environment variables (the piped form takes no parameters):
 #   CONTEXTLENS_VERSION=X.Y.Z  a given release instead of the newest
 #   CONTEXTLENS_NO_LAUNCH=1    only print what to do
-#   CONTEXTLENS_RELEASE_URL, CONTEXTLENS_BROWSER, CONTEXTLENS_CHROME: for tests
+#   CONTEXTLENS_RELEASE_URL, CONTEXTLENS_BROWSER, CONTEXTLENS_CHROME, CONTEXTLENS_GOOGLE_CHROME: for tests
 
 # Runs in its own scope, so the piped form leaves the PowerShell session as it was.
 & {
@@ -106,6 +106,15 @@
     )
   }
 
+  # Google Chrome only (the browser with Gemini Nano), for the hint below.
+  $googleChrome = if ($env:CONTEXTLENS_GOOGLE_CHROME) { if ($env:CONTEXTLENS_GOOGLE_CHROME -eq 'none') { $null } else { $env:CONTEXTLENS_GOOGLE_CHROME } } else {
+    First-Existing @(
+      (Join-Path $env:ProgramFiles 'Google\Chrome\Application\chrome.exe'),
+      $(if ($pf86) { Join-Path $pf86 'Google\Chrome\Application\chrome.exe' }),
+      (Join-Path $env:LOCALAPPDATA 'Google\Chrome\Application\chrome.exe')
+    )
+  }
+
   if ($loader) {
     $profileDir = Join-Path (Split-Path -Parent $dir) 'browser-profile'
     $arguments = @("--user-data-dir=`"$profileDir`"", "--load-extension=`"$dir`"", '--no-first-run', "chrome-extension://$ExtensionId/sidepanel.html")
@@ -120,7 +129,7 @@
     Write-Host 'opens in a tab; for the side panel, click the puzzle icon, pin ContextLens and click its icon.'
     Write-Host 'To update later, run the same install command again and restart that browser.'
     Write-Host 'Chromium and Chrome for Testing have no Gemini Nano, so Strict mode runs the local rules only.'
-    if ($chrome) {
+    if ($googleChrome) {
       Write-Host 'For Gemini Nano, also load it in Google Chrome: open chrome://extensions, turn on'
       Write-Host "`"Developer mode`", click `"Load unpacked`" and choose $dir"
     }
@@ -129,7 +138,7 @@
     try { Set-Clipboard -Value $dir; $copied = $true } catch { }
     if ($launch -and $chrome) {
       Start-Process -FilePath $chrome -ArgumentList 'chrome://extensions' | Out-Null
-      Step 'Chrome is opening chrome://extensions. Load ContextLens there:'
+      Step "$([IO.Path]::GetFileNameWithoutExtension($chrome)) is opening chrome://extensions. Load ContextLens there:"
     } else {
       Step 'Open chrome://extensions in Chrome (type it in the address bar), then:'
     }

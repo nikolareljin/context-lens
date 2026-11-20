@@ -114,7 +114,7 @@ export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: P
             {remembered
               ? "Remembered on this device."
               : inExtension()
-                ? "Kept only while the panel is open."
+                ? "Kept only while this ContextLens page is open."
                 : "Kept in this tab's memory only; gone when the tab closes."}
           </p>
           <button ref={disconnectButton} type="button" onClick={() => onDisconnect()} className="rounded-full border border-edge px-4 py-1 text-sm hover:border-device">
@@ -147,7 +147,7 @@ export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: P
             <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="mt-1" />
             {inExtension() ? (
               <span>
-                Remember on this device. Otherwise the project is kept only while the panel is open. A remembered project
+                Remember on this device. Otherwise the project is kept only while this ContextLens page is open. A remembered project
                 is kept in this extension's own storage, separate from every website.
               </span>
             ) : (
@@ -186,7 +186,7 @@ export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: P
                     ? "The values are remembered in this extension's own storage and sent only to Firebase."
                     : "The values are remembered in this browser's local storage, shared by every site under nikolareljin.github.io, and sent only to Firebase."
                   : inExtension()
-                    ? "The values are kept only while the panel is open and sent only to Firebase."
+                    ? "The values are kept only while this ContextLens page is open and sent only to Firebase."
                     : "The values are kept in this tab's memory only and sent only to Firebase; they are gone when the tab closes."}
               </li>
               {pending.recaptchaSiteKey && (

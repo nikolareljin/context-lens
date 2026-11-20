@@ -18,7 +18,7 @@ stubs() {
   chmod +x browser copy
 }
 install() {
-  HOME="$PWD/home" CONTEXTLENS_RELEASE_URL="file://$PWD/release" CONTEXTLENS_WSL=0 \
+  HOME="$PWD/home" CONTEXTLENS_RELEASE_URL="file://$PWD/release" CONTEXTLENS_WSL=0 CONTEXTLENS_GOOGLE_CHROME=none \
     CONTEXTLENS_COPY="$PWD/copy" "$@" bash "$script" 2>&1
 }
 
@@ -36,8 +36,10 @@ test_loads_it_in_chromium_with_its_own_profile() {
 }
 test_chromium_users_with_chrome_also_get_the_chrome_steps() {
   release; stubs; mkdir home
-  out="$(HOME="$PWD/home" CONTEXTLENS_RELEASE_URL="file://$PWD/release" CONTEXTLENS_WSL=0 CONTEXTLENS_BROWSER="$PWD/browser" CONTEXTLENS_CHROME="$PWD/browser" bash "$script" --no-launch 2>&1)" || fail "install failed: $out"
+  out="$(HOME="$PWD/home" CONTEXTLENS_RELEASE_URL="file://$PWD/release" CONTEXTLENS_WSL=0 CONTEXTLENS_BROWSER="$PWD/browser" CONTEXTLENS_GOOGLE_CHROME="$PWD/browser" bash "$script" --no-launch 2>&1)" || fail "install failed: $out"
   assert_contains "$out" "For Gemini Nano, also load it in Google Chrome"
+  out="$(HOME="$PWD/home" CONTEXTLENS_RELEASE_URL="file://$PWD/release" CONTEXTLENS_WSL=0 CONTEXTLENS_BROWSER="$PWD/browser" CONTEXTLENS_CHROME="$PWD/browser" CONTEXTLENS_GOOGLE_CHROME=none bash "$script" --no-launch 2>&1)" || fail "install failed: $out"
+  [[ "$out" != *"also load it in Google Chrome"* ]] || fail "Chrome steps without Google Chrome: $out"
 }
 test_no_launch_only_prints_the_command() {
   release; stubs; mkdir home
@@ -52,6 +54,7 @@ test_guides_chrome_users_and_copies_the_path() {
   for _ in 1 2 3 4 5 6 7 8 9 10; do [[ -s browser-args ]] && break; sleep 0.2; done
   assert_eq "$(cat browser-args)" "chrome://extensions"
   assert_eq "$(cat clipboard)" "$PWD/home/context-lens/extension"
+  assert_contains "$out" "browser is opening chrome://extensions"
   assert_contains "$out" "Developer mode"
   assert_contains "$out" "Load unpacked"
   assert_contains "$out" "already copied"
