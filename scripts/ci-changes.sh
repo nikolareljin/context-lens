@@ -25,4 +25,4 @@ report functions functions '^functions/'
 # The web rules are tested against the eval set, the shared prompts and the Kotlin rules they port.
 report web apps/web '^(apps/web/|eval/|apps/android/app/src/main/assets/prompts/|apps/android/app/src/main/java/com/contextlens/app/(domain|context)/)'
 report firebase firebase '^(firebase/|firebase\.json$)'
-report docs mkdocs.yml '^(docs/|mkdocs\.yml$)'
+report docs mkdocs.yml '^(docs/|docs-overrides/|mkdocs\.yml$)'

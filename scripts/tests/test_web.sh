@@ -32,6 +32,13 @@ test_base_path_matches_pages() {
   assert_contains "$(cat "$TL_ROOT/apps/web/vite.config.ts")" 'base: mode === "extension" ? "./" : "/context-lens/"'
   assert_contains "$(cat "$TL_ROOT/mkdocs.yml")" "site_url: https://nikolareljin.github.io/context-lens/docs/"
 }
+test_link_previews_use_the_social_card() {
+  local html; html="$(cat "$TL_ROOT/apps/web/index.html")"
+  assert_contains "$html" 'property="og:image" content="https://nikolareljin.github.io/context-lens/docs/assets/social-card.png"'
+  assert_contains "$html" 'name="twitter:card" content="summary_large_image"'
+  [[ -f "$TL_ROOT/docs/assets/social-card.png" ]] || fail "docs/assets/social-card.png is missing"
+  assert_contains "$(cat "$TL_ROOT/docs-overrides/main.html")" 'og:image'
+}
 test_ownership_file_is_served_from_the_root() {
   [[ -f "$TL_ROOT/apps/web/public/googlefb1695ee9a07673e.html" ]] || fail "ownership file missing from apps/web/public"
   assert_eq "$(cat "$TL_ROOT/apps/web/public/googlefb1695ee9a07673e.html")" "google-site-verification: googlefb1695ee9a07673e.html"

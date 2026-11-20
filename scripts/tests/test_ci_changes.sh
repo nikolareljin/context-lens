@@ -61,4 +61,10 @@ test_docs_change_marks_docs() {
   assert_contains "$out" "docs=true"
   assert_contains "$out" "android=false"
 }
+test_docs_theme_change_marks_docs() {
+  repo; commit_file mkdocs.yml; base="$(git rev-parse HEAD)"
+  commit_file docs-overrides/main.html
+  out="$(bash "$script" "$base" HEAD)"
+  assert_contains "$out" "docs=true"
+}
 run_tests

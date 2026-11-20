@@ -1,5 +1,5 @@
 site_name: ContextLens
-site_description: "Private, grounded fact checks on Android: Gemini Nano on the device decides what is checked, cloud Gemini with Google Search verifies it, through Firebase AI Logic."
+site_description: "Private, grounded fact checks on Android, in Chrome and in a Chrome extension: Gemini Nano on the device decides what is checked, cloud Gemini with Google Search verifies it, through Firebase AI Logic."
 site_url: https://nikolareljin.github.io/context-lens/docs/
 repo_url: https://github.com/nikolareljin/context-lens
 repo_name: nikolareljin/context-lens
@@ -9,6 +9,7 @@ strict: true
 
 theme:
   name: material
+  custom_dir: docs-overrides
   logo: assets/logo.svg
   favicon: assets/logo.svg
   font:
