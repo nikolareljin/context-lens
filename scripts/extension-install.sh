@@ -5,10 +5,13 @@
 #
 # 1. Downloads context-lens-extension.zip from the newest release, checks it against its
 #    .sha256 and unpacks it into ~/context-lens/extension (running it again updates it).
-# 2. With Chromium or Chrome for Testing installed, starts it with the extension loaded, in its
-#    own profile (~/context-lens/browser-profile). Nothing else to do.
-# 3. Otherwise (Google Chrome no longer loads extensions from the command line), copies the
-#    folder path, opens chrome://extensions and prints the four clicks that load it.
+# 2. With Google Chrome installed (the browser with Gemini Nano), copies the folder path, opens
+#    chrome://extensions in it and prints the four clicks that load it for good. Chrome no
+#    longer loads extensions from the command line, so these clicks are needed once.
+# 3. Without Google Chrome but with Chromium or Chrome for Testing, starts that browser with the
+#    extension loaded, in its own profile (~/context-lens/browser-profile): only that window has it.
+#    (CONTEXTLENS_BROWSER names that browser explicitly and then wins over Google Chrome.)
+# 4. Otherwise the same four clicks, in Edge, Brave or any Chromium browser.
 #
 # Usage: extension-install.sh [--version X.Y.Z] [--no-launch]
 #   (piped: curl ... | bash -s -- --no-launch)
@@ -126,7 +129,7 @@ main() {
       "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge" \
       "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
   }
-  # find_google_chrome: Google Chrome only (the browser with Gemini Nano), for the hint below.
+  # find_google_chrome: Google Chrome only (the browser with Gemini Nano), used first.
   find_google_chrome() {
     if [[ -n "${CONTEXTLENS_GOOGLE_CHROME:-}" ]]; then [[ "$CONTEXTLENS_GOOGLE_CHROME" == none ]] && return 1; printf '%s\n' "$CONTEXTLENS_GOOGLE_CHROME"; return 0; fi
     local p
@@ -145,7 +148,14 @@ main() {
   }
   start() { nohup "$@" </dev/null >/dev/null 2>&1 & disown || true; }
 
-  if loader="$(find_loader)"; then
+  # Google Chrome first; a browser named in CONTEXTLENS_BROWSER on purpose still wins.
+  if [[ -z "${CONTEXTLENS_BROWSER:-}" || "${CONTEXTLENS_BROWSER}" == none ]] && google="$(find_google_chrome)"; then
+    loader=""
+  else
+    google=""
+    loader="$(find_loader || true)"
+  fi
+  if [[ -n "$loader" ]]; then
     profile="$(dirname "$dir")/browser-profile"
     if [[ "$launch" -eq 1 ]]; then
       step "Starting $(basename "$loader") with ContextLens loaded"
@@ -155,16 +165,16 @@ main() {
       step "Start it with ContextLens loaded:"
     fi
     say "  \"$loader\" --user-data-dir=\"$profile\" --load-extension=\"$dir\""
-    say "It uses its own profile, so your usual browser profile is left alone. The ContextLens page"
-    say "opens in a tab; for the side panel, click the puzzle icon, pin ContextLens and click its icon."
-    say "To update later, run the same install command again and restart that browser."
-    say "Chromium and Chrome for Testing have no Gemini Nano, so Strict mode runs the local rules only."
-    if find_google_chrome >/dev/null; then
-      say "For Gemini Nano, also load it in Google Chrome: open chrome://extensions, turn on"
-      say "\"Developer mode\", click \"Load unpacked\" and choose $dir"
-    fi
+    say "ContextLens is loaded only in the window this command opens, which uses its own profile"
+    say "($profile). If you open that browser from your menu, it uses your usual profile, without"
+    say "ContextLens. To add it there for good: open chrome://extensions, turn on \"Developer mode\","
+    say "click \"Load unpacked\" and choose $dir"
+    say "The ContextLens page opens in a tab; for the side panel, click the puzzle icon, pin ContextLens"
+    say "and click its icon. To update later, run the same install command again and restart that browser."
+    say "Chromium and Chrome for Testing have no Gemini Nano, so Strict mode runs the local rules only;"
+    say "Google Chrome has it."
   else
-    chrome="$(find_chrome || true)"
+    chrome="${google:-$(find_chrome || true)}"
     copied=0; if copy_path; then copied=1; fi
     if [[ "$launch" -eq 1 && -n "$chrome" ]]; then
       if [[ "$(uname -s)" == Darwin ]]; then start open -a "$(basename "$chrome")" "chrome://extensions"

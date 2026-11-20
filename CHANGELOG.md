@@ -4,6 +4,10 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ## [Unreleased]
 
+### Fixed
+
+- The one-line extension install prefers Google Chrome when it is installed: it opens Chrome's extensions page and prints the four clicks, so ContextLens stays in your usual Chrome, with Gemini Nano. Before, an installed Chromium won, and ContextLens was loaded only in the separate window the command opened, not in Chromium opened from the menu. In the Chromium-only case the command now says so and how to add it to the usual profile.
+
 ## [0.5.0] - 2026-11-20
 
 A home page a first-time visitor can follow: run the demo step by step, try it live with an access code, install the extension.

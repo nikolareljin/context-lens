@@ -66,8 +66,8 @@ export function ExtensionStrip() {
           <Command label="Windows (PowerShell)" command={INSTALL_COMMANDS.windows} />
           <p className="text-xs text-slate-400">
             It downloads the newest release, checks its checksum and unpacks it into context-lens/extension in your home folder.
-            With Chromium or Chrome for Testing installed, it starts that browser with ContextLens loaded (Gemini Nano is not
-            in those); otherwise it opens the extensions page in Chrome and prints the four clicks.
+            With Google Chrome, it opens Chrome's extensions page and prints the four clicks, needed once. Without Chrome, it
+            starts Chromium (if installed) with ContextLens in a separate window, or prints the same four clicks for your browser.
           </p>
         </div>
         <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-edge p-4">

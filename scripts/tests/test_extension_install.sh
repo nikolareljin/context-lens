@@ -33,17 +33,40 @@ test_loads_it_in_chromium_with_its_own_profile() {
   assert_contains "$args" "chrome-extension://ibebpiolnohegpeabdgikjjnolphpbcd/sidepanel.html"
   assert_contains "$out" "checksum ok"
   assert_contains "$out" "no Gemini Nano"
+  assert_contains "$out" "loaded only in the window this command opens"
+  assert_contains "$out" "uses your usual profile, without"
 }
-test_chromium_users_with_chrome_also_get_the_chrome_steps() {
+test_prefers_google_chrome_over_chromium() {
+  release; stubs; mkdir home
+  # Chromium found on the PATH, as a real install finds it; Google Chrome detected as well.
+  mkdir bin
+  printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$@" > %s/chromium-args\n' "$PWD" > bin/chromium
+  chmod +x bin/chromium
+  out="$(install env PATH="$PWD/bin:$PATH" CONTEXTLENS_GOOGLE_CHROME="$PWD/browser")" || fail "install failed: $out"
+  for _ in 1 2 3 4 5 6 7 8 9 10; do [[ -s browser-args ]] && break; sleep 0.2; done
+  assert_eq "$(cat browser-args)" "chrome://extensions"
+  [[ ! -e chromium-args ]] || fail "Chromium was started although Google Chrome is installed"
+  assert_contains "$out" "Load unpacked"
+  [[ "$out" != *"--load-extension="* ]] || fail "printed the Chromium command: $out"
+  assert_eq "$(cat clipboard)" "$PWD/home/context-lens/extension"
+  assert_contains "$out" "already copied"
+}
+test_no_launch_with_google_chrome_prints_the_clicks() {
+  release; stubs; mkdir home
+  out="$(HOME="$PWD/home" CONTEXTLENS_RELEASE_URL="file://$PWD/release" CONTEXTLENS_WSL=0 CONTEXTLENS_GOOGLE_CHROME="$PWD/browser" CONTEXTLENS_COPY=none bash "$script" --no-launch 2>&1)" || fail "install failed: $out"
+  sleep 0.5
+  [[ ! -e browser-args ]] || fail "the browser was started"
+  assert_contains "$out" "Open chrome://extensions in Chrome"
+  assert_contains "$out" "Load unpacked"
+}
+test_a_named_browser_wins_over_google_chrome() {
   release; stubs; mkdir home
   out="$(HOME="$PWD/home" CONTEXTLENS_RELEASE_URL="file://$PWD/release" CONTEXTLENS_WSL=0 CONTEXTLENS_BROWSER="$PWD/browser" CONTEXTLENS_GOOGLE_CHROME="$PWD/browser" bash "$script" --no-launch 2>&1)" || fail "install failed: $out"
-  assert_contains "$out" "For Gemini Nano, also load it in Google Chrome"
-  out="$(HOME="$PWD/home" CONTEXTLENS_RELEASE_URL="file://$PWD/release" CONTEXTLENS_WSL=0 CONTEXTLENS_BROWSER="$PWD/browser" CONTEXTLENS_CHROME="$PWD/browser" CONTEXTLENS_GOOGLE_CHROME=none bash "$script" --no-launch 2>&1)" || fail "install failed: $out"
-  [[ "$out" != *"also load it in Google Chrome"* ]] || fail "Chrome steps without Google Chrome: $out"
+  assert_contains "$out" "--load-extension="
 }
 test_no_launch_only_prints_the_command() {
   release; stubs; mkdir home
-  out="$(HOME="$PWD/home" CONTEXTLENS_RELEASE_URL="file://$PWD/release" CONTEXTLENS_WSL=0 CONTEXTLENS_BROWSER="$PWD/browser" bash "$script" --no-launch 2>&1)" || fail "install failed: $out"
+  out="$(HOME="$PWD/home" CONTEXTLENS_RELEASE_URL="file://$PWD/release" CONTEXTLENS_WSL=0 CONTEXTLENS_GOOGLE_CHROME=none CONTEXTLENS_BROWSER="$PWD/browser" bash "$script" --no-launch 2>&1)" || fail "install failed: $out"
   sleep 0.5
   [[ ! -e browser-args ]] || fail "the browser was started"
   assert_contains "$out" "--load-extension="

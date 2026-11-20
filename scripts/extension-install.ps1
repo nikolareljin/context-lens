@@ -4,10 +4,13 @@
 #
 # 1. Downloads context-lens-extension.zip from the newest release, checks it against its
 #    .sha256 and unpacks it into %USERPROFILE%\context-lens\extension (running it again updates it).
-# 2. With Chromium or Chrome for Testing installed, starts it with the extension loaded, in its
-#    own profile (%USERPROFILE%\context-lens\browser-profile). Nothing else to do.
-# 3. Otherwise (Google Chrome no longer loads extensions from the command line), copies the
-#    folder path, opens chrome://extensions and prints the four clicks that load it.
+# 2. With Google Chrome installed (the browser with Gemini Nano), copies the folder path, opens
+#    chrome://extensions in it and prints the four clicks that load it for good. Chrome no
+#    longer loads extensions from the command line, so these clicks are needed once.
+# 3. Without Google Chrome but with Chromium or Chrome for Testing, starts that browser with the
+#    extension loaded, in its own profile (%USERPROFILE%\context-lens\browser-profile): only that window has it.
+#    (CONTEXTLENS_BROWSER names that browser explicitly and then wins over Google Chrome.)
+# 4. Otherwise the same four clicks, in Edge or any Chromium browser.
 #
 # Options through environment variables (the piped form takes no parameters):
 #   CONTEXTLENS_VERSION=X.Y.Z  a given release instead of the newest
@@ -106,7 +109,7 @@
     )
   }
 
-  # Google Chrome only (the browser with Gemini Nano), for the hint below.
+  # Google Chrome only (the browser with Gemini Nano), used first.
   $googleChrome = if ($env:CONTEXTLENS_GOOGLE_CHROME) { if ($env:CONTEXTLENS_GOOGLE_CHROME -eq 'none') { $null } else { $env:CONTEXTLENS_GOOGLE_CHROME } } else {
     First-Existing @(
       (Join-Path $env:ProgramFiles 'Google\Chrome\Application\chrome.exe'),
@@ -115,6 +118,9 @@
     )
   }
 
+  # Google Chrome first; a browser named in CONTEXTLENS_BROWSER on purpose still wins.
+  $browserNamed = $env:CONTEXTLENS_BROWSER -and $env:CONTEXTLENS_BROWSER -ne 'none'
+  if ($googleChrome -and -not $browserNamed) { $loader = $null; $chrome = $googleChrome }
   if ($loader) {
     $profileDir = Join-Path (Split-Path -Parent $dir) 'browser-profile'
     $arguments = @("--user-data-dir=`"$profileDir`"", "--load-extension=`"$dir`"", '--no-first-run', "chrome-extension://$ExtensionId/sidepanel.html")
@@ -125,14 +131,14 @@
       Step 'Start it with ContextLens loaded:'
     }
     Write-Host "  & `"$loader`" --user-data-dir=`"$profileDir`" --load-extension=`"$dir`""
-    Write-Host 'It uses its own profile, so your usual browser profile is left alone. The ContextLens page'
-    Write-Host 'opens in a tab; for the side panel, click the puzzle icon, pin ContextLens and click its icon.'
-    Write-Host 'To update later, run the same install command again and restart that browser.'
-    Write-Host 'Chromium and Chrome for Testing have no Gemini Nano, so Strict mode runs the local rules only.'
-    if ($googleChrome) {
-      Write-Host 'For Gemini Nano, also load it in Google Chrome: open chrome://extensions, turn on'
-      Write-Host "`"Developer mode`", click `"Load unpacked`" and choose $dir"
-    }
+    Write-Host "ContextLens is loaded only in the window this command opens, which uses its own profile"
+    Write-Host "($profileDir). If you open that browser from your menu, it uses your usual profile, without"
+    Write-Host "ContextLens. To add it there for good: open chrome://extensions, turn on `"Developer mode`","
+    Write-Host "click `"Load unpacked`" and choose $dir"
+    Write-Host 'The ContextLens page opens in a tab; for the side panel, click the puzzle icon, pin ContextLens'
+    Write-Host 'and click its icon. To update later, run the same install command again and restart that browser.'
+    Write-Host 'Chromium and Chrome for Testing have no Gemini Nano, so Strict mode runs the local rules only;'
+    Write-Host 'Google Chrome has it.'
   } else {
     $copied = $false
     try { Set-Clipboard -Value $dir; $copied = $true } catch { }

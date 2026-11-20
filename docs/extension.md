@@ -9,7 +9,7 @@ You need Chrome 138 or newer on Windows, macOS or Linux. Chromium and Chrome for
 | Option | Clicks | Updates | Status |
 |---|---|---|---|
 | [Chrome Web Store](#from-the-chrome-web-store) | two (**Add to Chrome**, **Add extension**) | automatic | not published yet; this page links the listing once Google publishes it |
-| [One command](#install-with-one-command) | a command, then four clicks in Chrome (none in Chromium) | run the command again | available |
+| [One command](#install-with-one-command) | a command, then four clicks in Chrome (none for a one-off Chromium window) | run the command again | available |
 | [ZIP by hand](#install-from-the-zip-by-hand) | download, unzip, four clicks | download again | available |
 
 ### From the Chrome Web Store
@@ -35,8 +35,9 @@ Copy the command for your system into a terminal and press Enter.
 What the command does:
 
 1. Downloads the extension from the newest [release](https://github.com/nikolareljin/context-lens/releases/latest), checks it against its published SHA-256 checksum, and unpacks it into a `context-lens/extension` folder in your home folder.
-2. **If Chromium or Chrome for Testing is installed**, it starts that browser with ContextLens already loaded and opens it in a tab (without Gemini Nano; the command also prints how to load it in Google Chrome, if you have it). It uses its own profile (`context-lens/browser-profile`), so your usual profile, bookmarks and sign-ins are left alone. You are done; go to [Check that it works](#check-that-it-works).
-3. **Otherwise** it copies the folder path to the clipboard, opens `chrome://extensions` in Chrome and prints the four clicks below. Google Chrome does not let a command load an extension any more, so these clicks are needed once.
+2. **If Google Chrome is installed** (the browser with Gemini Nano), it copies the folder path to the clipboard, opens `chrome://extensions` in Chrome and prints the four clicks below. Google Chrome does not let a command load an extension any more, so these clicks are needed once; after that, ContextLens stays in your usual Chrome.
+3. **Without Google Chrome, if Chromium or Chrome for Testing is installed**, it starts that browser with ContextLens already loaded and opens it in a tab (without Gemini Nano). That window uses its own profile (`context-lens/browser-profile`), and only that window has ContextLens: Chromium opened from your menu uses your usual profile, without it. To keep it in your usual Chromium, do the four clicks below there.
+4. **Otherwise** (Edge, Brave or another Chromium browser) the same four clicks.
 
 On WSL, use the PowerShell command in Windows, so that Chrome on Windows can read the folder.
 
