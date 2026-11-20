@@ -29,3 +29,16 @@ Every request that leaves the phone is recorded on the device: time, model, the 
 ## Accounts
 
 The app signs in anonymously so that App Check and per-install limits work. No name, email or contact list is requested.
+
+## Web companion and Chrome extension
+
+This section is the privacy policy of the ContextLens web companion and Chrome extension.
+
+- **No account, no analytics, no tracking.** Neither collects data for the developer: there is no ContextLens server, no analytics, no advertising and no data sale. Nothing is sent to the developer.
+- **What you type** stays in the page's memory and is gone when the page or side panel closes. The extension reads nothing from the websites you visit: it has no access to pages, tabs, history or downloads, only to its own side panel.
+- **What leaves your computer** goes only to a Firebase project that you connect, through Google's Firebase SDK: in Strict mode only the clean question for a checkable claim, after the same personal-data check as in the app; in Balanced mode, when Chrome has no Gemini Nano, the sentence itself (the page says so before you turn it on). Without a connected project nothing leaves your computer. The egress ledger lists every request word for word.
+- **Your project's settings** (the web app config or connect code) stay in the page's memory, or, if you tick **Remember on this device**, in the browser's local storage (the extension: its own storage). **Disconnect** deletes them. Removing the extension deletes everything it stored.
+- **Google's services:** checks in your project run on Firebase AI Logic and Gemini under your project's terms; Gemini Nano runs in Chrome on your computer.
+
+Questions: [open an issue](https://github.com/nikolareljin/context-lens/issues) on the repository.
+

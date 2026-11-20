@@ -4,6 +4,18 @@ The extension puts the [web companion](https://nikolareljin.github.io/context-le
 
 You need Chrome 138 or newer on Windows, macOS or Linux. Chromium and Chrome for Testing load it too, but they have no Gemini Nano, so there Strict mode runs the local rules only. (Microsoft Edge and Brave can load it the same way from their extensions page, but they have no Gemini Nano, so only the local rules and the cloud check run there.) Gemini Nano is optional: without it the local rules still run, and with a project connected, Balanced mode checks in the cloud. Getting Gemini Nano is described in [Web companion setup](web-setup.md).
 
+## Choose how to install
+
+| Option | Clicks | Updates | Status |
+|---|---|---|---|
+| [Chrome Web Store](#from-the-chrome-web-store) | one | automatic | submitted; this page links the listing once Google publishes it |
+| [One command](#install-with-one-command) | a command, then four clicks in Chrome (none in Chromium) | run the command again | available |
+| [ZIP by hand](#install-from-the-zip-by-hand) | download, unzip, four clicks | download again | available |
+
+### From the Chrome Web Store
+
+Once the listing is published: open it, click **Add to Chrome**, then **Add extension**. Chrome keeps it up to date. Click the puzzle icon next to the address bar, pin **ContextLens** and click its icon to open the side panel. No Developer mode is needed. Until then, use one of the two options below; they install the same extension.
+
 ## Install with one command
 
 Copy the command for your system into a terminal and press Enter.
@@ -37,11 +49,13 @@ In `chrome://extensions` (type it in the address bar if it did not open):
 3. Choose the `context-lens/extension` folder in your home folder and click **Select** (or **Select Folder**). The command already copied its path: in the folder window press ++ctrl+l++ (Linux), click the folder bar (Windows) or press ++cmd+shift+g++ (Mac), paste, and press Enter.
 4. Click the puzzle icon next to the address bar and pin **ContextLens**.
 
-## Install without a terminal
+## Install from the ZIP by hand
 
-1. Download `context-lens-extension.zip` from the [newest release](https://github.com/nikolareljin/context-lens/releases/latest).
-2. Unzip it into a folder you will keep, for example `context-lens/extension` in your home folder. (If Chrome is reading the extension from a folder that you delete, it stops working.)
-3. Follow [Load it in Chrome](#load-it-in-chrome-four-clicks), choosing that folder in step 3.
+No terminal needed:
+
+1. Download [`context-lens-extension.zip`](https://github.com/nikolareljin/context-lens/releases/latest/download/context-lens-extension.zip) from the newest release.
+2. Unzip it into a folder you will keep, for example `context-lens/extension` in your home folder. (Windows: right-click the file, **Extract All…**. Mac: double-click it. Linux: open it with the archive manager and extract.) If you delete the folder later, Chrome stops loading the extension.
+3. Follow [Load it in Chrome](#load-it-in-chrome-four-clicks), choosing that folder in step 3: the one that contains `manifest.json`.
 
 To check the download first, compare its SHA-256 with `context-lens-extension.zip.sha256` from the same release (`sha256sum`, `shasum -a 256` or `Get-FileHash`).
 
@@ -70,7 +84,7 @@ Open `chrome://extensions` and click **Remove** on the ContextLens card, then de
 
 ## Why Developer mode?
 
-Chrome installs extensions with one click only from the Chrome Web Store. ContextLens is not there yet, so Chrome loads it from a folder, which needs Developer mode. You can turn Developer mode off again; Chrome then shows a reminder at startup that an unpacked extension is loaded.
+Chrome installs extensions with one click only from the Chrome Web Store. Installed from the ZIP or the command, Chrome loads it from a folder, which needs Developer mode. You can turn Developer mode off again; Chrome then shows a reminder at startup that an unpacked extension is loaded.
 
 ## What it can access
 

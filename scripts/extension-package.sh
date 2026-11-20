@@ -6,7 +6,9 @@
 # Checks: manifest.json carries the repository's VERSION and asks for no more than the side
 # panel and no custom content security policy; no Firebase key, app id, project host or site key
 # (site-leak-check.sh); no App Check or Auth popup code; no remote script in a page. Writes context-lens-extension.zip (manifest.json at its
-# root) and context-lens-extension.zip.sha256 ("<sha256>  context-lens-extension.zip").
+# root) and context-lens-extension.zip.sha256 ("<sha256>  context-lens-extension.zip"), and
+# context-lens-extension-store.zip, the same files for a Chrome Web Store upload: the store assigns
+# its own id, so that manifest has no "key".
 set -euo pipefail
 TL_TAG=extension
 # shellcheck source=lib/common.sh
@@ -43,4 +45,12 @@ rm -f "$zip_path" "$zip_path.sha256"
 (cd "$build" && zip -q -X -r "$zip_path" .)
 if command -v sha256sum >/dev/null; then sum=(sha256sum); else sum=(shasum -a 256); fi
 (cd "$out" && "${sum[@]}" context-lens-extension.zip > context-lens-extension.zip.sha256)
-log "packaged $v: $zip_path ($(wc -c < "$zip_path" | tr -d ' ') bytes) and its .sha256"
+# The Chrome Web Store upload: same files, manifest without the "key" that fixes the unpacked id.
+store_path="$out/context-lens-extension-store.zip"
+rm -f "$store_path"
+store_dir="$(mktemp -d "${TMPDIR:-/tmp}/context-lens-store.XXXXXX")"
+trap 'rm -rf -- "$store_dir"' EXIT
+cp -R "$build"/. "$store_dir"/
+jq 'del(.key)' "$build/manifest.json" > "$store_dir/manifest.json"
+(cd "$store_dir" && zip -q -X -r "$store_path" .)
+log "packaged $v: $zip_path ($(wc -c < "$zip_path" | tr -d ' ') bytes) and its .sha256, and $store_path for the Chrome Web Store"

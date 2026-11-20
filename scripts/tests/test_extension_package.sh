@@ -23,6 +23,15 @@ test_packages_a_clean_build_with_its_checksum() {
   assert_contains "$(unzip -Z1 dist/context-lens-extension.zip)" "manifest.json"
   [[ "$(unzip -Z1 dist/context-lens-extension.zip)" != *build/* ]] || fail "files are not at the root of the zip"
 }
+test_the_store_upload_has_no_key_and_the_same_files() {
+  setup_repo
+  manifest '{"manifest_version":3,"name":"ContextLens","version":"0.3.0","key":"MIIBpublic","permissions":["sidePanel"]}'
+  package >/dev/null || fail "packaging failed: $(package)"
+  assert_eq "$(unzip -Z1 dist/context-lens-extension-store.zip | sort)" "$(unzip -Z1 dist/context-lens-extension.zip | sort)"
+  assert_eq "$(unzip -p dist/context-lens-extension-store.zip manifest.json | jq -r '.key // "none"')" "none"
+  assert_eq "$(unzip -p dist/context-lens-extension-store.zip manifest.json | jq -r .version)" "0.3.0"
+  assert_eq "$(unzip -p dist/context-lens-extension.zip manifest.json | jq -r .key)" "MIIBpublic"
+}
 test_refuses_a_version_other_than_VERSION() {
   setup_repo
   manifest '{"manifest_version":3,"version":"0.2.0","permissions":["sidePanel"]}'
