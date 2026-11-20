@@ -124,7 +124,7 @@
     } else {
       Step 'Start it with ContextLens loaded:'
     }
-    Write-Host "  `"$loader`" --user-data-dir=`"$profileDir`" --load-extension=`"$dir`""
+    Write-Host "  & `"$loader`" --user-data-dir=`"$profileDir`" --load-extension=`"$dir`""
     Write-Host 'It uses its own profile, so your usual browser profile is left alone. The ContextLens page'
     Write-Host 'opens in a tab; for the side panel, click the puzzle icon, pin ContextLens and click its icon.'
     Write-Host 'To update later, run the same install command again and restart that browser.'
