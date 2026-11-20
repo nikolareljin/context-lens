@@ -4,7 +4,8 @@
 # Usage: scripts/release.sh [--dry-run]
 # Checks: on main, clean tree, up to date with origin/main, VERSION is
 # MAJOR.MINOR.PATCH, CHANGELOG.md has a "## [VERSION]" section, the web
-# package (when present) carries VERSION, the tag does not exist yet. Then: annotated tag VERSION on HEAD, pushed to origin.
+# package (when present) carries VERSION, the tag does not exist yet.
+# Then: annotated tag VERSION on HEAD, pushed to origin.
 # Stand-in for tests: GIT_REMOTE (default origin).
 set -euo pipefail
 TL_TAG=release

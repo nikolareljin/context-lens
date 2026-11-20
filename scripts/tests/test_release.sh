@@ -36,6 +36,9 @@ test_release_refuses_a_different_web_package_version() {
   echo '{ "version": "0.2.0" }' > apps/web/package.json
   git add -A && git commit -q -m "chore: web" && git push -q origin main
   assert_status 0 bash scripts/release.sh --dry-run
+  echo '{ "version": "0.2.0", "packages": { "": { "version": "0.1.1" } } }' > apps/web/package-lock.json
+  git add -A && git commit -q -m "chore: web lock" && git push -q origin main
+  assert_status 1 bash scripts/release.sh --dry-run
 }
 test_release_refuses_dirty_tree() {
   setup_repo 0.1.0 0.1.0
