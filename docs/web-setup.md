@@ -36,7 +36,7 @@ A web API key is visible to anyone who has the config. Before giving a key to ju
 
 The restriction works per origin, not per path: the page sends only its origin (`https://nikolareljin.github.io/`) as the referrer to Google, so a pattern with `/context-lens/` in it would block every call. It keeps other domains from using the key, but every site under `nikolareljin.github.io` shares that origin and could use it, which is also why the page warns before you remember a project on a shared browser.
 
-The [Chrome extension](extension.md) can't use a website-restricted key: extension pages send no referrer, only their `chrome-extension://` origin, so Google refuses the call. For the extension, create a second key with **Application restrictions: None** and **API restrictions** limited to the Firebase AI Logic API (and the Identity Toolkit API for anonymous sign-in), and use it only in the connect code you paste into the extension. Its use is then bounded by the project's quotas and budget, not by where it is called from.
+The [Chrome extension](extension.md) can't use a website-restricted key: extension pages send no referrer, only their `chrome-extension://` origin, so Google refuses the call. For the extension, create a second key with **Application restrictions: None** and **API restrictions** limited to the Firebase AI Logic API (and, for anonymous sign-in, the Identity Toolkit API and the Token Service API, which renews the sign-in every hour), and use it only in the connect code you paste into the extension. Its use is then bounded by the project's quotas and budget, not by where it is called from.
 
 ### Optional: App Check and anonymous sign-in
 

@@ -208,6 +208,7 @@ describe("connecting a project", () => {
     vi.stubEnv("MODE", "extension");
     try {
       renderDemo();
+      expect(document.body.textContent).toContain("This extension has no project of its own");
       const withKey = snippet.replace("};", ', recaptchaSiteKey: "6Lc_springfield_site_key_555" };');
       fireEvent.change(screen.getByLabelText("Web app config or connect code"), { target: { value: withKey } });
       fireEvent.click(screen.getByLabelText(/Remember on this device/));
@@ -224,6 +225,8 @@ describe("connecting a project", () => {
       expect(dialog.textContent).not.toContain("nikolareljin.github.io");
       fireEvent.click(screen.getByRole("button", { name: "Connect demo-springfield" }));
       expect(sources.at(-1)?.project?.projectId).toBe("demo-springfield");
+      expect(document.body.textContent).toMatch(/Remembered on this device|Kept only while the panel is open/);
+      expect(document.body.textContent).not.toMatch(/\btab\b/);
     } finally {
       vi.unstubAllEnvs();
     }

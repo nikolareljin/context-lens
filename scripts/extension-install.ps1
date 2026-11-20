@@ -119,6 +119,11 @@
     Write-Host 'It uses its own profile, so your usual browser profile is left alone. The ContextLens page'
     Write-Host 'opens in a tab; for the side panel, click the puzzle icon, pin ContextLens and click its icon.'
     Write-Host 'To update later, run the same install command again and restart that browser.'
+    Write-Host 'Chromium and Chrome for Testing have no Gemini Nano, so Strict mode runs the local rules only.'
+    if ($chrome) {
+      Write-Host 'For Gemini Nano, also load it in Google Chrome: open chrome://extensions, turn on'
+      Write-Host "`"Developer mode`", click `"Load unpacked`" and choose $dir"
+    }
   } else {
     $copied = $false
     try { Set-Clipboard -Value $dir; $copied = $true } catch { }

@@ -111,7 +111,11 @@ export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: P
             Connected: <strong className="text-slate-100">{project.projectId}</strong>
             {project.recaptchaSiteKey ? " · App Check on" : ""}
             {project.anonymousAuth ? " · anonymous sign-in" : ""}.{" "}
-            {remembered ? "Remembered on this device." : "Kept in this tab's memory only; gone when the tab closes."}
+            {remembered
+              ? "Remembered on this device."
+              : inExtension()
+                ? "Kept only while the panel is open."
+                : "Kept in this tab's memory only; gone when the tab closes."}
           </p>
           <button ref={disconnectButton} type="button" onClick={() => onDisconnect()} className="rounded-full border border-edge px-4 py-1 text-sm hover:border-device">
             Disconnect
@@ -121,7 +125,7 @@ export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: P
         <div className="mt-2 flex flex-col gap-2">
           <p className="text-sm text-slate-300">
             Not connected: everything stays in this browser. The grounded check runs Gemini with Google Search through
-            Firebase AI Logic in your own project, on your quota. This site has no project of its own.{" "}
+            Firebase AI Logic in your own project, on your quota. {inExtension() ? "This extension" : "This site"} has no project of its own.{" "}
             <a className="text-device underline" href={`${DOCS}web-setup/`} target="_blank" rel="noopener noreferrer">How to set one up</a>
           </p>
           <label htmlFor="connect-input" className="text-sm font-medium">Web app config or connect code</label>

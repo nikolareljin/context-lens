@@ -2,7 +2,7 @@
 
 The extension puts the [web companion](../)'s live demo in Chrome's side panel, next to whatever you are reading or watching. It runs the same three stages: the local rules and Gemini Nano in Chrome on your computer, and the grounded check in a Firebase project you connect. It reads nothing from the pages you visit: you type or paste the sentence.
 
-You need Chrome 138 or newer on Windows, macOS or Linux; Chromium and Chrome for Testing work too. (Microsoft Edge and Brave can load it the same way from their extensions page, but they have no Gemini Nano, so only the local rules and the cloud check run there.) Gemini Nano is optional: without it the local rules still run, and with a project connected, Balanced mode checks in the cloud. Getting Gemini Nano is described in [Web companion setup](web-setup.md).
+You need Chrome 138 or newer on Windows, macOS or Linux. Chromium and Chrome for Testing load it too, but they have no Gemini Nano, so there Strict mode runs the local rules only. (Microsoft Edge and Brave can load it the same way from their extensions page, but they have no Gemini Nano, so only the local rules and the cloud check run there.) Gemini Nano is optional: without it the local rules still run, and with a project connected, Balanced mode checks in the cloud. Getting Gemini Nano is described in [Web companion setup](web-setup.md).
 
 ## Install with one command
 
@@ -23,7 +23,7 @@ Copy the command for your system into a terminal and press Enter.
 What the command does:
 
 1. Downloads the extension from the newest [release](https://github.com/nikolareljin/context-lens/releases/latest), checks it against its published SHA-256 checksum, and unpacks it into a `context-lens/extension` folder in your home folder.
-2. **If Chromium or Chrome for Testing is installed**, it starts that browser with ContextLens already loaded and opens it in a tab. It uses its own profile (`context-lens/browser-profile`), so your usual profile, bookmarks and sign-ins are left alone. You are done; go to [Check that it works](#check-that-it-works).
+2. **If Chromium or Chrome for Testing is installed**, it starts that browser with ContextLens already loaded and opens it in a tab (without Gemini Nano; the command also prints how to load it in Google Chrome, if you have it). It uses its own profile (`context-lens/browser-profile`), so your usual profile, bookmarks and sign-ins are left alone. You are done; go to [Check that it works](#check-that-it-works).
 3. **Otherwise** it copies the folder path to the clipboard, opens `chrome://extensions` in Chrome and prints the four clicks below. Google Chrome does not let a command load an extension any more, so these clicks are needed once.
 
 On WSL, use the PowerShell command in Windows, so that Chrome on Windows can read the folder.
@@ -58,7 +58,7 @@ The grounded check runs in a Firebase project you connect, on that project's quo
 - **Given a connect code?** Paste it as it is. Tick **Remember on this device** to keep it after the panel closes.
 - The extension keeps a remembered project in its own storage, separate from every website.
 - App Check's reCAPTCHA can't run inside an extension, so a config with a reCAPTCHA site key is refused; the project must not enforce App Check for Firebase AI Logic.
-- Extension pages send no referrer, so an API key restricted to **websites** is refused in the extension. Use a key restricted by API instead (**API restrictions**: Firebase AI Logic API, plus Identity Toolkit API for anonymous sign-in), for example a second key used only in the extension's connect code; see [Restrict the API key](web-setup.md#restrict-the-api-key).
+- Extension pages send no referrer, so an API key restricted to **websites** is refused in the extension. Use a key restricted by API instead (**API restrictions**: Firebase AI Logic API, plus the Identity Toolkit API and the Token Service API for anonymous sign-in), for example a second key used only in the extension's connect code; see [Restrict the API key](web-setup.md#restrict-the-api-key).
 
 ## Update
 

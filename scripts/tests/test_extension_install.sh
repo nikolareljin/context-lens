@@ -32,6 +32,12 @@ test_loads_it_in_chromium_with_its_own_profile() {
   assert_contains "$args" "--user-data-dir=$PWD/home/context-lens/browser-profile"
   assert_contains "$args" "chrome-extension://ibebpiolnohegpeabdgikjjnolphpbcd/sidepanel.html"
   assert_contains "$out" "checksum ok"
+  assert_contains "$out" "no Gemini Nano"
+}
+test_chromium_users_with_chrome_also_get_the_chrome_steps() {
+  release; stubs; mkdir home
+  out="$(HOME="$PWD/home" CONTEXTLENS_RELEASE_URL="file://$PWD/release" CONTEXTLENS_WSL=0 CONTEXTLENS_BROWSER="$PWD/browser" CONTEXTLENS_CHROME="$PWD/browser" bash "$script" --no-launch 2>&1)" || fail "install failed: $out"
+  assert_contains "$out" "For Gemini Nano, also load it in Google Chrome"
 }
 test_no_launch_only_prints_the_command() {
   release; stubs; mkdir home

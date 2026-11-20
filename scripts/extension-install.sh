@@ -151,6 +151,11 @@ main() {
     say "It uses its own profile, so your usual browser profile is left alone. The ContextLens page"
     say "opens in a tab; for the side panel, click the puzzle icon, pin ContextLens and click its icon."
     say "To update later, run the same install command again and restart that browser."
+    say "Chromium and Chrome for Testing have no Gemini Nano, so Strict mode runs the local rules only."
+    if find_chrome >/dev/null; then
+      say "For Gemini Nano, also load it in Google Chrome: open chrome://extensions, turn on"
+      say "\"Developer mode\", click \"Load unpacked\" and choose $dir"
+    fi
   else
     chrome="$(find_chrome || true)"
     copied=0; if copy_path; then copied=1; fi
