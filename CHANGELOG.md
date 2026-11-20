@@ -14,6 +14,12 @@ Ready for the Chrome Web Store: the upload package, the install options and the 
 - Chrome Web Store upload: packaging also writes `context-lens-extension-store.zip` (same files, manifest without the `key` that fixes the unpacked extension id; the store assigns its own), attached to every release.
 - The extension guide lists the three ways to install (Chrome Web Store once published, one command, the ZIP by hand), and the privacy page has a section for the web companion and the extension, for the store listing to link to.
 
+### Changed
+
+- The extension's description fits the Chrome Web Store's 132 characters, enforced by a test.
+- The extension package carries no address of a remote script: the build empties the Firebase SDK's list of Google scripts it may load (gtag, gapi, reCAPTCHA), none of which the extension uses, and packaging fails if one is found.
+- The web companion's Balanced mode says what it sends: the sentence with its context (the sentences before it, date, area, topic) while Gemini Nano isn't ready in the browser.
+
 ## [0.3.0] - 2026-11-19
 
 The Chrome extension: the web companion's demo in Chrome's side panel, installed with one command.
