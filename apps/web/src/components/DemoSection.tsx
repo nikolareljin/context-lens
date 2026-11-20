@@ -15,6 +15,7 @@ import { WebPipeline, type Check, type ModelSource, type PipelineSnapshot, type 
 import { EXTENSION_APP_CHECK, inExtension } from "../lib/config";
 import { CheckCard } from "./CheckCard";
 import { ConnectPanel } from "./ConnectPanel";
+import { DemoRun } from "./DemoRun";
 import { LedgerPanel } from "./LedgerPanel";
 
 /** A model source the demo can drop when the project changes. */
@@ -32,6 +33,8 @@ export interface DemoProps {
   demoGapMs?: number;
   /** Reloads the page; the startup cleanup then deletes what App Check stored. */
   reload?: () => void;
+  /** Each new value opens the full-page demo run (the home page's Run the demo button). */
+  runRequest?: number;
 }
 
 const STATUS_TEXT: Record<OnDeviceStatus, string> = {
@@ -91,6 +94,7 @@ export function DemoSection({
   status = onDeviceStatus,
   demoGapMs = DemoScript.lineGapMs,
   reload = defaultReload,
+  runRequest = 0,
 }: DemoProps) {
   // Only a project the visitor chose to remember is in storage; otherwise it lives in this state.
   const [project, setProject] = useState<WebProject | null>(() => loadProject());
@@ -103,6 +107,7 @@ export function DemoSection({
   const [device, setDevice] = useState<OnDeviceStatus | null>(null);
   const [preparing, setPreparing] = useState<string | null>(null);
   const [demoRunning, setDemoRunning] = useState(false);
+  const [runOpen, setRunOpen] = useState(false);
   const [engine, setEngine] = useState<Engine | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   // The project now connected; a pipeline built for an earlier one never reaches the cloud.
@@ -182,7 +187,14 @@ export function DemoSection({
     timers.current = [];
     setDemoRunning(false);
   };
-  useEffect(() => stopDemo, [pipeline]);
+  // A new pipeline (another project, or a disconnect) ends the run and closes its view.
+  useEffect(
+    () => () => {
+      stopDemo();
+      setRunOpen(false);
+    },
+    [pipeline],
+  );
 
   const runDemo = () => {
     if (pipeline === null) return;
@@ -192,6 +204,7 @@ export function DemoSection({
     setTopic(DemoScript.topic);
     pipeline.setSession({ today, region: DemoScript.region, pinnedTopic: DemoScript.topic });
     setDemoRunning(true);
+    setRunOpen(true);
     DemoScript.lines.forEach((line, i) => {
       timers.current.push(
         setTimeout(() => {
@@ -200,6 +213,20 @@ export function DemoSection({
         }, i * demoGapMs),
       );
     });
+  };
+
+  const handledRequest = useRef(0);
+  useEffect(() => {
+    if (runRequest === handledRequest.current || pipeline === null) return;
+    handledRequest.current = runRequest;
+    runDemo();
+    // runDemo reads the current pipeline; only a new request starts it
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runRequest, pipeline]);
+
+  const closeRun = () => {
+    stopDemo();
+    setRunOpen(false);
   };
 
   const submit = (e: FormEvent) => {
@@ -288,13 +315,43 @@ export function DemoSection({
     }
   };
 
+  const deviceLine = (
+    <>
+      {device === null ? "Checking Chrome's built-in model…" : STATUS_TEXT[device]}{" "}
+      {device === "downloadable" && engine?.models.prepareOnDevice && (
+        <button type="button" onClick={() => void prepare()} className="ml-1 rounded-full border border-edge px-2 hover:border-device">
+          Download Gemini Nano
+        </button>
+      )}
+      {preparing && <span className="ml-1">{preparing}</span>}
+    </>
+  );
+
   const latest = snapshot.checks[0];
   const counts = snapshot.counts;
 
   return (
-    <section aria-labelledby="web-demo" className="flex flex-col gap-4 rounded-2xl border border-edge bg-panel/60 p-6">
+    <section id="try" aria-labelledby="web-demo" className="flex scroll-mt-4 flex-col gap-4 rounded-2xl border border-edge bg-panel/60 p-6">
+      {runOpen && (
+        <DemoRun
+          checks={snapshot.checks}
+          today={today}
+          device={device}
+          running={demoRunning}
+          total={DemoScript.lines.length}
+          cloudLine={
+            project === null
+              ? "No project connected: nothing leaves this browser, and the grounded check is skipped. Close and paste an access code to run it."
+              : `Cloud step: the project ${project.projectId}, ${effectiveMode === "STRICT" ? "Strict" : "Balanced"} mode.`
+          }
+          deviceLine={deviceLine}
+          mode={effectiveMode}
+          onClose={closeRun}
+          onAgain={runDemo}
+        />
+      )}
       <div>
-        <h2 id="web-demo" className="text-xl font-semibold">Try it in Chrome</h2>
+        <h2 id="web-demo" className="text-xl font-semibold">Try it live in Chrome</h2>
         <p className="mt-1 text-slate-300">
           Type a sentence from a conversation, or run the demo. The local rules and Chrome's built-in Gemini Nano read it
           in this browser; only a clean question goes to the cloud, and only to a Firebase project you connect. The
@@ -318,13 +375,7 @@ export function DemoSection({
           </span>
         </label>
         <p className="text-xs text-slate-400" data-testid="device-status">
-          {device === null ? "Checking Chrome's built-in model…" : STATUS_TEXT[device]}{" "}
-          {device === "downloadable" && engine?.models.prepareOnDevice && (
-            <button type="button" onClick={() => void prepare()} className="ml-1 rounded-full border border-edge px-2 hover:border-device">
-              Download Gemini Nano
-            </button>
-          )}
-          {preparing && <span className="ml-1">{preparing}</span>}
+          {deviceLine}
         </p>
       </fieldset>
 

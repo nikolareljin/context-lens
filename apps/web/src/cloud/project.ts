@@ -95,7 +95,8 @@ export const WEB_CONNECT_PREFIX = "contextlens-web-connect:1?";
 
 /**
  * The project in a web connect code:
- * `contextlens-web-connect:1?project=…&app=…&key=…&domain=…&sender=…[&site=…]`.
+ * `contextlens-web-connect:1?project=…&app=…&key=…&domain=…&sender=…[&site=…][&anon=1]`;
+ * `anon=1` asks for an anonymous sign-in before cloud calls, so whoever pastes the code needs no setting.
  * Null when it is not one or a required value is missing; check [problems] for the rest.
  */
 export function fromConnectCode(text: string, anonymousAuth = false): WebProject | null {
@@ -124,7 +125,7 @@ export function fromConnectCode(text: string, anonymousAuth = false): WebProject
       messagingSenderId: params.get("sender"),
       recaptchaSiteKey: params.get("site"),
     },
-    anonymousAuth,
+    anonymousAuth || params.get("anon") === "1",
   );
 }
 

@@ -17,6 +17,7 @@ interface Props {
  * first cloud call uses it.
  */
 export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: Props) {
+  const [code, setCode] = useState("");
   const [text, setText] = useState("");
   const [anonymous, setAnonymous] = useState(false);
   const [remember, setRemember] = useState(false);
@@ -61,15 +62,27 @@ export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: P
   };
 
   const check = () => {
-    if (text.trim().startsWith(ANDROID_CONNECT_PREFIX)) {
+    // The access code field first; the own-project field when it is empty.
+    const usingCode = code.trim().length > 0;
+    const pasted = usingCode ? code : text;
+    if (!pasted.trim()) {
+      setError("Paste an access code, or your own project's web app config under “Use your own Firebase project”.");
+      return;
+    }
+    if (pasted.trim().startsWith(ANDROID_CONNECT_PREFIX)) {
       setError(
         "This is the Android app's connect code (contextlens-connect:1). The page needs the web app's config or a web connect code (contextlens-web-connect:1), which carries the web app id.",
       );
       return;
     }
-    const parsed = parseProject(text, anonymous);
+    // The access code carries its own sign-in setting (anon=1); the box applies to your own project.
+    const parsed = parseProject(pasted, usingCode ? false : anonymous);
     if (parsed === null) {
-      setError("Paste the web app's firebaseConfig from the Firebase console, or a web connect code.");
+      setError(
+        usingCode
+          ? "This access code is incomplete or not an access code: copy the whole line, starting with contextlens-web-connect:1?"
+          : "Paste the web app's firebaseConfig from the Firebase console, or a web connect code.",
+      );
       return;
     }
     const found = problems(parsed);
@@ -100,6 +113,7 @@ export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: P
       return;
     }
     setText("");
+    setCode("");
   };
 
   return (
@@ -122,27 +136,54 @@ export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: P
           </button>
         </div>
       ) : (
-        <div className="mt-2 flex flex-col gap-2">
+        <div className="mt-2 flex flex-col gap-3">
           <p className="text-sm text-slate-300">
-            Not connected: everything stays in this browser. The grounded check runs Gemini with Google Search through
-            Firebase AI Logic in your own project, on your quota. {inExtension() ? "This extension" : "This site"} has no project of its own.{" "}
-            <a className="text-device underline" href={`${DOCS}web-setup/`} target="_blank" rel="noopener noreferrer">How to set one up</a>
+            Not connected: everything stays in this browser and the grounded check is skipped. The check runs Gemini with
+            Google Search through Firebase AI Logic in a connected project, on that project's quota.{" "}
+            {inExtension() ? "This extension" : "This site"} has no project of its own.
           </p>
-          <label htmlFor="connect-input" className="text-sm font-medium">Web app config or connect code</label>
-          <textarea
-            id="connect-input"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            rows={4}
-            spellCheck={false}
-            autoComplete="off"
-            placeholder={'const firebaseConfig = { apiKey: "…", authDomain: "…", projectId: "…", appId: "…", messagingSenderId: "…" };'}
-            className="w-full rounded-lg border border-edge bg-ink p-2 font-mono text-xs"
-          />
-          <label className="flex items-center gap-2 text-sm text-slate-300">
-            <input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} />
-            Sign in anonymously before cloud calls (needs the Anonymous provider and authDomain)
-          </label>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="access-code" className="text-sm font-medium">Access code</label>
+            <input
+              id="access-code"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              spellCheck={false}
+              autoComplete="off"
+              placeholder="contextlens-web-connect:1?…"
+              className="w-full rounded-full border border-edge bg-ink px-4 py-2 font-mono text-xs"
+            />
+            <p className="text-xs text-slate-400">
+              Hackathon judges: the access code is in the submission's testing notes. It connects the demo project, with its own
+              limits; use one only from someone you trust.
+            </p>
+          </div>
+          <details className="rounded-lg border border-edge px-3 py-2">
+            <summary className="cursor-pointer text-sm font-medium">Use your own Firebase project</summary>
+            <div className="mt-2 flex flex-col gap-2">
+              <p className="text-sm text-slate-300">
+                Paste your web app's config from the Firebase console (Project settings, Your apps), or a web connect code you made
+                for it.{" "}
+                <a className="text-device underline" href={`${DOCS}web-setup/`} target="_blank" rel="noopener noreferrer">How to set one up</a>
+              </p>
+              <label htmlFor="connect-input" className="text-sm font-medium">Web app config or connect code</label>
+              <textarea
+                id="connect-input"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                rows={4}
+                spellCheck={false}
+                autoComplete="off"
+                placeholder={'const firebaseConfig = { apiKey: "…", authDomain: "…", projectId: "…", appId: "…", messagingSenderId: "…" };'}
+                className="w-full rounded-lg border border-edge bg-ink p-2 font-mono text-xs"
+              />
+              <label className="flex items-center gap-2 text-sm text-slate-300">
+                <input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} />
+                Sign in anonymously before cloud calls (only if your project requires a signed-in user; needs the Anonymous
+                provider and authDomain)
+              </label>
+            </div>
+          </details>
           <label className="flex items-start gap-2 text-sm text-slate-300">
             <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="mt-1" />
             {inExtension() ? (

@@ -4,6 +4,16 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ## [Unreleased]
 
+### Changed
+
+- The home page starts with three ways to try it: **Run the demo**, **Try it live** and **Get the extension**. A recorded run appears there once one exists.
+- **Run demo** opens a full-page view from the top: each sentence of the demo appears in turn and opens step by step (local rules, the clean question, the personal-data check, the grounded check), with where it ran and where it stopped. Escape or **Close** stops the run and returns to the page.
+- Connecting starts with one **Access code** field; your own project's config and the anonymous sign-in are under **Use your own Firebase project**. A web connect code can carry `anon=1`, so the anonymous sign-in needs no setting.
+
+### Added
+
+- A Chrome extension section on the home page: the one-line install for Linux, macOS and Windows with copy buttons, and the ZIP by hand in four steps; the **Add to Chrome** button appears once the Chrome Web Store listing is published.
+
 ## [0.4.0] - 2026-11-19
 
 Ready for the Chrome Web Store: the upload package, the install options and the extension's privacy policy; link previews for the site.

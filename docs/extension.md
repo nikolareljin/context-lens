@@ -61,13 +61,13 @@ To check the download first, compare its SHA-256 with `context-lens-extension.zi
 
 ## Check that it works
 
-1. Click the ContextLens icon in the toolbar. The side panel opens with **Try it in Chrome**.
-2. Click **Run demo**. Cards appear for the demo sentences: small talk is dropped by the local rules, and claims show each stage with where it ran.
+1. Click the ContextLens icon in the toolbar. The side panel opens with **Try it live in Chrome**.
+2. Click **Run demo**. The demo run fills the panel: each demo sentence appears in turn and opens step by step (local rules, the clean question, the personal-data check, the grounded check), showing how far it got and where it ran. **Close** stops the run and returns to the panel, where the cards made so far stay.
 3. Without a connected project the cloud step says **no Firebase project is connected** and offers a search link instead, and the egress ledger stays empty: nothing left your computer.
 
 ## Connect a Firebase project
 
-The grounded check runs in a Firebase project you connect, on that project's quota and bill. In the side panel, under **Cloud check: your Firebase project**, paste the web app's config or a web connect code, choose **Connect…** and confirm the project name. [Web companion setup](web-setup.md) explains how to get either from a project of your own.
+The grounded check runs in a Firebase project you connect, on that project's quota and bill. In the side panel, under **Cloud check: your Firebase project**, paste a connect code into **Access code** (or your web app's config under **Use your own Firebase project**), choose **Connect…** and confirm the project name. [Web companion setup](web-setup.md) explains how to get either from a project of your own.
 
 - **Given a connect code?** Paste it as it is. Tick **Remember on this device** to keep it after the panel closes.
 - The extension keeps a remembered project in its own storage, separate from every website.

@@ -16,7 +16,7 @@ The microphone stays off: Chrome's speech recognition sends audio to Google.
 1. In the Firebase console, open your project and **Add app → Web**. Copy the `firebaseConfig` it shows.
 2. **AI Logic** must be enabled for the project (Gemini Developer API), as for the Android app.
 3. **Authentication → Settings → Authorized domains**: add the domain that serves the page (`localhost` is there by default). Only needed for anonymous sign-in.
-4. On the page, under **Cloud check: your Firebase project**, paste the config (the JavaScript snippet or the same values as JSON) or a web connect code, and choose **Connect…**. The page names the project and connects only after you confirm.
+4. On the page, under **Cloud check: your Firebase project**, open **Use your own Firebase project** and paste the config (the JavaScript snippet or the same values as JSON), or paste a web connect code into **Access code**, and choose **Connect…**. The page names the project and connects only after you confirm.
 
 A web connect code carries the same values on one line:
 
@@ -24,7 +24,7 @@ A web connect code carries the same values on one line:
 contextlens-web-connect:1?project=demo-springfield&app=1%3A55501%3Aweb%3A5ca1ab1e&key=<apiKey>&domain=demo-springfield.firebaseapp.com&sender=55501
 ```
 
-`site=<reCAPTCHA site key>` is optional. Each value is checked: `apiKey` must look like a web API key, `appId` like `1:<number>:web:<hex>`, the project id like a Firebase project id, and `messagingSenderId` must match the app id's project number.
+`site=<reCAPTCHA site key>` is optional, and `anon=1` turns on the anonymous sign-in, so whoever pastes the code needs no setting (use it when the project requires a signed-in user). Each value is checked: `apiKey` must look like a web API key, `appId` like `1:<number>:web:<hex>`, the project id like a Firebase project id, and `messagingSenderId` must match the app id's project number.
 
 The values go only to Firebase, through the SDK. By default they are kept in the tab's memory only and are gone when the tab closes. Tick **Remember on this device** before connecting to keep them in this browser's local storage instead; all sites under `nikolareljin.github.io` share that storage (same origin), so remember a project only in a personal browser. **Disconnect** clears both, stops every sentence still queued or in progress (nothing more reaches the old project) and deletes its Firebase app instance; connecting another project starts a fresh one. Clean questions then run on your project's quota and bill.
 

@@ -180,6 +180,27 @@ describe("connecting a project", () => {
     expect(screen.getByText("demo-springfield")).toBeTruthy();
   });
 
+  it("connects with an access code, anonymous sign-in included", () => {
+    renderDemo();
+    const code = `contextlens-web-connect:1?project=demo-springfield&app=${encodeURIComponent(FAKE_APP_ID)}&key=${FAKE_KEY}&domain=demo-springfield.firebaseapp.com&sender=5550001&anon=1`;
+    fireEvent.change(screen.getByLabelText("Access code"), { target: { value: code } });
+    fireEvent.click(screen.getByRole("button", { name: "Connect…" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("An anonymous sign-in is made before the first cloud call.")).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Connect demo-springfield" }));
+    expect(sources.at(-1)!.project).toEqual(fakeProject({ anonymousAuth: true }));
+    expect(screen.getByText("demo-springfield")).toBeTruthy();
+  });
+
+  it("asks for a code when nothing is pasted, and says what an access code looks like", () => {
+    renderDemo();
+    fireEvent.click(screen.getByRole("button", { name: "Connect…" }));
+    expect(screen.getByRole("alert").textContent).toContain("Paste an access code");
+    fireEvent.change(screen.getByLabelText("Access code"), { target: { value: "hello" } });
+    fireEvent.click(screen.getByRole("button", { name: "Connect…" }));
+    expect(screen.getByRole("alert").textContent).toContain("This access code is incomplete or not an access code");
+  });
+
   it("explains that the Android connect code is not the web one", () => {
     renderDemo();
     const code = `contextlens-connect:1?project=demo-springfield&app=1%3A5550001%3Aandroid%3Aab&key=${FAKE_KEY}`;
@@ -364,10 +385,20 @@ describe("without a project", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("runs the scripted Springfield conversation", async () => {
+  it("runs the scripted Springfield conversation in a full-page view, step by step", async () => {
     renderDemo();
     fireEvent.click(screen.getByRole("button", { name: "Run demo" }));
-    await waitFor(() => expect(screen.getAllByText("Demo input")).toHaveLength(6));
+    const run = screen.getByRole("dialog", { name: "Demo run, live in this browser" });
+    await waitFor(() => expect(within(run).getAllByTestId("run-sentence")).toHaveLength(6));
+    await waitFor(() => expect(within(run).getByTestId("run-progress").textContent).toBe("Sentence 6 of 6 · finished"));
+    expect(within(run).getAllByText(/^Not a claim \(.*\): dropped here. No model runs and nothing is sent.$/)).toHaveLength(4);
+    expect(within(run).getByText(/No project connected: nothing leaves this browser/)).toBeTruthy();
+    await waitFor(() =>
+      expect(within(run).getAllByText("No project connected, so nothing was sent. Paste an access code to run this step.").length).toBeGreaterThan(0),
+    );
+    fireEvent.keyDown(run, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getAllByText("Demo input")).toHaveLength(6);
     expect((screen.getByLabelText("Area (nearest city)") as HTMLInputElement).value).toBe("Springfield");
     expect(screen.getAllByText(/local rules: small talk/)).toHaveLength(4);
     await waitFor(() => expect(screen.getAllByRole("link", { name: "Search this in your browser" }).length).toBeGreaterThan(0));

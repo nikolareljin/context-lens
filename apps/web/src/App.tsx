@@ -1,8 +1,10 @@
 import logoUrl from "../../../docs/assets/logo.svg?url";
 import heroUrl from "../../../docs/assets/hero.svg?url";
+import { useState } from "react";
 import { DownloadStrip } from "./components/DownloadStrip";
+import { ExtensionStrip } from "./components/ExtensionStrip";
 import { DemoSection } from "./components/DemoSection";
-import { DOCS, REPOSITORY } from "./lib/config";
+import { DOCS, RECORDED_RUN_URL, REPOSITORY } from "./lib/config";
 
 const STAGES = [
   { n: 1, title: "Local speech", where: "on this device", text: "The sentence and its references (“here”, “they”, “last month”) stay here." },
@@ -10,7 +12,14 @@ const STAGES = [
   { n: 3, title: "Grounded fact card", where: "cloud Gemini + Google Search", text: "A verdict, two neutral sentences and the sources." },
 ];
 
+const WAYS = [
+  { title: "Run the demo", text: "No setup. A short scripted conversation, step by step: what stays in this browser and what would go out." },
+  { title: "Try it live", text: "Type your own sentences. Paste an access code to turn on the grounded check with Google Search." },
+  { title: "Install it", text: "The Chrome extension in the side panel, or the Android app for live conversations." },
+];
+
 export default function App() {
+  const [runRequest, setRunRequest] = useState(0);
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-10 px-4 py-8 sm:px-8">
       <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
@@ -40,6 +49,30 @@ export default function App() {
             The device decides which sentences are checkable claims and rewrites them without personal data. Only that
             clean question goes to the cloud, and every result shows where it actually ran.
           </p>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => setRunRequest((n) => n + 1)}
+              className="rounded-full bg-bridge px-6 py-3 text-lg font-medium text-white hover:bg-cloud"
+            >
+              Run the demo
+            </button>
+            {RECORDED_RUN_URL && (
+              <a href={RECORDED_RUN_URL} className="rounded-full border border-edge px-6 py-3 text-lg hover:border-device">
+                Watch the recorded run
+              </a>
+            )}
+            <a href="#try" className="rounded-full border border-edge px-6 py-3 text-lg hover:border-device">Try it live</a>
+            <a href="#extension" className="rounded-full border border-edge px-6 py-3 text-lg hover:border-device">Get the extension</a>
+          </div>
+          <ol className="grid gap-3 sm:grid-cols-3" aria-label="Ways to try it">
+            {WAYS.map((w, i) => (
+              <li key={w.title} className="rounded-xl border border-edge bg-slate-950/50 p-4 text-sm">
+                <p className="font-semibold">{i + 1}. {w.title}</p>
+                <p className="mt-1 text-slate-300">{w.text}</p>
+              </li>
+            ))}
+          </ol>
           <img src={heroUrl} alt="The three stages: local speech, a resolved question on the device, a grounded fact card from the cloud" className="w-full rounded-2xl" />
         </section>
 
@@ -54,7 +87,9 @@ export default function App() {
           ))}
         </section>
 
-        <DemoSection />
+        <DemoSection runRequest={runRequest} />
+
+        <ExtensionStrip />
 
         <DownloadStrip />
       </main>

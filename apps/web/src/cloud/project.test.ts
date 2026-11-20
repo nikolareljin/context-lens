@@ -53,6 +53,12 @@ describe("reading a project", () => {
     expect(parseProject(code, true)).toEqual(fakeProject({ anonymousAuth: true }));
   });
 
+  it("reads the anonymous sign-in from the connect code", () => {
+    const code = `${WEB_CONNECT_PREFIX}project=demo-springfield&app=${encodeURIComponent(FAKE_APP_ID)}&key=${FAKE_KEY}&domain=demo-springfield.firebaseapp.com&sender=5550001`;
+    expect(fromConnectCode(`${code}&anon=1`)).toEqual(fakeProject({ anonymousAuth: true }));
+    expect(fromConnectCode(`${code}&anon=0`)).toEqual(fakeProject());
+  });
+
   it("rejects what is not a connect code or misses a value", () => {
     expect(fromConnectCode(`contextlens-connect:1?project=demo-springfield&app=${FAKE_APP_ID}&key=${FAKE_KEY}`)).toBeNull();
     expect(fromConnectCode(`${WEB_CONNECT_PREFIX}project=demo-springfield&key=${FAKE_KEY}`)).toBeNull();
