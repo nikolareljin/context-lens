@@ -79,10 +79,10 @@ echo "{\"apiKey\":\"AIzaFAKE\",\"authDomain\":\"demo-proj.firebaseapp.com\",\"pr
   [[ "$out" != *AIzaFAKE* && "$out" != *SECRET-ACCESS* ]] || fail "a value was printed: $out"
 }
 # gh_stub: records each call ("<command> <action> <name>=<stdin>"); "variable list" names the
-# variables in the file "variables" and is not recorded.
+# variables in the file "variables" (or fails when the file "variables-fail" exists) and is not recorded.
 gh_stub() {
   stub gh 'if [[ "$1" == repo ]]; then echo Owner/context-lens; exit; fi
-if [[ "$1 $2" == "variable list" ]]; then cat '"$PWD"'/variables 2>/dev/null; exit 0; fi
+if [[ "$1 $2" == "variable list" ]]; then [[ ! -e '"$PWD"'/variables-fail ]] || exit 1; cat '"$PWD"'/variables 2>/dev/null; exit 0; fi
 printf "%s %s %s=%s\n" "$1" "$2" "$3" "$(cat)" >> '"$PWD"'/gh-calls'
   export GH="$PWD/gh"
 }
@@ -114,6 +114,17 @@ test_github_step_removes_a_leftover_project_variable() {
   assert_contains "$calls" "variable delete FIREBASE_PROJECT_ID="
   [[ "$calls" != *"variable delete TESTER_GROUPS"* ]] || fail "another variable was deleted: $calls"
   assert_eq "$(wc -l < gh-calls | tr -d ' ')" 3
+}
+test_github_step_warns_when_the_variables_cannot_be_listed() {
+  sandbox
+  printf 'FIREBASE_PROJECT_ID=demo-proj\nFIREBASE_ANDROID_APP_ID=1:9:android:x\n' > dot.env
+  touch variables-fail
+  gh_stub
+  out="$(bash "$cloud" github 2>&1 </dev/null)" || fail "github step failed: $out"
+  assert_contains "$out" "could not list the repository variables"
+  assert_contains "$(cat gh-calls)" "secret set FIREBASE_PROJECT_ID=demo-proj"
+  [[ "$(cat gh-calls)" != *"variable delete"* ]] || fail "a variable was deleted: $(cat gh-calls)"
+  [[ "$out" != *demo-proj* ]] || fail "the project id was printed: $out"
 }
 test_github_step_without_a_project_fails_and_sets_nothing() {
   sandbox
