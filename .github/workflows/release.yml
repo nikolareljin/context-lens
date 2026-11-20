@@ -1,7 +1,7 @@
 name: release
 
-# A release tag builds the signed APK and AAB and publishes a GitHub release
-# with the APK attached. Tags come from merged release/X.Y.Z pull requests
+# A release tag builds the signed APK and AAB and the Chrome extension zip, and
+# publishes a GitHub release with them attached. Tags come from merged release/X.Y.Z pull requests
 # (tag-release calls this workflow) or from the admin (./dev release).
 on:
   push:
@@ -72,8 +72,39 @@ jobs:
           path: dist/
           retention-days: 90
 
+  # The Chrome extension zip and its checksum (scripts/extension-install.sh downloads both).
+  extension:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ env.TAG }}
+      - id: web
+        run: |
+          if [[ -f apps/web/package.json ]] && grep -q '"build:extension"' apps/web/package.json; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/setup-node@v7
+        if: steps.web.outputs.present == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: build and package
+        if: steps.web.outputs.present == 'true'
+        env:
+          LEAK_CHECK_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          (cd apps/web && npm ci --no-audit --no-fund && npm run build:extension)
+          bash scripts/extension-package.sh
+      - uses: actions/upload-artifact@v7
+        if: steps.web.outputs.present == 'true'
+        with:
+          name: extension-${{ env.TAG }}
+          path: dist/
+          retention-days: 90
+
   publish:
-    needs: android
+    needs: [android, extension]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -88,6 +119,11 @@ jobs:
         with:
           name: release-${{ env.TAG }}
           path: dist/
+      - uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: extension-${{ env.TAG }}
+          path: dist/
       - name: release notes
         run: bash scripts/release-notes.sh "$TAG" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" > "$RUNNER_TEMP/notes.md"
       - name: GitHub release
@@ -98,5 +134,5 @@ jobs:
           # context-lens.apk keeps one fixed address for the QR code and the install script:
           # releases/latest/download/context-lens.apk always serves the newest release's APK
           if [[ -f "dist/contextlens-${TAG}.apk" ]]; then cp "dist/contextlens-${TAG}.apk" dist/context-lens.apk; fi
-          files=(dist/*.apk dist/*.aab)
+          files=(dist/*.apk dist/*.aab dist/context-lens-extension.zip dist/context-lens-extension.zip.sha256)
           gh release create "$TAG" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag "${files[@]}"

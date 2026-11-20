@@ -99,3 +99,13 @@ A dated record of the work done during the hackathon. Each entry lists what was 
 ## 2026-11-19: release 0.2.0
 
 - One version for the whole repository (Android, web companion and, next, the Chrome extension). The APK carries the date-hint and cloud-test fixes; the site carries the live demo.
+
+## 2026-11-19: Chrome extension
+
+- The web companion's demo runs in Chrome's side panel as a Manifest V3 extension built from the same code (`vite build --mode extension`). It asks only for the side panel, carries no host permissions or content scripts, and has a fixed id from the public half of a key kept outside the repository.
+- Extension pages may run only packaged code, so the build leaves out App Check (its reCAPTCHA provider loads a Google script) and uses Firebase Auth's web-extension build; a reCAPTCHA site key is refused in the extension.
+- Releases attach `context-lens-extension.zip` and its SHA-256. `scripts/extension-package.sh` fails on a manifest version other than `VERSION`, extra permissions, a custom content security policy, any Firebase key or project value, or App Check / Auth popup code.
+- `scripts/extension-install.sh` and `.ps1` install or update it with one command; with Chromium or Chrome for Testing they start it with the extension loaded in a separate profile, otherwise they open `chrome://extensions` and print the clicks. The guide is [Chrome extension](extension.md).
+- Verified: unit tests (manifest, extension id from the key, the site key refused in the extension), script tests (packaging checks, installer: checksum, update, Chromium launch, Chrome steps, a folder that is not the extension is left alone), the PowerShell installer in PowerShell 7, and the package loaded in Chromium with `--load-extension`, where the side panel page rendered the demo.
+- Open: a run in Chrome with Gemini Nano and the judges' project.
+

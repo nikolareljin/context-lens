@@ -110,6 +110,12 @@ jobs:
           LEAK_CHECK_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
         run: bash ../../scripts/site-leak-check.sh dist
       - run: npm test
+      # The Chrome extension: same code, its own build; packaging checks the manifest, leaks and remote code.
+      - run: npm run build:extension
+      - name: extension package
+        env:
+          LEAK_CHECK_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: bash ../../scripts/extension-package.sh
 
   docs:
     needs: changes

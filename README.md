@@ -34,6 +34,8 @@ The app has no shared backend. The cloud check runs in a Firebase project you co
 | Platform | State |
 |---|---|
 | Android | in development; minSdk 26; on-device inference needs a phone with Gemini Nano support |
+| Web (Chrome) | live demo at the web companion; Gemini Nano in Chrome on the device, grounded check on a project you connect |
+| Chrome extension | the same demo in Chrome's side panel; [install](https://nikolareljin.github.io/context-lens/docs/extension/) with one command |
 
 ## Repository layout
 
@@ -74,6 +76,7 @@ Details: [Download](https://nikolareljin.github.io/context-lens/docs/download/).
 
 Every release (`x.y.z`) builds a signed APK and attaches it to the GitHub release, once as
 `contextlens-x.y.z.apk` and once as `context-lens.apk`, the fixed name the QR code points to.
+The Chrome extension is attached as `context-lens-extension.zip` with its `.sha256`.
 
 ## License
 

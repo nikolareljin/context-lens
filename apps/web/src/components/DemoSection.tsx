@@ -12,6 +12,7 @@ import { STORAGE_KEY, clearProject, loadProject, parseStored, sameProject, saveP
 import { DemoScript } from "../pipeline/demoScript";
 import { EgressLedger } from "../pipeline/ledger";
 import { WebPipeline, type Check, type ModelSource, type PipelineSnapshot, type PrivacyMode } from "../pipeline/pipeline";
+import { EXTENSION_APP_CHECK, inExtension } from "../lib/config";
 import { CheckCard } from "./CheckCard";
 import { ConnectPanel } from "./ConnectPanel";
 import { LedgerPanel } from "./LedgerPanel";
@@ -207,6 +208,7 @@ export function DemoSection({
   };
 
   const connect = (p: WebProject, remember: boolean): string | null => {
+    if (p.recaptchaSiteKey && inExtension()) return EXTENSION_APP_CHECK;
     // App Check keeps a token in IndexedDB, so a site key needs the visitor's consent to store.
     if (p.recaptchaSiteKey && !remember) return "A reCAPTCHA site key needs “Remember on this device”.";
     if (remember) {

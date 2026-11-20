@@ -17,6 +17,10 @@ Every release on GitHub carries a signed APK. One fixed address always serves th
 
 [Latest release](https://github.com/nikolareljin/context-lens/releases/latest){ .md-button .md-button--primary } [All releases](https://github.com/nikolareljin/context-lens/releases){ .md-button }
 
+## Chrome extension
+
+The same demo in Chrome's side panel: one command installs it (or loads it, in Chromium). See [Chrome extension](extension.md).
+
 ## Install over USB from a computer
 
 With **USB debugging** on (Settings → About phone → tap **Build number** seven times, then Settings → System → **Developer options** → **USB debugging**), connect the phone and run, from a clone of the repository:

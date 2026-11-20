@@ -10,6 +10,10 @@ describe("download address", () => {
 
 describe("site configuration", () => {
   it("carries no Firebase values", () => {
-    expect(Object.keys(config).sort()).toEqual(["DOCS", "LATEST_APK", "RELEASES", "REPOSITORY"]);
+    expect(Object.keys(config).sort()).toEqual(["DOCS", "EXTENSION_APP_CHECK", "LATEST_APK", "RELEASES", "REPOSITORY", "SITE", "inExtension"]);
+  });
+  it("is the site build, not the extension, in tests", () => {
+    expect(config.inExtension()).toBe(false);
+    expect(config.DOCS).toBe("/context-lens/docs/");
   });
 });

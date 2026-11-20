@@ -6,6 +6,8 @@
 #   lint      type check
 #   test      unit tests (vitest)
 #   build     production build into apps/web/dist
+#   extension Chrome extension build into apps/web/dist-extension, packaged as
+#             dist/context-lens-extension.zip with its .sha256 (scripts/extension-package.sh)
 #   dev       local server on 127.0.0.1 (http://127.0.0.1:5173/context-lens/)
 #   check     install, lint, test, build (what CI runs)
 #
@@ -45,6 +47,7 @@ case "$cmd" in
   lint) run_npm run lint ;;
   test) run_npm test ;;
   build) run_npm run build ;;
+  extension) run_npm run build:extension && bash "$TL_ROOT/scripts/extension-package.sh" ;;
   dev) run_npm run dev -- --host 127.0.0.1 ;;
   check) run_npm ci --no-audit --no-fund && run_npm run lint && run_npm test && run_npm run build ;;
   ""|-h|--help) usage_from "${BASH_SOURCE[0]}" ;;

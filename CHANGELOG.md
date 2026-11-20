@@ -4,6 +4,11 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ## [Unreleased]
 
+### Added
+
+- Chrome extension: the web companion's live demo in Chrome's side panel (Manifest V3, the side panel permission only, no access to the pages you visit). Built from the same code (`./dev web extension`), with a fixed extension id, so a connected project and the API key restrictions work the same on every computer. App Check's reCAPTCHA can't run in an extension, so a site key is refused there, and the package carries no App Check or Auth popup code. Every release attaches `context-lens-extension.zip` and its `.sha256`; packaging fails on a manifest that differs from `VERSION`, asks for more permissions, or on any Firebase key or remote script.
+- One-command install: `scripts/extension-install.sh` (Linux, macOS) and `scripts/extension-install.ps1` (Windows) download the newest extension, check its SHA-256 and unpack it; with Chromium or Chrome for Testing they start it with the extension loaded in its own profile, otherwise they copy the folder path, open `chrome://extensions` and print the four clicks. [Install guide](https://nikolareljin.github.io/context-lens/docs/extension/).
+
 ## [0.2.0] - 2026-11-19
 
 The web companion runs the same pipeline in Chrome, on a Firebase project the visitor connects. The APK carries the Android fixes below.

@@ -13,6 +13,13 @@ test_check_runs_what_ci_runs_in_order() {
   bash "$script" check >/dev/null 2>&1 || fail "check failed"
   assert_eq "$(tr '\n' '|' < npm-calls)" "npm ci --no-audit --no-fund|npm run lint|npm test|npm run build|"
 }
+test_extension_builds_the_extension_then_packages_it() {
+  fake_npm
+  # the stand-in npm builds nothing; packaging then runs on whatever build is there (or none)
+  out="$(bash "$script" extension 2>&1 || true)"
+  assert_eq "$(tr '\n' '|' < npm-calls)" "npm run build:extension|"
+  assert_contains "$out" "[extension]"
+}
 test_dev_binds_localhost_only() {
   fake_npm
   bash "$script" dev >/dev/null 2>&1 || fail "dev failed"
@@ -23,7 +30,7 @@ test_unknown_command_fails() {
   assert_status 1 bash "$script" nope
 }
 test_base_path_matches_pages() {
-  assert_contains "$(cat "$TL_ROOT/apps/web/vite.config.ts")" 'base: "/context-lens/"'
+  assert_contains "$(cat "$TL_ROOT/apps/web/vite.config.ts")" 'base: mode === "extension" ? "./" : "/context-lens/"'
   assert_contains "$(cat "$TL_ROOT/mkdocs.yml")" "site_url: https://nikolareljin.github.io/context-lens/docs/"
 }
 test_ownership_file_is_served_from_the_root() {

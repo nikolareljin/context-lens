@@ -20,7 +20,7 @@ Versions follow [Semantic Versioning](https://semver.org/). Tags carry the bare 
 |---|---|---|
 | CI artifact | every pull request and push to `main` | debug APK |
 | Firebase App Distribution | every merge to `main` that touches the app, once enabled | signed build for testers |
-| GitHub Releases | every version tag | signed APK and AAB, release notes |
+| GitHub Releases | every version tag | signed APK and AAB, the Chrome extension zip and its SHA-256, release notes |
 | This site | every merge to `main` that touches the docs | rebuilt and published; the download page always points at the latest release |
 
 ## How a release is made

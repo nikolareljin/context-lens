@@ -23,6 +23,7 @@ captures/
 *.aab
 out/
 dist/
+dist-extension/
 node_modules/
 functions/lib/
 .firebase/

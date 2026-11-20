@@ -37,7 +37,7 @@ Each card shows the source Firebase AI Logic reported for that request (on devic
 
 ## Get it
 
-On Android: the signed APK from the newest release. In Chrome: the [web companion](../) runs the same three stages in the browser: the local rules and Gemini Nano in Chrome on the device, and the grounded check in a Firebase project you connect on the page ([setup](web-setup.md)). Without one, nothing leaves the browser.
+On Android: the signed APK from the newest release. In Chrome: the [web companion](../) runs the same three stages in the browser: the local rules and Gemini Nano in Chrome on the device, and the grounded check in a Firebase project you connect on the page ([setup](web-setup.md)). Without one, nothing leaves the browser. The same demo also runs in Chrome's side panel as a [Chrome extension](extension.md), installed with one command.
 
 <div class="cl-qr" markdown>
 <img src="assets/apk-qr.svg" alt="QR code that downloads the newest ContextLens APK">

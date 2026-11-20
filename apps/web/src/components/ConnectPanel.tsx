@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { DOCS } from "../lib/config";
+import { DOCS, EXTENSION_APP_CHECK, inExtension } from "../lib/config";
 import { ANDROID_CONNECT_PREFIX, PROBLEM_TEXT, parseProject, problems, type WebProject } from "../cloud/project";
 
 interface Props {
@@ -77,6 +77,10 @@ export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: P
       setError([...found].map((p) => PROBLEM_TEXT[p]).join("; "));
       return;
     }
+    if (parsed.recaptchaSiteKey && inExtension()) {
+      setError(EXTENSION_APP_CHECK);
+      return;
+    }
     if (parsed.recaptchaSiteKey && !remember) {
       setError(
         "App Check keeps a token in this browser's storage, so a reCAPTCHA site key needs “Remember on this device”. Tick it, or leave the site key out.",
@@ -118,7 +122,7 @@ export function ConnectPanel({ project, remembered, onConnect, onDisconnect }: P
           <p className="text-sm text-slate-300">
             Not connected: everything stays in this browser. The grounded check runs Gemini with Google Search through
             Firebase AI Logic in your own project, on your quota. This site has no project of its own.{" "}
-            <a className="text-device underline" href={`${DOCS}web-setup/`}>How to set one up</a>
+            <a className="text-device underline" href={`${DOCS}web-setup/`} target="_blank" rel="noopener noreferrer">How to set one up</a>
           </p>
           <label htmlFor="connect-input" className="text-sm font-medium">Web app config or connect code</label>
           <textarea

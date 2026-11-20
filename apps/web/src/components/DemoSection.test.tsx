@@ -204,6 +204,26 @@ describe("connecting a project", () => {
     expect(reload).not.toHaveBeenCalled();
   });
 
+  it("in the extension, refuses a reCAPTCHA site key even with Remember, and connects without one", () => {
+    vi.stubEnv("MODE", "extension");
+    try {
+      renderDemo();
+      const withKey = snippet.replace("};", ', recaptchaSiteKey: "6Lc_springfield_site_key_555" };');
+      fireEvent.change(screen.getByLabelText("Web app config or connect code"), { target: { value: withKey } });
+      fireEvent.click(screen.getByLabelText(/Remember on this device/));
+      fireEvent.click(screen.getByRole("button", { name: "Connect…" }));
+      expect(screen.getByRole("alert").textContent).toContain("can't load inside the extension");
+      expect(screen.queryByRole("button", { name: "Connect demo-springfield" })).toBeNull();
+      expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+      fireEvent.change(screen.getByLabelText("Web app config or connect code"), { target: { value: snippet } });
+      fireEvent.click(screen.getByRole("button", { name: "Connect…" }));
+      fireEvent.click(screen.getByRole("button", { name: "Connect demo-springfield" }));
+      expect(sources.at(-1)?.project?.projectId).toBe("demo-springfield");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("refuses a site key when the project cannot be remembered", () => {
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new Error("QuotaExceededError");

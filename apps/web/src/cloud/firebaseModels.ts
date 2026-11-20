@@ -3,6 +3,7 @@ import type { AI, EnhancedGenerateContentResponse, GenerativeModel, LanguageMode
 import { GroundingParser, type ModelReply, type WebSource } from "../domain";
 import { ON_DEVICE, describe, type ModelSource, type PrivacyMode, type TextModel } from "../pipeline/pipeline";
 import { loadProject, type WebProject } from "./project";
+import { EXTENSION_APP_CHECK, inExtension } from "../lib/config";
 
 /** Grounded verifier models, in the order tried; the same as the Android app (FirebaseModels.kt). */
 export const VERIFIER_CANDIDATES = ["gemini-3.1-flash-lite", "gemini-3.8-flash"];
@@ -387,6 +388,8 @@ export class FirebaseModelSource implements ModelSource {
       };
       const created = await this.newApp(app, options, CLOUD_APP_NAME);
       try {
+        // An extension page can't load the reCAPTCHA script; the connect form refuses a site key there.
+        if (project.recaptchaSiteKey && inExtension()) throw new Error(EXTENSION_APP_CHECK);
         if (project.recaptchaSiteKey) {
           const appCheck = await import("@firebase/app-check");
           if (this.disposed) throw new Error(DISCONNECTED);
