@@ -55,41 +55,41 @@
     if ($sumText -is [byte[]]) { $sumText = [Text.Encoding]::ASCII.GetString($sumText) }
     $expected = ($sumText.Trim() -split '\s+')[0].ToLowerInvariant()
     if ($expected -notmatch '^[0-9a-f]{64}$') { Fail 'the checksum file is not valid' }
-    $actual = (Get-FileHash -Algorithm SHA256 -Path $zip).Hash.ToLowerInvariant()
+    $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash.ToLowerInvariant()
     if ($actual -ne $expected) { Fail 'checksum mismatch: the download is damaged or not the released file' }
     Write-Host 'checksum ok'
 
     $unpacked = Join-Path $tmp 'unpacked'
-    Expand-Archive -Path $zip -DestinationPath $unpacked
+    Expand-Archive -LiteralPath $zip -DestinationPath $unpacked
     $manifestPath = Join-Path $unpacked 'manifest.json'
-    if (-not (Test-Path $manifestPath)) { Fail 'the download is not the ContextLens extension' }
-    $manifest = Get-Content -Raw $manifestPath | ConvertFrom-Json
+    if (-not (Test-Path -LiteralPath $manifestPath)) { Fail 'the download is not the ContextLens extension' }
+    $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
     if ($manifest.name -ne 'ContextLens') { Fail 'the download is not the ContextLens extension' }
 
     # Only a folder that holds an earlier copy of this extension (or nothing) is replaced.
-    if (Test-Path $dir) {
+    if (Test-Path -LiteralPath $dir) {
       $old = Join-Path $dir 'manifest.json'
-      $isOurs = (Test-Path $old) -and ((Get-Content -Raw $old | ConvertFrom-Json).name -eq 'ContextLens')
-      $isEmpty = -not (Get-ChildItem -Force $dir | Select-Object -First 1)
+      $isOurs = (Test-Path -LiteralPath $old) -and ((Get-Content -Raw -LiteralPath $old | ConvertFrom-Json).name -eq 'ContextLens')
+      $isEmpty = -not (Get-ChildItem -Force -LiteralPath $dir | Select-Object -First 1)
       if (-not ($isOurs -or $isEmpty)) { Fail "$dir exists and is not a ContextLens extension folder; move it away and run this again" }
-      Remove-Item -Recurse -Force $dir
+      Remove-Item -Recurse -Force -LiteralPath $dir
     }
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $dir) | Out-Null
-    Move-Item -Path $unpacked -Destination $dir
-    $dir = (Resolve-Path $dir).Path
+    Move-Item -LiteralPath $unpacked -Destination $dir
+    $dir = (Resolve-Path -LiteralPath $dir).Path
     Write-Host "ContextLens $($manifest.version) is in $dir"
   } finally {
-    Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force -LiteralPath $tmp -ErrorAction SilentlyContinue
   }
 
   # ---- load it --------------------------------------------------------------------------------
   function First-Existing([string[]]$paths) {
-    foreach ($p in $paths) { if ($p -and (Test-Path $p)) { return $p } }
+    foreach ($p in $paths) { if ($p -and (Test-Path -LiteralPath $p)) { return $p } }
     return $null
   }
   $pf86 = [Environment]::GetEnvironmentVariable('ProgramFiles(x86)')
   $loader = if ($env:CONTEXTLENS_BROWSER) { if ($env:CONTEXTLENS_BROWSER -eq 'none') { $null } else { $env:CONTEXTLENS_BROWSER } } else {
-    $cft = @(Get-ChildItem -ErrorAction SilentlyContinue -Path (Join-Path $env:USERPROFILE '.cache\puppeteer\chrome') -Recurse -Filter chrome.exe | ForEach-Object FullName)
+    $cft = @(Get-ChildItem -ErrorAction SilentlyContinue -LiteralPath (Join-Path $env:USERPROFILE '.cache\puppeteer\chrome') -Recurse -Filter chrome.exe | ForEach-Object FullName)
     First-Existing (@(
       (Join-Path $env:LOCALAPPDATA 'Chromium\Application\chrome.exe'),
       (Join-Path $env:ProgramFiles 'Chromium\Application\chrome.exe'),

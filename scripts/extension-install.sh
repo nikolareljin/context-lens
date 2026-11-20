@@ -54,6 +54,7 @@ main() {
   fi
 
   for tool in curl unzip; do command -v "$tool" >/dev/null || die "$tool is needed (install it and run this again)"; done
+  command -v sha256sum >/dev/null || command -v shasum >/dev/null || die "sha256sum or shasum is needed"
   # fetch zip|sum: downloads one of the two release files into $tmp. A missing file means that
   # release has no extension (it came with 0.3.0).
   fetch() {
@@ -72,8 +73,7 @@ main() {
   }
   sha256() {
     if command -v sha256sum >/dev/null; then sha256sum "$1" | awk '{ print $1 }'
-    elif command -v shasum >/dev/null; then shasum -a 256 "$1" | awk '{ print $1 }'
-    else die "sha256sum or shasum is needed"; fi
+    else shasum -a 256 "$1" | awk '{ print $1 }'; fi
   }
 
   # ---- download, check, unpack ---------------------------------------------------------------

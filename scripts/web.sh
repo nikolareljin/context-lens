@@ -12,7 +12,7 @@
 #   check     install, lint, test, build (what CI runs)
 #
 # Uses the local npm when Node is 20 or newer, otherwise the node:22 container (Docker).
-# Environment: NPM (a stand-in for tests), WEB_NODE_IMAGE (default node:22).
+# Environment: NPM and EXTENSION_PACKAGER (stand-ins for tests), WEB_NODE_IMAGE (default node:22).
 set -euo pipefail
 TL_TAG=web
 # shellcheck source=lib/common.sh
@@ -47,7 +47,7 @@ case "$cmd" in
   lint) run_npm run lint ;;
   test) run_npm test ;;
   build) run_npm run build ;;
-  extension) run_npm run build:extension && bash "$TL_ROOT/scripts/extension-package.sh" ;;
+  extension) run_npm run build:extension && bash "${EXTENSION_PACKAGER:-$TL_ROOT/scripts/extension-package.sh}" ;;
   dev) run_npm run dev -- --host 127.0.0.1 ;;
   check) run_npm ci --no-audit --no-fund && run_npm run lint && run_npm test && run_npm run build ;;
   ""|-h|--help) usage_from "${BASH_SOURCE[0]}" ;;

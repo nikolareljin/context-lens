@@ -63,6 +63,7 @@ test_refuses_a_damaged_download() {
   out="$(install env CONTEXTLENS_BROWSER=none CONTEXTLENS_CHROME=none)" && fail "a damaged download was installed"
   assert_contains "$out" "checksum mismatch"
   [[ ! -e home/context-lens/extension ]] || fail "something was unpacked"
+  assert_eq "$(ls -A home/context-lens)" ""
 }
 test_never_replaces_a_folder_that_is_not_the_extension() {
   release; stubs; mkdir -p home/context-lens/extension
@@ -83,6 +84,7 @@ test_a_release_without_the_extension_is_explained() {
   out="$(HOME="$PWD/home" PATH="$PWD/bin:$PATH" CONTEXTLENS_WSL=0 CONTEXTLENS_BROWSER=none CONTEXTLENS_CHROME=none bash "$script" 2>&1)" \
     && fail "a missing extension was not reported"
   assert_contains "$out" "has no Chrome extension yet"
+  assert_eq "$(ls -A home/context-lens)" ""
 }
 test_leaves_only_the_extension_behind() {
   release; stubs; mkdir home
