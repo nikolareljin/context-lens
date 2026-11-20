@@ -21,15 +21,7 @@ is_semver "$v" || die "release branch must be release/MAJOR.MINOR.PATCH (found $
 file_v="$(git show "$sha:VERSION" | tr -d '[:space:]')"
 [[ "$file_v" == "$v" ]] || die "VERSION at $sha is '$file_v', branch says $v"
 grep -Eq "^## \[${v//./\\.}\]( |$)" < <(git show "$sha:CHANGELOG.md") || die "CHANGELOG.md at $sha has no '## [$v]' section"
-# One version for the whole repository: the web companion's package follows VERSION.
-if git cat-file -e "$sha:apps/web/package.json" 2>/dev/null; then
-  web_v="$(git show "$sha:apps/web/package.json" | jq -r '.version // ""')"
-  [[ "$web_v" == "$v" ]] || die "apps/web/package.json at $sha has version '$web_v', not $v"
-  if git cat-file -e "$sha:apps/web/package-lock.json" 2>/dev/null; then
-    lock_v="$(git show "$sha:apps/web/package-lock.json" | jq -r '[.version, (.packages[""].version // .version)] | unique | join(",")')"
-    [[ "$lock_v" == "$v" ]] || die "apps/web/package-lock.json at $sha has version '$lock_v', not $v"
-  fi
-fi
+check_web_version "$sha" "$v"
 if git rev-parse -q --verify "refs/tags/$v" >/dev/null || git ls-remote --exit-code --tags "$remote" "refs/tags/$v" >/dev/null 2>&1; then
   die "tag $v exists already"
 fi

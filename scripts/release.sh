@@ -3,8 +3,8 @@
 #
 # Usage: scripts/release.sh [--dry-run]
 # Checks: on main, clean tree, up to date with origin/main, VERSION is
-# MAJOR.MINOR.PATCH, CHANGELOG.md has a "## [VERSION]" section, the tag does
-# not exist yet. Then: annotated tag VERSION on HEAD, pushed to origin.
+# MAJOR.MINOR.PATCH, CHANGELOG.md has a "## [VERSION]" section, the web
+# package (when present) carries VERSION, the tag does not exist yet. Then: annotated tag VERSION on HEAD, pushed to origin.
 # Stand-in for tests: GIT_REMOTE (default origin).
 set -euo pipefail
 TL_TAG=release
@@ -23,6 +23,7 @@ is_semver "$v" || die "VERSION must be MAJOR.MINOR.PATCH without a prefix (found
 git fetch -q "$remote" main
 [[ "$(git rev-parse HEAD)" == "$(git rev-parse "$remote/main")" ]] || die "main is not equal to $remote/main"
 grep -Eq "^## \[${v//./\\.}\]( |$)" CHANGELOG.md || die "CHANGELOG.md has no '## [$v]' section"
+check_web_version HEAD "$v"
 if git rev-parse -q --verify "refs/tags/$v" >/dev/null || git ls-remote --exit-code --tags "$remote" "refs/tags/$v" >/dev/null 2>&1; then
   die "tag $v exists already"
 fi
