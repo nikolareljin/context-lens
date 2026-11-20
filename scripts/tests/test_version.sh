@@ -72,6 +72,16 @@ test_web_package_follows_the_version() {
   [[ -z "$(git status --porcelain)" ]] || fail "uncommitted changes: $(git status --porcelain)"
   assert_contains "$(git show --name-only --format= HEAD)" "apps/web/package-lock.json"
 }
+test_invalid_web_package_is_refused_before_anything_changes() {
+  setup_repo 0.1.1
+  mkdir -p apps/web && echo '{ "version": ' > apps/web/package.json
+  git add -A && git commit -q -m "chore: web" && git push -q origin main
+  commit "feat: demo"
+  assert_status 1 bash scripts/version.sh
+  assert_eq "$(git rev-parse --abbrev-ref HEAD)" main
+  assert_eq "$(cat VERSION)" 0.1.1
+  [[ -z "$(git status --porcelain)" ]] || fail "changes left behind: $(git status --porcelain)"
+}
 test_empty_unreleased_is_refused() {
   setup_repo 0.0.1
   printf '# Changelog\n\n## [Unreleased]\n\n## [0.0.1] - 2026-11-01\n\n- x\n' > CHANGELOG.md
