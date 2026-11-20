@@ -35,13 +35,8 @@ jobs:
       - name: version matches the tag
         run: |
           [[ "$(tr -d '[:space:]' < VERSION)" == "$TAG" ]] || { echo "VERSION differs from tag $TAG" >&2; exit 1; }
-          if [[ -f apps/web/package.json ]]; then
-            [[ "$(jq -r '.version // ""' apps/web/package.json)" == "$TAG" ]] || { echo "apps/web/package.json differs from tag $TAG" >&2; exit 1; }
-            if [[ -f apps/web/package-lock.json ]]; then
-              [[ "$(jq -r '[.version, (.packages[""].version // .version)] | unique | join(",")' apps/web/package-lock.json)" == "$TAG" ]] \
-                || { echo "apps/web/package-lock.json differs from tag $TAG" >&2; exit 1; }
-            fi
-          fi
+          # the web companion's package carries the same version (shared with the tagging scripts)
+          bash -c 'source scripts/lib/common.sh && check_web_version HEAD "$TAG"'
       - id: app
         run: |
           if [[ -x apps/android/gradlew ]]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi

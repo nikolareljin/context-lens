@@ -64,7 +64,7 @@ test_refuses_a_broken_web_package_with_a_message() {
   git add -A && git commit -q -m "chore: web" && git push -q origin main
   sha="$(git rev-parse HEAD)"
   out="$(bash scripts/release-tag.sh release/0.2.0 "$sha" 2>&1)" && fail "a broken package was tagged"
-  assert_contains "$out" "apps/web/package.json at $sha is not valid JSON"
+  assert_contains "$out" "apps/web/package.json at $sha is not a valid JSON object"
 }
 test_refuses_missing_changelog_section() {
   setup_repo 0.2.0 0.1.0

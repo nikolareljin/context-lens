@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Prepare a release: bump VERSION (and the web companion's package version to
-# match), date the changelog section, commit on a
-# release/X.Y.Z branch, and (with --pr) push it and open the pull request.
+# match), date the changelog section, commit on a release/X.Y.Z branch, and
+# (with --pr) push it and open the pull request.
 # Merging that pull request tags the merge commit and publishes the release.
 #
 # Usage: scripts/version.sh [auto|patch|minor|major|X.Y.Z] [--pr] [--dry-run]

@@ -49,12 +49,12 @@ check_web_version() {
   git cat-file -e "$sha:apps/web/package.json" 2>/dev/null || return 0
   command -v jq >/dev/null || die "jq is needed to check the web package version"
   got="$(git show "$sha:apps/web/package.json" | jq -r '.version // ""' 2>/dev/null)" \
-    || die "apps/web/package.json at $sha is not valid JSON"
+    || die "apps/web/package.json at $sha is not a valid JSON object"
   [[ "$got" == "$v" ]] || die "apps/web/package.json at $sha has version '$got', not $v"
   git cat-file -e "$sha:apps/web/package-lock.json" 2>/dev/null || return 0
   got="$(git show "$sha:apps/web/package-lock.json" \
     | jq -r '[.version, (.packages[""].version // .version)] | unique | join(",")' 2>/dev/null)" \
-    || die "apps/web/package-lock.json at $sha is not valid JSON"
+    || die "apps/web/package-lock.json at $sha is not a valid JSON object"
   [[ "$got" == "$v" ]] || die "apps/web/package-lock.json at $sha has version '$got', not $v"
 }
 
