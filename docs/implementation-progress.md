@@ -112,3 +112,7 @@ A dated record of the work done during the hackathon. Each entry lists what was 
 ## 2026-11-19: release 0.3.0
 
 - The first release with the Chrome extension attached (`context-lens-extension.zip` and its SHA-256), so the one-command install has something to download.
+
+## 2026-11-19: release 0.4.0
+
+- Attaches `context-lens-extension-store.zip` for the Chrome Web Store upload, next to the unpacked extension; the site and docs pages carry link previews with the social card.

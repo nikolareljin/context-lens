@@ -4,6 +4,10 @@ All notable changes are listed here. Versions follow [SemVer](https://semver.org
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-19
+
+Ready for the Chrome Web Store: the upload package, the install options and the extension's privacy policy; link previews for the site.
+
 ### Added
 
 - Chrome Web Store upload: packaging also writes `context-lens-extension-store.zip` (same files, manifest without the `key` that fixes the unpacked extension id; the store assigns its own), attached to every release.

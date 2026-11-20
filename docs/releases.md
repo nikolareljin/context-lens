@@ -9,8 +9,9 @@ Versions follow [Semantic Versioning](https://semver.org/). Tags carry the bare 
 | 0.1.x | the complete loop: on-device gatekeeper, grounded cloud check, privacy firewall, diagnostics, evaluation |
 | 0.2.x | web companion in Chrome (live demo on your own project) |
 | 0.3.x | Chrome extension (side panel) |
-| 0.4.x | Remote Config tuning, offline outbox |
-| 0.5.x | slide context from one photo, on device; server prompt templates |
+| 0.4.x | Chrome Web Store package, install options, link previews |
+| 0.5.x | home page: access code, step-by-step demo, recorded and live modes |
+| 0.6.x | Remote Config tuning, offline outbox; slide context from one photo, on device |
 | 0.9.x | release candidates |
 | 1.0.0 | hackathon submission |
 
